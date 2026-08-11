@@ -1,0 +1,235 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../app/router/route_names.dart';
+import '../../../../app/theme/app_theme.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/widgets/app_logo.dart';
+import '../providers/auth_provider.dart';
+
+/// Login screen — email and password authentication.
+///
+/// Matches the Figma design: logo at top, email/password fields,
+/// sign-in button, forgot password link, and register CTA.
+class LoginPage extends ConsumerStatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final errorMessage = await ref.read(loginProvider.notifier).login(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
+
+    if (!mounted) return;
+
+    if (errorMessage == null) {
+      // Success — GoRouter's auth guard will redirect to dashboard.
+      context.go(RouteNames.dashboard);
+    } else {
+      SnackbarUtils.showError(context, errorMessage);
+    }
+  }
+
+  /// Handles Google / Apple sign-in.
+  Future<void> _handleSocial(String provider) async {
+    final errorMessage =
+        await ref.read(socialLoginProvider.notifier).loginWith(provider);
+
+    if (!mounted) return;
+
+    if (errorMessage == null) {
+      context.go(RouteNames.dashboard);
+    } else if (errorMessage != 'Sign in cancelled.') {
+      SnackbarUtils.showError(context, errorMessage);
+    }
+  }
+
+  /// Apple Sign-In only works on iOS/macOS without extra web setup.
+  bool get _supportsAppleSignIn =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
+  @override
+  Widget build(BuildContext context) {
+    final loginState = ref.watch(loginProvider);
+    final socialState = ref.watch(socialLoginProvider);
+    final isLoading = loginState.isLoading;
+    final socialLoading = socialState.isLoading;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.pagePadding),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const SizedBox(height: 48),
+
+                // ── Logo ──
+                const AppLogo(),
+                const SizedBox(height: 48),
+
+                // ── Email field ──
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!value.trim().contains('@')) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // ── Password field ──
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _handleLogin(),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    if (value.length < AppConstants.passwordMinLength) {
+                      return 'Password must be at least ${AppConstants.passwordMinLength} characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 8),
+
+                // ── Forgot Password ──
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => context.push(RouteNames.forgotPassword),
+                    child: const Text('Forgot Password?'),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Login button ──
+                FilledButton(
+                  onPressed: isLoading ? null : _handleLogin,
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Sign In'),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Divider "or continue with" ──
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'or continue with',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // ── Google button ──
+                OutlinedButton.icon(
+                  onPressed: socialLoading ? null : () => _handleSocial('google'),
+                  icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
+                  label: const Text('Continue with Google'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textPrimary,
+                    side: const BorderSide(color: AppTheme.dividerColor),
+                  ),
+                ),
+                // ── Apple button (only on iOS/macOS where it works) ──
+                if (_supportsAppleSignIn) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: socialLoading ? null : () => _handleSocial('apple'),
+                    icon: const Icon(Icons.apple_rounded, size: 20),
+                    label: const Text('Continue with Apple'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.textPrimary,
+                      side: const BorderSide(color: AppTheme.dividerColor),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+
+                // ── Register link ──
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Don't have an account?"),
+                    TextButton(
+                      onPressed: () => context.push(RouteNames.register),
+                      child: const Text('Sign Up'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

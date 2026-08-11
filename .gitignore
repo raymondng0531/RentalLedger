@@ -1,0 +1,68 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+.metadata
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+android/key.properties
+*.keystore
+*.jks
+hs_err_pid*.log
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcworkspace/xcshareddata/
+*.xcworkspace/xcuserdata/
+
+# macOS
+macos/Pods/
+macos/.symlinks/
+macos/Runner.xcworkspace/xcuserdata/
+
+# Linux
+linux/flutter/ephemeral/
+linux/flutter/ephemeral/
+
+# Windows
+windows/flutter/ephemeral/
+windows/Runner.recipe
+windows/Runner.xcuserstate
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Firebase
+# Client config IS committed on purpose: google-services.json, the iOS
+# GoogleService-Info.plist and firebase_options.dart contain only PUBLIC
+# client API keys (the security boundary is Firebase Rules + auth), and the
+# app cannot build or connect without them.
+
+# Assets
+# `assets/images/` and `assets/icons/` are tracked via `.gitkeep` because
+# pubspec.yaml declares them — a fresh clone needs the dirs to exist.
+
+# Generated
+*.g.dart
+*.freezed.dart
+*.isar.dart
+
+# Project
+temp/
+New folder/
+
+# AI tooling (not app code)
+.claude/
+.agents/

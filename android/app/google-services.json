@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1036946500500",
+    "project_id": "rental-ledger-app",
+    "storage_bucket": "rental-ledger-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1036946500500:android:6642e2ac29b274095abd81",
+        "android_client_info": {
+          "package_name": "com.rentalledger.rental_ledger"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1036946500500-47qm7c7qncmpb5032417vu2hv3h0m7rn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsvitE78bCdlMmay1-3gREkerNS0ajnlE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1036946500500-47qm7c7qncmpb5032417vu2hv3h0m7rn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users: read/write own profile only.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Houses: authenticated members can read; creator/treasurer can write.
+    // The update rule compares the EXISTING doc's treasurerId (resource.data),
+    // so only the current treasurer can edit the house or transfer the role —
+    // a member cannot make themselves treasurer by setting treasurerId to their
+    // own uid.
+    match /houses/{houseId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        resource.data.treasurerId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // House members: all authenticated read.
+    // A user may create their own membership (join) and update their own record
+    // (leave). Treasurers may update members (role transfer / removal).
+    match /house_members/{memberId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/houses/$(resource.data.houseId))
+          .data.treasurerId == request.auth.uid
+      );
+      allow delete: if false;
+    }
+
+    // Expenses: all authenticated read.
+    // - Members may create expenses and may edit/delete ONLY their own pending
+    //   expenses (title/amount/etc. while it's still awaiting review).
+    // - The house treasurer may advance the workflow
+    //   (approve / reject / mark paid).
+    match /expenses/{expenseId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        (resource.data.purchasedBy == request.auth.uid &&
+         resource.data.status == 'pending') ||
+        get(/databases/$(database)/documents/houses/$(resource.data.houseId))
+          .data.treasurerId == request.auth.uid
+      );
+      allow delete: if request.auth != null &&
+        resource.data.purchasedBy == request.auth.uid &&
+        resource.data.status == 'pending';
+    }
+
+    // Transactions: all authenticated read and create (deposits, direct
+    // payments, reimbursements). The house balance is computed from these, so
+    // they are append-only — no updates or deletes.
+    match /transactions/{transactionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Categories: all authenticated read; the house treasurer writes.
+    // (The doc id is `<houseId>_<categoryId>` and stores `houseId`.)
+    match /categories/{categoryId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        get(/databases/$(database)/documents/houses/$(request.resource.data.houseId))
+          .data.treasurerId == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Notifications: any authenticated user may CREATE one, but may only
+    // read / mark-read / delete their OWN.
+    //
+    // create is deliberately NOT restricted to `userId == auth.uid`: the app
+    // writes notifications on the acting client for OTHER users (Expense
+    // Submitted → Treasurer, Approved/Rejected/Reimbursed → submitter,
+    // Remind → Treasurer). Requiring `userId == auth.uid` here silently denied
+    // every cross-user notification — the write failed, `createNotification`
+    // swallowed the error, and the submitter never saw "Reimbursement
+    // Completed" after the Treasurer marked an expense paid.
+    //
+    // IMPORTANT: `resource` is null on create, so check the INCOMING data
+    // (`request.resource.data.userId`) — the old `resource.data.userId` check
+    // crashed every create.
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null &&
+        resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    // App settings: house members read.
+    match /app_settings/{settingId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Bills: authenticated house members can read/create/update/delete.
+    match /bills/{billId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+  }
+}

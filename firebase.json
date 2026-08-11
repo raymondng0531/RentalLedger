@@ -1,0 +1,36 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "rental-ledger-app",
+          "appId": "1:1036946500500:android:6642e2ac29b274095abd81",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "rental-ledger-app",
+          "configurations": {
+            "android": "1:1036946500500:android:6642e2ac29b274095abd81",
+            "ios": "1:1036946500500:ios:23b805c2a9e539335abd81",
+            "macos": "1:1036946500500:ios:23b805c2a9e539335abd81",
+            "web": "1:1036946500500:web:60bcf2414e01e86f5abd81",
+            "windows": "1:1036946500500:web:ba0e43410eef4e355abd81"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
+  }
+}

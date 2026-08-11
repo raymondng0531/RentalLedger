@@ -43,3 +43,15 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // google_mlkit_text_recognition references the optional script-specific
+    // recognizer classes (Chinese/Devanagari/Japanese/Korean). The plugin ships
+    // them as compileOnly, so a release build's R8 pass fails with "Missing
+    // class ..." unless the app bundles them. Version matches the plugin's base
+    // com.google.mlkit:text-recognition dependency exactly.
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+}

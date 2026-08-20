@@ -35,7 +35,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
   String _selectedCategory = 'other';
   String _paymentSource = 'central';
-  File? _receiptFile;
+  // XFile is cross-platform: on native it wraps the file path, on web the
+  // picker returns a blob URL. (File(picked.path) throws on web.)
+  XFile? _receiptFile;
 
   @override
   void dispose() {
@@ -55,7 +57,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       );
       if (picked != null) {
         setState(() {
-          _receiptFile = File(picked.path);
+          _receiptFile = picked;
         });
         ref.read(createExpenseProvider.notifier).setReceiptPath(picked.path);
       }
@@ -84,7 +86,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 48),
           )
         : Image.file(
-            _receiptFile!,
+            File(_receiptFile!.path),
             height: height,
             width: width,
             fit: BoxFit.cover,
@@ -108,7 +110,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       size: 48),
                 )
               : Image.file(
-                  _receiptFile!,
+                  File(_receiptFile!.path),
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => const Icon(
                       Icons.image_not_supported_outlined,

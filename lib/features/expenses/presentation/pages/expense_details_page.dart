@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,6 +25,7 @@ import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/expense_entity.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/category_picker.dart';
+import '../widgets/receipt_image.dart';
 
 /// Expense Details screen — full view of a single expense.
 ///
@@ -104,15 +108,13 @@ class _ExpenseDetailContent extends StatelessWidget {
       MaterialPageRoute(
         builder:
             (_) => ReceiptViewer(
-              image: Image.network(
-                url,
+              image: ReceiptImage(
+                receiptUrl: url,
                 fit: BoxFit.contain,
-                loadingBuilder: (_, child, progress) {
-                  if (progress == null) return child;
-                  return const Center(child: CircularProgressIndicator());
-                },
+                loadingBuilder: (_) =>
+                    const Center(child: CircularProgressIndicator()),
                 errorBuilder:
-                    (_, __, ___) => const Center(
+                    (_) => const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -289,45 +291,51 @@ class _ExpenseDetailContent extends StatelessWidget {
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                child: GestureDetector(
-                  onTap:
-                      () =>
-                          _showReceiptFullscreen(context, expense.receiptUrl!),
-                  child: Image.network(
-                    expense.receiptUrl!,
+                // onTap (not a wrapping GestureDetector) so the web HTML
+                // <img> platform view can forward its DOM click here too.
+                child: ReceiptImage(
+                  receiptUrl: expense.receiptUrl!,
+                  height: 200,
+                  width: double.infinity,
+                  onTap: () =>
+                      _showReceiptFullscreen(context, expense.receiptUrl!),
+                  loadingBuilder: (_) => Container(
                     height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (_, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        height: 200,
-                        color: Colors.grey.withAlpha(20),
-                        child: const Center(child: CircularProgressIndicator()),
-                      );
-                    },
-                    errorBuilder:
-                        (_, __, ___) => Container(
-                          height: 200,
-                          color: Colors.grey.withAlpha(20),
-                          child: const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.image_not_supported_outlined,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Receipt unavailable',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                    color: Colors.grey.withAlpha(20),
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
+                  errorBuilder: (_) => Container(
+                    height: 200,
+                    color: Colors.grey.withAlpha(20),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.image_not_supported_outlined,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Receipt unavailable',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Explicit affordance: the web platform-view slot can swallow
+              // taps over the image, so offer an obvious button as well.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      _showReceiptFullscreen(context, expense.receiptUrl!),
+                  icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
+                  label: const Text('Preview Receipt'),
                 ),
               ),
               const SizedBox(height: 20),
@@ -898,9 +906,11 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
   late final TextEditingController _descriptionController;
   late String _selectedCategory;
 
-  /// Local path of a newly-picked receipt (uploaded on save, replacing the
-  /// current one).
-  String? _newReceiptPath;
+  /// A newly-picked receipt (uploaded on save, replacing the current one).
+  ///
+  /// XFile is cross-platform: on native it wraps the file path, on web the
+  /// picker returns a blob URL. (File(picked.path) throws on web.)
+  XFile? _newReceiptFile;
   bool _removeReceipt = false;
   bool _isSaving = false;
 
@@ -936,7 +946,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
       );
       if (picked != null) {
         setState(() {
-          _newReceiptPath = picked.path;
+          _newReceiptFile = picked;
           _removeReceipt = false;
         });
       }
@@ -947,6 +957,99 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
         'Could not pick a photo. Please try again.',
       );
     }
+  }
+
+  /// Opens a full-screen viewer for a resolved receipt image.
+  void _showReceiptFullscreen(Widget image) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReceiptViewer(image: image)),
+    );
+  }
+
+  /// Live preview of the newly-picked receipt (web-safe: blob URL on web,
+  /// local file on native) so the member can confirm before saving.
+  Widget _buildNewReceiptPreview() {
+    final file = _newReceiptFile!;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+      child: GestureDetector(
+        onTap: () => _showReceiptFullscreen(
+          kIsWeb
+              ? Image.network(
+                  file.path,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.white54,
+                      size: 48),
+                )
+              : Image.file(
+                  File(file.path),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.white54,
+                      size: 48),
+                ),
+        ),
+        child: SizedBox(
+          height: 160,
+          width: double.infinity,
+          child: kIsWeb
+              ? Image.network(
+                  file.path,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.grey),
+                )
+              : Image.file(
+                  File(file.path),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.grey),
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// Opens the currently-attached (stored) receipt in the full-screen viewer,
+  /// fitted to show the whole receipt. Shared by the preview tap and the
+  /// explicit "Preview Receipt" button.
+  void _openCurrentReceiptFullscreen() {
+    final url = widget.expense.receiptUrl;
+    if (url == null || url.isEmpty) return;
+    _showReceiptFullscreen(ReceiptImage(receiptUrl: url, fit: BoxFit.contain));
+  }
+
+  /// Shows the currently-attached receipt so the member can view it before
+  /// deciding to replace or remove it.
+  Widget _buildCurrentReceiptPreview() {
+    final url = widget.expense.receiptUrl!;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+      child: SizedBox(
+        height: 160,
+        width: double.infinity,
+        // onTap (not a wrapping GestureDetector) so the web HTML <img>
+        // platform view can forward its DOM click here too.
+        child: ReceiptImage(
+          receiptUrl: url,
+          fit: BoxFit.cover,
+          onTap: _openCurrentReceiptFullscreen,
+          loadingBuilder: (_) =>
+              const Center(child: CircularProgressIndicator()),
+          errorBuilder: (_) => const Center(
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -963,12 +1066,13 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
       // Resolve the effective receipt: a newly-picked one replaces the current
       // (uploaded on save); an explicit remove clears it.
       String? receiptUrl = expense.receiptUrl;
-      if (_newReceiptPath != null) {
+      if (_newReceiptFile != null) {
         final house = ref.read(currentHouseProvider);
         if (house != null) {
           receiptUrl = await ref
               .read(expenseDataSourceProvider)
-              .uploadReceipt(houseId: house.houseId, filePath: _newReceiptPath!);
+              .uploadReceipt(
+                  houseId: house.houseId, filePath: _newReceiptFile!.path);
         }
       } else if (_removeReceipt) {
         receiptUrl = null;
@@ -1004,7 +1108,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
     final expense = widget.expense;
     final hasCurrent =
         expense.receiptUrl != null && expense.receiptUrl!.isNotEmpty;
-    final showingNew = _newReceiptPath != null;
+    final showingNew = _newReceiptFile != null;
     final theme = Theme.of(context);
 
     // Status line describing the effective outcome.
@@ -1047,6 +1151,15 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
             ),
           ],
         ),
+        // Live preview so the member can visually confirm the receipt:
+        // the newly-picked one when selected, otherwise the current one.
+        if (showingNew) ...[
+          const SizedBox(height: 10),
+          _buildNewReceiptPreview(),
+        ] else if (hasCurrent && !_removeReceipt) ...[
+          const SizedBox(height: 10),
+          _buildCurrentReceiptPreview(),
+        ],
         const SizedBox(height: 10),
         Row(
           children: [
@@ -1069,19 +1182,40 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
         ),
         if ((hasCurrent || showingNew) && !_removeReceipt) ...[
           const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => setState(() {
-                _removeReceipt = true;
-                _newReceiptPath = null;
-              }),
-              icon: const Icon(Icons.close, size: 18, color: AppTheme.errorRed),
-              label: Text(
-                'Remove receipt',
-                style: TextStyle(color: AppTheme.errorRed),
+          Row(
+            children: [
+              // Preview the CURRENT stored receipt (the new one, when picked,
+              // is previewed by tapping its thumbnail above). Explicit button:
+              // the web platform-view slot can swallow taps over the image, so
+              // the action must be obvious and not rely on the HTML tap alone.
+              if (hasCurrent) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _openCurrentReceiptFullscreen,
+                    icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
+                    label: const Text('Preview Receipt'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () => setState(() {
+                    _removeReceipt = true;
+                    _newReceiptFile = null;
+                  }),
+                  icon: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: AppTheme.errorRed,
+                  ),
+                  label: const Text(
+                    'Remove receipt',
+                    style: TextStyle(color: AppTheme.errorRed),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ],

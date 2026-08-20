@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -37,15 +38,24 @@ class ExpenseRemoteDataSource {
     required String filePath,
   }) async {
     try {
-      final file = File(filePath);
       final fileName = '${_uuid.v4()}.jpg';
       final ref = _storage.ref('receipts/$houseId/$fileName');
-
-      // Upload with metadata.
-      await ref.putFile(file, SettableMetadata(
+      final metadata = SettableMetadata(
         contentType: 'image/jpeg',
         customMetadata: {'houseId': houseId},
-      ));
+      );
+
+      if (kIsWeb) {
+        // Web has no filesystem — the picker returns a blob URL, so read the
+        // bytes and upload them directly. (Firebase Storage web supports
+        // bytes uploads.)
+        final bytes = await XFile(filePath).readAsBytes();
+        await ref.putData(bytes, metadata);
+      } else {
+        // Native: unchanged — put the local file directly.
+        final file = File(filePath);
+        await ref.putFile(file, metadata);
+      }
 
       final downloadUrl = await ref.getDownloadURL();
       return downloadUrl;

@@ -101,19 +101,22 @@ class ExpenseRemoteDataSource {
 
   Future<ExpenseModel> updateExpense(ExpenseEntity expense) async {
     try {
-      // Only update the mutable fields. Firestore's `update()` rejects null
-      // values, and status/approval fields belong to the Treasurer workflow —
-      // they must never be overwritten by an edit.
+      // Only update the mutable fields. Status/approval fields belong to the
+      // Treasurer workflow — they must never be overwritten by an edit.
+      // Nullable fields are cleared with FieldValue.delete() because Firestore
+      // rejects null values: the edit dialog sends null when the member
+      // cleared a field (e.g. removing the receipt or emptying the
+      // description), and without delete() the old value would silently
+      // survive the edit.
       final updates = <String, dynamic>{
         'title': expense.title,
-        'description': expense.description,
+        'description': expense.description ?? FieldValue.delete(),
         'categoryId': expense.categoryId,
         'amount': expense.amount,
-        'receiptUrl': expense.receiptUrl,
+        'receiptUrl': expense.receiptUrl ?? FieldValue.delete(),
         'paymentSource': expense.paymentSource,
         'updatedAt': FieldValue.serverTimestamp(),
       };
-      updates.removeWhere((_, value) => value == null);
 
       await _firestore
           .collection(FirestoreConstants.expenses)

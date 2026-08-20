@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -20,6 +21,7 @@ import '../../../members/presentation/providers/house_provider.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/expense_entity.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/category_picker.dart';
 
 /// Expense Details screen — full view of a single expense.
 ///
@@ -133,83 +135,20 @@ class _ExpenseDetailContent extends StatelessWidget {
     );
   }
 
-  /// Shows a dialog to edit the expense title, description, and amount.
+  /// Opens the edit dialog for the member's own pending expense.
+  ///
+  /// The submitter may fix the title, amount, description, category, or receipt
+  /// before the Treasurer reviews it. Rejected/approved/paid expenses are not
+  /// editable.
   void _showEditDialog(BuildContext context, ExpenseEntity expense) {
-    final titleController = TextEditingController(text: expense.title);
-    final descriptionController = TextEditingController(
-      text: expense.description ?? '',
-    );
-    final amountController = TextEditingController(
-      text: expense.amount.toStringAsFixed(2),
-    );
-
-    showDialog(
+    final categories =
+        ref.read(categoriesProvider).value ?? const <CategoryEntity>[];
+    showDialog<void>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Edit Expense'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                  textCapitalization: TextCapitalization.sentences,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: amountController,
-                  decoration: const InputDecoration(labelText: 'Amount (RM)'),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                  ),
-                  maxLines: 2,
-                  textCapitalization: TextCapitalization.sentences,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  if (titleController.text.trim().isEmpty) return;
-                  final amount = double.tryParse(amountController.text);
-                  if (amount == null || amount <= 0) return;
-                  try {
-                    final updated = expense.copyWith(
-                      title: titleController.text.trim(),
-                      description: descriptionController.text.trim(),
-                      amount: amount,
-                    );
-                    final repo = ref.read(expenseRepositoryProvider);
-                    await repo.updateExpense(updated);
-                    ref.invalidate(expenseDetailProvider(expense.expenseId));
-                    ref.invalidate(expenseListProvider);
-                    if (context.mounted) {
-                      Navigator.pop(ctx);
-                      SnackbarUtils.showSuccess(context, 'Expense updated');
-                    }
-                  } catch (_) {
-                    if (context.mounted) {
-                      SnackbarUtils.showError(context,
-                          'Could not update. Please try again.');
-                    }
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
+      builder: (_) => _EditExpenseDialog(
+        expense: expense,
+        categories: categories,
+      ),
     );
   }
 
@@ -929,6 +868,346 @@ class _ExpenseDetailContent extends StatelessWidget {
           }).toList(),
     );
   }
+}
+
+/// Dialog to edit the member's own pending expense.
+///
+/// Lets the submitter fix the title, amount, description, category, and receipt
+/// (take photo / choose photo / replace / remove) before the Treasurer reviews
+/// it. Payment source is intentionally locked — it cannot be changed after
+/// submission. Only pending expenses are editable; rejected/approved/paid stay
+/// immutable.
+class _EditExpenseDialog extends ConsumerStatefulWidget {
+  const _EditExpenseDialog({
+    required this.expense,
+    required this.categories,
+  });
+
+  final ExpenseEntity expense;
+  final List<CategoryEntity> categories;
+
+  @override
+  ConsumerState<_EditExpenseDialog> createState() => _EditExpenseDialogState();
+}
+
+class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
+  final _picker = ImagePicker();
+
+  late final TextEditingController _titleController;
+  late final TextEditingController _amountController;
+  late final TextEditingController _descriptionController;
+  late String _selectedCategory;
+
+  /// Local path of a newly-picked receipt (uploaded on save, replacing the
+  /// current one).
+  String? _newReceiptPath;
+  bool _removeReceipt = false;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final expense = widget.expense;
+    _titleController = TextEditingController(text: expense.title);
+    _amountController = TextEditingController(
+      text: expense.amount.toStringAsFixed(2),
+    );
+    _descriptionController = TextEditingController(
+      text: expense.description ?? '',
+    );
+    _selectedCategory = expense.categoryId;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _amountController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 80,
+      );
+      if (picked != null) {
+        setState(() {
+          _newReceiptPath = picked.path;
+          _removeReceipt = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      SnackbarUtils.showError(
+        context,
+        'Could not pick a photo. Please try again.',
+      );
+    }
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+    final title = _titleController.text.trim();
+    if (title.isEmpty) return;
+    final amount = double.tryParse(_amountController.text);
+    if (amount == null || amount <= 0) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final expense = widget.expense;
+
+      // Resolve the effective receipt: a newly-picked one replaces the current
+      // (uploaded on save); an explicit remove clears it.
+      String? receiptUrl = expense.receiptUrl;
+      if (_newReceiptPath != null) {
+        final house = ref.read(currentHouseProvider);
+        if (house != null) {
+          receiptUrl = await ref
+              .read(expenseDataSourceProvider)
+              .uploadReceipt(houseId: house.houseId, filePath: _newReceiptPath!);
+        }
+      } else if (_removeReceipt) {
+        receiptUrl = null;
+      }
+
+      final description = _descriptionController.text.trim();
+      final updated = _buildUpdatedExpense(
+        expense,
+        title: title,
+        amount: amount,
+        description: description.isEmpty ? null : description,
+        categoryId: _selectedCategory,
+        receiptUrl: receiptUrl,
+      );
+
+      final repo = ref.read(expenseRepositoryProvider);
+      await repo.updateExpense(updated);
+
+      ref.invalidate(expenseDetailProvider(expense.expenseId));
+      ref.invalidate(expenseListProvider);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      SnackbarUtils.showError(context, 'Could not update. Please try again.');
+    }
+  }
+
+  /// Builds the receipt picker row and its current state line.
+  Widget _buildReceiptSection(BuildContext context) {
+    final expense = widget.expense;
+    final hasCurrent =
+        expense.receiptUrl != null && expense.receiptUrl!.isNotEmpty;
+    final showingNew = _newReceiptPath != null;
+    final theme = Theme.of(context);
+
+    // Status line describing the effective outcome.
+    final (IconData, Color, String) status;
+    if (showingNew) {
+      status = (
+        Icons.check_circle_outline,
+        AppTheme.successGreen,
+        'New receipt selected — will replace the current one on save.',
+      );
+    } else if (_removeReceipt) {
+      status = (
+        Icons.delete_outline,
+        AppTheme.errorRed,
+        'Receipt will be removed on save.',
+      );
+    } else if (hasCurrent) {
+      status = (
+        Icons.image_outlined,
+        AppTheme.textSecondary,
+        'Current receipt attached.',
+      );
+    } else {
+      status = (
+        Icons.image_not_supported_outlined,
+        AppTheme.textSecondary,
+        'No receipt attached.',
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(status.$1, size: 18, color: status.$2),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(status.$3, style: theme.textTheme.bodySmall),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickImage(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                label: const Text('Take Photo'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickImage(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined, size: 18),
+                label: const Text('Choose Photo'),
+              ),
+            ),
+          ],
+        ),
+        if ((hasCurrent || showingNew) && !_removeReceipt) ...[
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() {
+                _removeReceipt = true;
+                _newReceiptPath = null;
+              }),
+              icon: const Icon(Icons.close, size: 18, color: AppTheme.errorRed),
+              label: Text(
+                'Remove receipt',
+                style: TextStyle(color: AppTheme.errorRed),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Text('Edit Expense'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amountController,
+              decoration: const InputDecoration(labelText: 'Amount (RM)'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description (optional)',
+              ),
+              maxLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Category',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (widget.categories.isNotEmpty)
+              CategoryPicker(
+                categories: widget.categories,
+                selectedId: _selectedCategory,
+                onSelected: (id) => setState(() => _selectedCategory = id),
+              )
+            else
+              Text('No categories available.', style: theme.textTheme.bodySmall),
+            const SizedBox(height: 16),
+            Text(
+              'Receipt',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildReceiptSection(context),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _isSaving ? null : _save,
+          child:
+              _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Reconstructs an [ExpenseEntity] with the member-editable fields applied.
+///
+/// Built explicitly (rather than [ExpenseEntity.copyWith]) so that cleared
+/// fields can be written as null — `copyWith`'s `?? this.x` fallbacks cannot
+/// null a field, but the datasource uses `FieldValue.delete()` on null to
+/// clear it. Payment source, status, and the approval trail are carried over
+/// untouched.
+ExpenseEntity _buildUpdatedExpense(
+  ExpenseEntity expense, {
+  required String title,
+  required double amount,
+  required String? description,
+  required String categoryId,
+  required String? receiptUrl,
+}) {
+  return ExpenseEntity(
+    expenseId: expense.expenseId,
+    houseId: expense.houseId,
+    purchasedBy: expense.purchasedBy,
+    approvedBy: expense.approvedBy,
+    reimbursedBy: expense.reimbursedBy,
+    title: title,
+    description: description,
+    categoryId: categoryId,
+    amount: amount,
+    receiptUrl: receiptUrl,
+    paymentSource: expense.paymentSource,
+    status: expense.status,
+    rejectReason: expense.rejectReason,
+    createdAt: expense.createdAt,
+    approvedAt: expense.approvedAt,
+    paidAt: expense.paidAt,
+    updatedAt: expense.updatedAt,
+    displayName: expense.displayName,
+  );
 }
 
 class _InfoRow {

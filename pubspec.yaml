@@ -28,6 +28,11 @@ dependencies:
   intl: ^0.20.2
   uuid: ^4.5.1
   image_picker: ^1.1.2
+  # XFile is used directly by the data layer to read picked image bytes on web.
+  cross_file: ^0.3.5
+  # package:web powers the web-only <img> element used to display stored
+  # receipts (Flutter's Image.network fetch is blocked by Storage bucket CORS).
+  web: ^1.1.1
   share_plus: ^10.1.0
   google_sign_in: ^6.2.2
   sign_in_with_apple: ^6.1.2

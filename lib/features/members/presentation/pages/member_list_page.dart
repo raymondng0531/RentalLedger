@@ -189,10 +189,16 @@ class MemberListPage extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => _shareInviteCode(context, house.inviteCode),
-                      icon: const Icon(Icons.ios_share_rounded, size: 18),
-                      label: const Text('Share'),
+                    // Builder gives the Share button its own BuildContext so
+                    // we can resolve the button's global Rect to anchor the
+                    // share sheet (required on iPadOS and web).
+                    child: Builder(
+                      builder: (buttonContext) => FilledButton.icon(
+                        onPressed: () =>
+                            _shareInviteCode(buttonContext, house.inviteCode),
+                        icon: const Icon(Icons.ios_share_rounded, size: 18),
+                        label: const Text('Share'),
+                      ),
                     ),
                   ),
                 ],
@@ -205,10 +211,20 @@ class MemberListPage extends ConsumerWidget {
   }
 
   /// Shares the invite code via the platform share sheet (iPhone-style).
+  ///
+  /// [context] is the Share button's own build context: its render box is used
+  /// to compute the button's global [Rect] as [Share.share]'s
+  /// `sharePositionOrigin`, which anchors the share sheet to the button. That
+  /// origin is required on iPadOS (the share sheet is a popover and throws
+  /// without it) and on Flutter Web; Android and iPhone ignore it.
   Future<void> _shareInviteCode(BuildContext context, String code) async {
+    final box = context.findRenderObject() as RenderBox?;
+    final origin =
+        box == null ? null : box.localToGlobal(Offset.zero) & box.size;
     await Share.share(
       'Join my house on Rental Ledger!\n\nInvite Code: $code',
       subject: 'Rental Ledger Invite',
+      sharePositionOrigin: origin,
     );
   }
 }

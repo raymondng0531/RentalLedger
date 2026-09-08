@@ -6,6 +6,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/widgets/error_display.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../features/expenses/domain/entities/bill_entity.dart';
 import '../../../../features/expenses/domain/entities/category_entity.dart';
@@ -114,134 +115,137 @@ class _BillDetailContent extends StatelessWidget {
         title: const Text('Bill Details'),
         backgroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppConstants.pagePadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header card ──
-            Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              color: AppTheme.backgroundLight,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: statusColor.withAlpha(22),
-                        borderRadius: BorderRadius.circular(13),
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.pagePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header card ──
+              Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                color: AppTheme.backgroundLight,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: statusColor.withAlpha(22),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(
+                          Icons.receipt_long_outlined,
+                          size: 24,
+                          color: statusColor,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.receipt_long_outlined,
-                        size: 24,
-                        color: statusColor,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            bill.title,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              bill.title,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          // Crossfades when the bill is marked paid live.
-                          AnimatedSwitcher(
-                            duration: AppDurations.standard,
-                            switchInCurve: AppEasing.easeOut,
-                            switchOutCurve: AppEasing.accelerate,
-                            child: Container(
-                              key: ValueKey(isPaid),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor.withAlpha(16),
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                              child: Text(
-                                statusLabel,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: statusColor,
+                            const SizedBox(height: 4),
+                            // Crossfades when the bill is marked paid live.
+                            AnimatedSwitcher(
+                              duration: AppDurations.standard,
+                              switchInCurve: AppEasing.easeOut,
+                              switchOutCurve: AppEasing.accelerate,
+                              child: Container(
+                                key: ValueKey(isPaid),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withAlpha(16),
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: Text(
+                                  statusLabel,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      amount != null
-                          ? CurrencyUtils.format(amount)
-                          : 'Reminder',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color:
-                            amount != null
-                                ? AppTheme.textPrimary
-                                : AppTheme.textSecondary,
+                      Text(
+                        amount != null
+                            ? CurrencyUtils.format(amount)
+                            : 'Reminder',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color:
+                              amount != null
+                                  ? AppTheme.textPrimary
+                                  : AppTheme.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── Info card ──
-            Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              color: AppTheme.backgroundLight,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  children: [
-                    _Row(
-                      icon: Icons.category_outlined,
-                      label: 'Category',
-                      value: categoryName,
-                    ),
-                    _Row(
-                      icon: Icons.event_available_outlined,
-                      label: 'Due Date',
-                      value: DateFormatUtils.formatDate(bill.dueDate),
-                    ),
-                    _Row(
-                      icon: Icons.repeat_rounded,
-                      label: 'Recurring',
-                      value: bill.isRecurring ? 'Yes — rolls monthly' : 'No',
-                    ),
-                    _Row(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Created',
-                      value: DateFormatUtils.formatDate(bill.createdAt),
-                    ),
-                  ],
+              // ── Info card ──
+              Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                color: AppTheme.backgroundLight,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    children: [
+                      _Row(
+                        icon: Icons.category_outlined,
+                        label: 'Category',
+                        value: categoryName,
+                      ),
+                      _Row(
+                        icon: Icons.event_available_outlined,
+                        label: 'Due Date',
+                        value: DateFormatUtils.formatDate(bill.dueDate),
+                      ),
+                      _Row(
+                        icon: Icons.repeat_rounded,
+                        label: 'Recurring',
+                        value: bill.isRecurring ? 'Yes — rolls monthly' : 'No',
+                      ),
+                      _Row(
+                        icon: Icons.calendar_today_outlined,
+                        label: 'Created',
+                        value: DateFormatUtils.formatDate(bill.createdAt),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

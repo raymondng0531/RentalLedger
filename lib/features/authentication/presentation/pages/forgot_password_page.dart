@@ -6,6 +6,8 @@ import '../../../../app/router/route_names.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/animated_checkmark.dart';
+import '../../../../core/widgets/breakpoints.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../providers/auth_provider.dart';
 
 /// Forgot Password screen — sends a password reset email.
@@ -60,10 +62,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         title: const Text('Reset Password'),
         backgroundColor: Colors.white,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppConstants.pagePadding),
-          child: _emailSent ? _buildSuccessView() : _buildForm(isLoading),
+      body: ResponsivePage(
+        maxWidth: AppContentWidth.form,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppConstants.pagePadding),
+            child: _emailSent ? _buildSuccessView() : _buildForm(isLoading),
+          ),
         ),
       ),
     );

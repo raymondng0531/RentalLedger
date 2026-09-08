@@ -8,6 +8,8 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/app_logo.dart';
+import '../../../../core/widgets/breakpoints.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../providers/auth_provider.dart';
 
 /// Login screen — email and password authentication.
@@ -81,151 +83,155 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppConstants.pagePadding),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                const SizedBox(height: 48),
+      body: ResponsivePage(
+        maxWidth: AppContentWidth.form,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppConstants.pagePadding),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  const SizedBox(height: 48),
 
-                // ── Logo ──
-                const AppLogo(),
-                const SizedBox(height: 48),
+                  // ── Logo ──
+                  const AppLogo(),
+                  const SizedBox(height: 48),
 
-                // ── Email field ──
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
+                  // ── Email field ──
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!value.trim().contains('@')) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.trim().contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // ── Password field ──
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _handleLogin(),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outlined),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                  // ── Password field ──
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _handleLogin(),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outlined),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      if (value.length < AppConstants.passwordMinLength) {
+                        return 'Password must be at least ${AppConstants.passwordMinLength} characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Forgot Password ──
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => context.push(RouteNames.forgotPassword),
+                      child: const Text('Forgot Password?'),
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < AppConstants.passwordMinLength) {
-                      return 'Password must be at least ${AppConstants.passwordMinLength} characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 24),
 
-                // ── Forgot Password ──
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => context.push(RouteNames.forgotPassword),
-                    child: const Text('Forgot Password?'),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // ── Login button ──
-                FilledButton(
-                  onPressed: isLoading ? null : _handleLogin,
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Sign In'),
-                ),
-                const SizedBox(height: 24),
-
-                // ── Divider "or continue with" ──
-                Row(
-                  children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'or continue with',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  // ── Login button ──
+                  FilledButton(
+                    onPressed: isLoading ? null : _handleLogin,
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
                             ),
-                      ),
-                    ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // ── Google button ──
-                OutlinedButton.icon(
-                  onPressed: socialLoading ? null : () => _handleSocial('google'),
-                  icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
-                  label: const Text('Continue with Google'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.textPrimary,
-                    side: const BorderSide(color: AppTheme.dividerColor),
+                          )
+                        : const Text('Sign In'),
                   ),
-                ),
-                // ── Apple button (only on iOS/macOS where it works) ──
-                if (_supportsAppleSignIn) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 24),
+
+                  // ── Divider "or continue with" ──
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'or continue with',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Google button ──
                   OutlinedButton.icon(
-                    onPressed: socialLoading ? null : () => _handleSocial('apple'),
-                    icon: const Icon(Icons.apple_rounded, size: 20),
-                    label: const Text('Continue with Apple'),
+                    onPressed: socialLoading ? null : () => _handleSocial('google'),
+                    icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
+                    label: const Text('Continue with Google'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.textPrimary,
                       side: const BorderSide(color: AppTheme.dividerColor),
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-
-                // ── Register link ──
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text("Don't have an account?"),
-                    TextButton(
-                      onPressed: () => context.push(RouteNames.register),
-                      child: const Text('Sign Up'),
+                  // ── Apple button (only on iOS/macOS where it works) ──
+                  if (_supportsAppleSignIn) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: socialLoading ? null : () => _handleSocial('apple'),
+                      icon: const Icon(Icons.apple_rounded, size: 20),
+                      label: const Text('Continue with Apple'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.textPrimary,
+                        side: const BorderSide(color: AppTheme.dividerColor),
+                      ),
                     ),
                   ],
-                ),
-              ],
+                  const SizedBox(height: 24),
+
+                  // ── Register link ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Flexible lets the text wrap on narrow screens instead of overflowing.
+                      const Flexible(child: Text("Don't have an account?")),
+                      TextButton(
+                        onPressed: () => context.push(RouteNames.register),
+                        child: const Text('Sign Up'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

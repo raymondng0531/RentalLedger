@@ -5,6 +5,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../features/history/presentation/providers/history_provider.dart';
 import '../../../../features/members/domain/entities/house_member_entity.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
@@ -90,106 +91,109 @@ class _TransactionDetailsView extends ConsumerWidget {
         title: Text(title),
         backgroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppConstants.pagePadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header card ──
-            Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              color: AppTheme.backgroundLight,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: color.withAlpha(22),
-                        borderRadius: BorderRadius.circular(13),
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.pagePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header card ──
+              Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                color: AppTheme.backgroundLight,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(22),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(icon, size: 24, color: color),
                       ),
-                      child: Icon(icon, size: 24, color: color),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (event.title?.isNotEmpty ?? false)
-                                ? event.title!
-                                : title.replaceAll(' Details', ''),
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (event.title?.isNotEmpty ?? false)
+                                  ? event.title!
+                                  : title.replaceAll(' Details', ''),
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            performedBy != null ? 'by $performedBy' : '',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondary,
+                            const SizedBox(height: 4),
+                            Text(
+                              performedBy != null ? 'by $performedBy' : '',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      '$sign${CurrencyUtils.format(event.amount.abs())}',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: amountColor,
+                      Text(
+                        '$sign${CurrencyUtils.format(event.amount.abs())}',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: amountColor,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── Info card ──
-            Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              color: AppTheme.backgroundLight,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Date',
-                      value: dateLine,
-                    ),
-                    _InfoRow(
-                      icon: Icons.person_outlined,
-                      label: 'Performed By',
-                      value: performedBy ?? '—',
-                    ),
-                    _InfoRow(
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: 'Payment Source',
-                      value:
-                          event.paymentSource == 'personal'
-                              ? 'Personal'
-                              : 'Central Account',
-                    ),
-                  ],
+              // ── Info card ──
+              Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                color: AppTheme.backgroundLight,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    children: [
+                      _InfoRow(
+                        icon: Icons.calendar_today_outlined,
+                        label: 'Date',
+                        value: dateLine,
+                      ),
+                      _InfoRow(
+                        icon: Icons.person_outlined,
+                        label: 'Performed By',
+                        value: performedBy ?? '—',
+                      ),
+                      _InfoRow(
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: 'Payment Source',
+                        value:
+                            event.paymentSource == 'personal'
+                                ? 'Personal'
+                                : 'Central Account',
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

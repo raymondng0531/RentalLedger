@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +12,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/spring_sheet.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
@@ -190,187 +193,197 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ),
         title: const Text('Profile'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-        children: [
-          // ── Photo (saving indicator is localized to the avatar) ──
-          Center(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: AppTheme.primaryGreen.withAlpha(25),
-                  foregroundImage: hasPicked
-                      ? FileImage(_pickedPhoto!)
-                      : (showPhoto ? NetworkImage(photoUrl!) : null),
-                  child: showPhoto
-                      ? null
-                      : Text(
-                          avatarInitial(profile?.displayName),
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: AppTheme.primaryGreen,
-                            fontWeight: FontWeight.bold,
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          children: [
+            // ── Photo (saving indicator is localized to the avatar) ──
+            Center(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 48,
+                    backgroundColor: AppTheme.primaryGreen.withAlpha(25),
+                    // Web-safe preview: on web `_pickedPhoto.path` is a blob URL
+                    // the browser can decode via NetworkImage (no filesystem),
+                    // matching the receipt-preview pattern; on native the local
+                    // file is decoded directly. FileImage(blob) is unsupported
+                    // on web ("Unsupported operation: _Namespace").
+                    foregroundImage: hasPicked
+                        ? (kIsWeb
+                            ? NetworkImage(_pickedPhoto!.path) as ImageProvider
+                            : FileImage(_pickedPhoto!) as ImageProvider)
+                        : (showPhoto ? NetworkImage(photoUrl!) : null),
+                    child: showPhoto
+                        ? null
+                        : Text(
+                            avatarInitial(profile?.displayName),
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: AppTheme.primaryGreen,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                ),
-                // While saving, a compact loading ring sits on the avatar so
-                // a slow photo upload gives localized feedback near the image
-                // — it never dims or washes out the rest of the page.
-                if (_saving)
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(46),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
+                  ),
+                  // While saving, a compact loading ring sits on the avatar so
+                  // a slow photo upload gives localized feedback near the image
+                  // — it never dims or washes out the rest of the page.
+                  if (_saving)
+                    Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(46),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton.icon(
-              onPressed: _showPhotoOptions,
-              icon: const Icon(Icons.photo_camera_outlined, size: 18),
-              label: const Text('Change Photo'),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // ── Fields ──
-          Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _nameController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Display Name',
-                      hintText: 'Enter your name',
-                      prefixIcon: Icon(Icons.badge_outlined),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.email_outlined),
-                    title: const Text('Email'),
-                    subtitle: Text(
-                      (profile?.email?.isNotEmpty == true)
-                          ? profile!.email!
-                          : 'No email',
-                    ),
-                  ),
                 ],
               ),
             ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── House & account ──
-          Text(
-            'House & Account',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton.icon(
+                onPressed: _showPhotoOptions,
+                icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                label: const Text('Change Photo'),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            margin: EdgeInsets.zero,
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  leading: const Icon(Icons.home_outlined),
-                  title: const Text('House'),
-                  subtitle: Text(house?.houseName ?? 'Not set'),
+            const SizedBox(height: 24),
+
+            // ── Fields ──
+            Card(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Display Name',
+                        hintText: 'Enter your name',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.email_outlined),
+                      title: const Text('Email'),
+                      subtitle: Text(
+                        (profile?.email?.isNotEmpty == true)
+                            ? profile!.email!
+                            : 'No email',
+                      ),
+                    ),
+                  ],
                 ),
-                if (currentMember != null) ...[
-                  const Divider(height: 1, indent: 56),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── House & account ──
+            Text(
+              'House & Account',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              margin: EdgeInsets.zero,
+              child: Column(
+                children: [
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 4,
                     ),
-                    leading: const Icon(Icons.workspace_premium_outlined),
-                    title: const Text('Role'),
-                    subtitle: Text(currentMember.role),
+                    leading: const Icon(Icons.home_outlined),
+                    title: const Text('House'),
+                    subtitle: Text(house?.houseName ?? 'Not set'),
                   ),
-                  const Divider(height: 1, indent: 56),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
+                  if (currentMember != null) ...[
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      leading: const Icon(Icons.workspace_premium_outlined),
+                      title: const Text('Role'),
+                      subtitle: Text(currentMember.role),
                     ),
-                    leading: const Icon(Icons.event_available_outlined),
-                    title: const Text('Joined'),
-                    subtitle: Text(
-                      DateFormatUtils.formatDateShort(currentMember.joinedAt),
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      leading: const Icon(Icons.event_available_outlined),
+                      title: const Text('Joined'),
+                      subtitle: Text(
+                        DateFormatUtils.formatDateShort(currentMember.joinedAt),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── Save ──
-          FilledButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.check_rounded),
-            label: Text(_saving ? 'Saving…' : 'Save'),
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── Sign out ──
-          Card(
-            margin: EdgeInsets.zero,
-            child: ListTile(
-              leading: const Icon(
-                Icons.logout_rounded,
-                color: AppTheme.errorRed,
               ),
-              title: const Text('Sign Out'),
-              titleTextStyle: const TextStyle(
-                color: AppTheme.errorRed,
-                fontWeight: FontWeight.w500,
-              ),
-              onTap: _confirmSignOut,
             ),
-          ),
-          const SizedBox(height: 32),
-        ],
+
+            const SizedBox(height: 24),
+
+            // ── Save ──
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check_rounded),
+              label: Text(_saving ? 'Saving…' : 'Save'),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Sign out ──
+            Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(
+                  Icons.logout_rounded,
+                  color: AppTheme.errorRed,
+                ),
+                title: const Text('Sign Out'),
+                titleTextStyle: const TextStyle(
+                  color: AppTheme.errorRed,
+                  fontWeight: FontWeight.w500,
+                ),
+                onTap: _confirmSignOut,
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }

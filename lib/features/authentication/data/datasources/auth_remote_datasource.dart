@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart'
     as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -134,18 +135,30 @@ class AuthRemoteDataSource {
 
   /// Uploads a profile photo to Firebase Storage under `profiles/{uid}`.
   ///
-  /// Mirrors the receipt-upload pattern (putFile → download URL) so profile
-  /// photos live in their own storage path with the same image constraints.
+  /// Mirrors the receipt-upload pattern so profile photos live in their own
+  /// storage path with the same image constraints: on web there is no
+  /// filesystem (the picker returns a blob URL), so the bytes are read and
+  /// uploaded directly; on native the local file is uploaded unchanged.
   Future<String> uploadProfilePhoto({
     required String uid,
     required String localPath,
   }) async {
     try {
-      final file = File(localPath);
       final fileName = '${_uuid.v4()}.jpg';
       final ref = _storage.ref('profiles/$uid/$fileName');
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
 
-      await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
+      if (kIsWeb) {
+        // Web has no filesystem — the picker returns a blob URL, so read the
+        // bytes and upload them directly. (Firebase Storage web supports
+        // bytes uploads.)
+        final bytes = await XFile(localPath).readAsBytes();
+        await ref.putData(bytes, metadata);
+      } else {
+        // Native: unchanged — put the local file directly.
+        final file = File(localPath);
+        await ref.putFile(file, metadata);
+      }
 
       return await ref.getDownloadURL();
     } catch (e) {

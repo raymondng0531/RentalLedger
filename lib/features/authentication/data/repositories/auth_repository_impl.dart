@@ -197,34 +197,46 @@ class AuthRepositoryImpl implements AuthRepository {
     }
 
     try {
-      var changed = false;
-
       // Update Firebase Auth first so the canonical identity is consistent.
       final newName = displayName?.trim();
       if (newName != null &&
           newName.isNotEmpty &&
           newName != firebaseUser.displayName) {
         await firebaseUser.updateDisplayName(newName);
-        changed = true;
       }
 
       if (photoUrl != null && photoUrl != firebaseUser.photoURL) {
         await firebaseUser.updatePhotoURL(photoUrl);
-        changed = true;
       }
 
-      if (changed) await firebaseUser.reload();
+      // Resolve the authoritative post-update values from the profile fields
+      // we just pushed through the Auth API — NOT by re-reading `currentUser`.
+      // FlutterFire on web caches the signed-in user and only rebuilds that
+      // snapshot on an auth-state event, which a profile update does not emit,
+      // so a fresh `currentUser` read can still report the OLD values. The
+      // values we just wrote are what the server holds, so they drive both the
+      // Firestore write and the in-memory notifier below. (uid/email/createdAt
+      // are unchanged by a profile edit, so the captured user provides them.)
+      final appliedName = (newName != null && newName.isNotEmpty)
+          ? newName
+          : (firebaseUser.displayName ?? '');
+      final appliedPhotoUrl =
+          (photoUrl != null) ? photoUrl : firebaseUser.photoURL;
 
       // Persist to the users/{uid} profile (merge keeps other fields).
       await _remote.createUserProfile(
         uid: firebaseUser.uid,
         email: firebaseUser.email ?? '',
-        displayName: firebaseUser.displayName ?? '',
-        photoUrl: firebaseUser.photoURL,
+        displayName: appliedName,
+        photoUrl: appliedPhotoUrl,
       );
 
       // Refresh the notifier so the UI reflects the new profile immediately.
-      _currentUserNotifier.value = _firebaseUserToEntity(firebaseUser);
+      // UserEntity equality is field-based (see UserEntity.==), so a changed
+      // photoUrl/displayName on the same uid is a distinct value: the
+      // ValueNotifier stores it and notifies listeners.
+      _currentUserNotifier.value =
+          _firebaseUserToEntity(firebaseUser, appliedName, appliedPhotoUrl);
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
@@ -251,8 +263,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   /// Converts a Firebase [fb_auth.User] to a domain [UserEntity].
+  ///
+  /// [displayNameOverride] / [photoUrlOverride] let callers supply values that
+  /// were just written through the Auth API but may not yet be reflected in
+  /// [fb_auth.User.photoURL] (FlutterFire on web only refreshes its user
+  /// snapshot on an auth-state event, which a profile update does not emit).
   UserEntity _firebaseUserToEntity(fb_auth.User? firebaseUser,
-      [String? displayNameOverride]) {
+      [String? displayNameOverride, String? photoUrlOverride]) {
     if (firebaseUser == null) {
       _currentUserNotifier.value = null;
       return UserEntity(
@@ -267,7 +284,7 @@ class AuthRepositoryImpl implements AuthRepository {
       uid: firebaseUser.uid,
       email: firebaseUser.email ?? '',
       displayName: displayNameOverride ?? firebaseUser.displayName ?? '',
-      photoUrl: firebaseUser.photoURL,
+      photoUrl: photoUrlOverride ?? firebaseUser.photoURL,
       createdAt: firebaseUser.metadata.creationTime ?? DateTime.now(),
       lastLoginAt: firebaseUser.metadata.lastSignInTime,
     );

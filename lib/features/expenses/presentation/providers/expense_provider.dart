@@ -252,6 +252,60 @@ class MarkPaidNotifier extends AutoDisposeAsyncNotifier<void> {
 
 }
 
+// ───── Delete Expense Provider ─────
+
+final deleteExpenseProvider =
+    AutoDisposeAsyncNotifierProvider<DeleteExpenseNotifier, void>(
+        DeleteExpenseNotifier.new);
+
+class DeleteExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  /// Deletes the submitter's OWN expense while it is still Pending.
+  ///
+  /// Guarded here (owner + status), again in the repository (which re-reads the
+  /// document and rejects non-pending), and at the Firestore rule — the UI only
+  /// offers the action to the owner of a pending expense, but a crafted client
+  /// cannot delete another member's or a reviewed expense.
+  Future<String?> delete(ExpenseEntity expense) async {
+    state = const AsyncValue.loading();
+    try {
+      final user = ref.read(currentUserProvider);
+      if (user == null) return 'Not authenticated.';
+
+      if (expense.purchasedBy != user.uid) {
+        throw const PermissionFailure(
+          'You can only delete your own expense.',
+        );
+      }
+      if (!expense.isPending) {
+        throw const PermissionFailure(
+          'Only pending expenses can be deleted.',
+        );
+      }
+
+      final repo = ref.read(expenseRepositoryProvider);
+      await repo.deleteExpense(expense.expenseId);
+
+      // The expense is gone — drop it from detail/list/dashboard queries.
+      ref.invalidate(expenseDetailProvider(expense.expenseId));
+      ref.invalidate(expenseListProvider);
+      ref.invalidate(dashboardDataProvider);
+
+      state = const AsyncValue.data(null);
+      return null;
+    } on Failure catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      return e.message;
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      return 'An unexpected error occurred.';
+    }
+  }
+
+}
+
 // ───── Deposit Provider ─────
 
 final depositProvider =
@@ -270,6 +324,13 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
     try {
       final house = ref.read(currentHouseProvider);
       if (house == null) return 'No house found.';
+
+      // Deposits move money into the Central Account — Treasurer-only.
+      if (!_isCurrentUserTreasurer(ref)) {
+        throw const PermissionFailure(
+          'Only the Treasurer can record a deposit.',
+        );
+      }
 
       final dataSource = ref.read(expenseDataSourceProvider);
       await dataSource.recordDeposit(
@@ -310,6 +371,13 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
     try {
       final house = ref.read(currentHouseProvider);
       if (house == null) return 'No house found.';
+
+      // Direct payments move money out of the Central Account — Treasurer-only.
+      if (!_isCurrentUserTreasurer(ref)) {
+        throw const PermissionFailure(
+          'Only the Treasurer can record a direct payment.',
+        );
+      }
 
       final dataSource = ref.read(expenseDataSourceProvider);
       await dataSource.recordDirectPayment(
@@ -409,7 +477,17 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
   }
 
   /// Marks a bill as paid (rolls to next month if recurring).
+  ///
+  /// When the bill has an amount this records a Direct Payment transaction,
+  /// so it is a Treasurer-only financial action. The Member-facing bill
+  /// controls are the reminder toggle and Remind Treasurer — not Mark Paid.
   Future<void> markPaid(BillEntity bill) async {
+    if (!_isCurrentUserTreasurer(ref)) {
+      throw const PermissionFailure(
+        'Only the Treasurer can mark a bill as paid.',
+      );
+    }
+
     final ds = ref.read(expenseDataSourceProvider);
     await ds.markBillPaid(
       bill.billId,
@@ -513,4 +591,13 @@ class _NoOpExpenseRepository implements ExpenseRepository {
 String? _readUserId(Ref ref) {
   final user = ref.read(currentUserProvider);
   return user?.uid;
+}
+
+/// Returns true when the signed-in user is the Treasurer of their current
+/// house. Deposit, Direct Payment, and Mark-Bill-Paid are Treasurer-only
+/// financial actions and are rejected for members.
+bool _isCurrentUserTreasurer(Ref ref) {
+  final house = ref.read(currentHouseProvider);
+  final user = ref.read(currentUserProvider);
+  return house != null && user != null && user.uid == house.treasurerId;
 }

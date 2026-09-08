@@ -2,6 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper: is the request signed in as the Treasurer of [houseId]?
+    // Used to gate writes that move money for the house (transactions) — the
+    // house document's treasurerId is the source of truth for the role.
+    function isHouseTreasurer(houseId) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/houses/$(houseId))
+          .data.treasurerId == request.auth.uid;
+    }
+
     // Users: read/write own profile only.
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -53,12 +62,14 @@ service cloud.firestore {
         resource.data.status == 'pending';
     }
 
-    // Transactions: all authenticated read and create (deposits, direct
-    // payments, reimbursements). The house balance is computed from these, so
-    // they are append-only — no updates or deletes.
+    // Transactions: authenticated read; ONLY the house Treasurer creates.
+    // Deposits, direct payments and reimbursements move the house balance,
+    // which is computed from this collection, so letting any signed-in user
+    // append a transaction would let a member forge deposits/direct payments.
+    // Append-only — no updates or deletes.
     match /transactions/{transactionId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow create: if isHouseTreasurer(request.resource.data.houseId);
       allow update: if false;
       allow delete: if false;
     }

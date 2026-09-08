@@ -827,6 +827,14 @@ class _AppShellState extends ConsumerState<_AppShell>
   /// Add Expense) above it — the same actions as before, just docked centre.
   Widget _buildFab(BuildContext context) {
     final theme = Theme.of(context);
+    // Deposit and Direct Payment move money in/out of the Central Account, so
+    // the speed-dial only offers them to the house Treasurer. Add Expense is
+    // available to every member (they claim against the account; the Treasurer
+    // still approves/reimburses).
+    final house = ref.watch(currentHouseProvider);
+    final user = ref.watch(currentUserProvider);
+    final isTreasurer =
+        house != null && user != null && house.treasurerId == user.uid;
 
     if (!_fabExpanded) {
       return PressScale(
@@ -845,20 +853,23 @@ class _AppShellState extends ConsumerState<_AppShell>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _SpeedDialItem(
-            icon: Icons.payment_outlined,
-            label: 'Direct Payment',
-            color: AppTheme.statusDirectPayment,
-            onTap: () => _navigateTo(RouteNames.directPayment),
-          ),
-          const SizedBox(height: 8),
-          _SpeedDialItem(
-            icon: Icons.arrow_downward_rounded,
-            label: 'Deposit',
-            color: AppTheme.successGreen,
-            onTap: () => _navigateTo(RouteNames.deposit),
-          ),
-          const SizedBox(height: 8),
+          // Treasurer-only: moving money in/out of the Central Account.
+          if (isTreasurer) ...[
+            _SpeedDialItem(
+              icon: Icons.payment_outlined,
+              label: 'Direct Payment',
+              color: AppTheme.statusDirectPayment,
+              onTap: () => _navigateTo(RouteNames.directPayment),
+            ),
+            const SizedBox(height: 8),
+            _SpeedDialItem(
+              icon: Icons.arrow_downward_rounded,
+              label: 'Deposit',
+              color: AppTheme.successGreen,
+              onTap: () => _navigateTo(RouteNames.deposit),
+            ),
+            const SizedBox(height: 8),
+          ],
           _SpeedDialItem(
             icon: Icons.receipt_long_outlined,
             label: 'Add Expense',

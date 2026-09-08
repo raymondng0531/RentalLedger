@@ -183,11 +183,13 @@ class _ExpenseDetailContent extends StatelessWidget {
         expense.displayName ??
         'Unknown Member';
 
-    // Only the purchaser can edit their own pending expense (matches the
-    // Firestore rules).
+    // Only the purchaser can edit/delete their own pending expense (matches
+    // the Firestore rules).
     final currentUser = ref.watch(currentUserProvider);
     final canEdit =
         expense.isEditable && expense.purchasedBy == currentUser?.uid;
+    final canDelete =
+        expense.isDeletable && expense.purchasedBy == currentUser?.uid;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -205,6 +207,13 @@ class _ExpenseDetailContent extends StatelessWidget {
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => _showEditDialog(context, expense),
               tooltip: 'Edit',
+            ),
+          if (canDelete)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _confirmDelete(context, expense),
+              tooltip: 'Delete',
+              color: AppTheme.errorRed,
             ),
         ],
       ),
@@ -635,6 +644,50 @@ class _ExpenseDetailContent extends StatelessWidget {
             ],
           ),
     );
+  }
+
+  /// Confirms with the member, then deletes their own Pending expense and
+  /// returns to the previous screen.
+  ///
+  /// Cancellation leaves the expense untouched. The action itself re-checks
+  /// ownership + status (the button is already gated to the owner of a pending
+  /// expense; the provider and Firestore rule enforce it independently).
+  Future<void> _confirmDelete(
+    BuildContext context,
+    ExpenseEntity expense,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Expense?'),
+        content: Text('Delete "${expense.title}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.errorRed,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return; // cancelled — keep the expense.
+
+    final error = await ref
+        .read(deleteExpenseProvider.notifier)
+        .delete(expense);
+    if (!context.mounted) return;
+    if (error != null) {
+      SnackbarUtils.showError(context, error);
+    } else {
+      SnackbarUtils.showSuccess(context, 'Expense deleted');
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _doApprove(BuildContext context, String expenseId) async {

@@ -10,6 +10,7 @@ import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/animated_entrance.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../utils/notification_icon_utils.dart';
@@ -51,13 +52,16 @@ class NotificationPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: notificationsAsync.when(
-        loading: () => const Shimmer(child: SkeletonListBody(itemCount: 8)),
-        error: (e, _) => ErrorDisplay(
-          message: 'Could not load notifications.',
-          onRetry: () => ref.invalidate(notificationsStreamProvider),
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: notificationsAsync.when(
+          loading: () => const Shimmer(child: SkeletonListBody(itemCount: 8)),
+          error: (e, _) => ErrorDisplay(
+            message: 'Could not load notifications.',
+            onRetry: () => ref.invalidate(notificationsStreamProvider),
+          ),
+          data: (notifications) => _buildList(context, ref, notifications),
         ),
-        data: (notifications) => _buildList(context, ref, notifications),
       ),
     );
   }

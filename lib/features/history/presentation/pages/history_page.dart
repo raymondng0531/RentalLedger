@@ -12,6 +12,7 @@ import '../../../../core/widgets/activity_card.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/implicit_animated_list.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../core/widgets/spring_sheet.dart';
 import '../../../../features/expenses/domain/entities/category_entity.dart';
@@ -299,124 +300,127 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         ),
         title: const Text('History'),
       ),
-      body: Column(
-        children: [
-          // ── Search bar ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-              decoration: InputDecoration(
-                hintText: 'Search by name...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon:
-                    _searchQuery.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                        : null,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: Column(
+          children: [
+            // ── Search bar ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                decoration: InputDecoration(
+                  hintText: 'Search by name...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon:
+                      _searchQuery.isNotEmpty
+                          ? IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                          : null,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
               ),
             ),
-          ),
 
-          // ── Filter button row ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _FilterButton(
-                    activeCount: _activeFilterCount,
-                    onTap: () => _openFilterSheet(categories),
-                  ),
-                ),
-                if (_hasActiveFilters) ...[
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _resetFilters,
-                    child: const Text('Clear all'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          // ── Active filter summary chips ──
-          if (_hasActiveFilters)
+            // ── Filter button row ──
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
+              child: Row(
                 children: [
-                  for (final type in _selectedTypes.toList())
-                    _SummaryChip(
-                      label: _typeLabelFor(type),
-                      onDeleted:
-                          () => setState(() => _selectedTypes.remove(type)),
+                  Expanded(
+                    child: _FilterButton(
+                      activeCount: _activeFilterCount,
+                      onTap: () => _openFilterSheet(categories),
                     ),
-                  if (_categoryFilter != null)
-                    _SummaryChip(
-                      label: 'Category: $_categoryFilter',
-                      onDeleted: () => setState(() => _categoryFilter = null),
+                  ),
+                  if (_hasActiveFilters) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: _resetFilters,
+                      child: const Text('Clear all'),
                     ),
-                  if (_statusFilter != null)
-                    _SummaryChip(
-                      label: 'Status: ${_statusLabelFor(_statusFilter!)}',
-                      onDeleted: () => setState(() => _statusFilter = null),
-                    ),
-                  if (_datePreset != null && _customRange == null)
-                    _SummaryChip(
-                      label: _periodLabelFor(_datePreset!),
-                      onDeleted: () => setState(() => _datePreset = null),
-                    ),
-                  if (_customRange != null)
-                    _SummaryChip(
-                      label:
-                          '${DateFormatUtils.formatDateShort(_customRange!.start)} – '
-                          '${DateFormatUtils.formatDateShort(_customRange!.end)}',
-                      onDeleted: () => setState(() => _customRange = null),
-                    ),
-                  if (_searchQuery.isNotEmpty)
-                    _SummaryChip(
-                      label: '"$_searchQuery"',
-                      onDeleted: () {
-                        _searchController.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                    ),
+                  ],
                 ],
               ),
             ),
 
-          const Divider(height: 1),
+            // ── Active filter summary chips ──
+            if (_hasActiveFilters)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final type in _selectedTypes.toList())
+                      _SummaryChip(
+                        label: _typeLabelFor(type),
+                        onDeleted:
+                            () => setState(() => _selectedTypes.remove(type)),
+                      ),
+                    if (_categoryFilter != null)
+                      _SummaryChip(
+                        label: 'Category: $_categoryFilter',
+                        onDeleted: () => setState(() => _categoryFilter = null),
+                      ),
+                    if (_statusFilter != null)
+                      _SummaryChip(
+                        label: 'Status: ${_statusLabelFor(_statusFilter!)}',
+                        onDeleted: () => setState(() => _statusFilter = null),
+                      ),
+                    if (_datePreset != null && _customRange == null)
+                      _SummaryChip(
+                        label: _periodLabelFor(_datePreset!),
+                        onDeleted: () => setState(() => _datePreset = null),
+                      ),
+                    if (_customRange != null)
+                      _SummaryChip(
+                        label:
+                            '${DateFormatUtils.formatDateShort(_customRange!.start)} – '
+                            '${DateFormatUtils.formatDateShort(_customRange!.end)}',
+                        onDeleted: () => setState(() => _customRange = null),
+                      ),
+                    if (_searchQuery.isNotEmpty)
+                      _SummaryChip(
+                        label: '"$_searchQuery"',
+                        onDeleted: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      ),
+                  ],
+                ),
+              ),
 
-          // ── Results ──
-          Expanded(
-            child: historyAsync.when(
-              loading: () => const Shimmer(child: SkeletonListBody()),
-              error:
-                  (e, _) => ErrorDisplay(
-                    message:
-                        e is Failure ? e.message : 'Could not load history.',
-                    onRetry:
-                        () => ref.invalidate(
-                          historyProvider(_selectedTypes.join(',')),
-                        ),
-                  ),
-              data:
-                  (items) =>
-                      _buildList(_applyFilters(items), categoryMap, nameMap),
+            const Divider(height: 1),
+
+            // ── Results ──
+            Expanded(
+              child: historyAsync.when(
+                loading: () => const Shimmer(child: SkeletonListBody()),
+                error:
+                    (e, _) => ErrorDisplay(
+                      message:
+                          e is Failure ? e.message : 'Could not load history.',
+                      onRetry:
+                          () => ref.invalidate(
+                            historyProvider(_selectedTypes.join(',')),
+                          ),
+                    ),
+                data:
+                    (items) =>
+                        _buildList(_applyFilters(items), categoryMap, nameMap),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

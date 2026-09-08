@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/widgets/breakpoints.dart';
 import '../../core/widgets/press_scale.dart';
+import '../../core/widgets/responsive_page.dart';
 import '../../features/authentication/domain/entities/user_entity.dart';
 import '../../features/members/domain/entities/house_entity.dart';
 import '../../features/authentication/presentation/pages/splash_page.dart';
@@ -769,43 +771,51 @@ class _AppShellState extends ConsumerState<_AppShell>
       shape: widget.showFab ? const CircularNotchedRectangle() : null,
       notchMargin: 6,
       padding: EdgeInsets.zero,
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Home',
-                selected: widget.currentIndex == 0,
-                onTap: () => _onNavTap(0),
-              ),
-              _BottomNavItem(
-                icon: Icons.history_outlined,
-                activeIcon: Icons.history_rounded,
-                label: 'History',
-                selected: widget.currentIndex == 1,
-                onTap: () => _onNavTap(1),
-              ),
-              // Reserved space so the docked "+" never covers an item.
-              const SizedBox(width: 56),
-              _BottomNavItem(
-                icon: Icons.receipt_long_outlined,
-                activeIcon: Icons.receipt_long_rounded,
-                label: 'Expenses',
-                selected: widget.currentIndex == 3,
-                onTap: () => _onNavTap(3),
-              ),
-              _BottomNavItem(
-                icon: Icons.bar_chart_outlined,
-                activeIcon: Icons.bar_chart_rounded,
-                label: 'Reports',
-                selected: widget.currentIndex == 4,
-                onTap: () => _onNavTap(4),
-              ),
-            ],
+      child: ResponsivePage(
+        // Cap the bottom-nav items to a centered column on wide viewports so
+        // they never stretch across a large monitor; below the cap this is a
+        // strict no-op, so phones/tablets keep the current full-width bar.
+        // The "+" slot stays at the bar's centre, which lines up with the
+        // docked FAB (also screen-centred).
+        maxWidth: AppContentWidth.dashboard,
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                _BottomNavItem(
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  label: 'Home',
+                  selected: widget.currentIndex == 0,
+                  onTap: () => _onNavTap(0),
+                ),
+                _BottomNavItem(
+                  icon: Icons.history_outlined,
+                  activeIcon: Icons.history_rounded,
+                  label: 'History',
+                  selected: widget.currentIndex == 1,
+                  onTap: () => _onNavTap(1),
+                ),
+                // Reserved space so the docked "+" never covers an item.
+                const SizedBox(width: 56),
+                _BottomNavItem(
+                  icon: Icons.receipt_long_outlined,
+                  activeIcon: Icons.receipt_long_rounded,
+                  label: 'Expenses',
+                  selected: widget.currentIndex == 3,
+                  onTap: () => _onNavTap(3),
+                ),
+                _BottomNavItem(
+                  icon: Icons.bar_chart_outlined,
+                  activeIcon: Icons.bar_chart_rounded,
+                  label: 'Reports',
+                  selected: widget.currentIndex == 4,
+                  onTap: () => _onNavTap(4),
+                ),
+              ],
+            ),
           ),
         ),
       ),

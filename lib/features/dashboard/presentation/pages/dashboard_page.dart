@@ -9,7 +9,9 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import '../../../../core/widgets/animated_entrance.dart';
 import '../../../../core/widgets/balance_card.dart';
+import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/error_display.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/scroll_linked_compress.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../features/expenses/domain/entities/category_entity.dart';
@@ -114,15 +116,18 @@ class DashboardPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: NotificationToastListener(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(dashboardDataProvider);
-          },
-          child: dashboardAsync.when(
-            loading: () => _buildLoading(),
-            error: (error, _) => _buildError(context, ref, error),
-            data: (data) => _buildContent(context, ref, data),
+      body: ResponsivePage(
+        maxWidth: AppContentWidth.dashboard,
+        child: NotificationToastListener(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(dashboardDataProvider);
+            },
+            child: dashboardAsync.when(
+              loading: () => _buildLoading(),
+              error: (error, _) => _buildError(context, ref, error),
+              data: (data) => _buildContent(context, ref, data),
+            ),
           ),
         ),
       ),

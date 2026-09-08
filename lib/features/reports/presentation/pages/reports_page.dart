@@ -11,8 +11,10 @@ import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/animated_balance.dart';
 import '../../../../core/widgets/animated_entrance.dart';
+import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../providers/reports_provider.dart';
 
@@ -45,77 +47,80 @@ class ReportsPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: reportsAsync.when(
-        loading: () => Shimmer(
-          child: ListView(
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppConstants.pagePadding),
-            children: const [
-              // ── At-a-glance summary: In / Out / Balance ──
-              Row(
-                children: [
-                  Expanded(
-                    child: SkeletonBox(
-                      height: 88,
-                      radius: AppConstants.radiusLg,
+      body: ResponsivePage(
+        maxWidth: AppContentWidth.reports,
+        child: reportsAsync.when(
+          loading: () => Shimmer(
+            child: ListView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppConstants.pagePadding),
+              children: const [
+                // ── At-a-glance summary: In / Out / Balance ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: SkeletonBox(
+                        height: 88,
+                        radius: AppConstants.radiusLg,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: SkeletonBox(
-                      height: 88,
-                      radius: AppConstants.radiusLg,
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: SkeletonBox(
+                        height: 88,
+                        radius: AppConstants.radiusLg,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: SkeletonBox(
-                      height: 88,
-                      radius: AppConstants.radiusLg,
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: SkeletonBox(
+                        height: 88,
+                        radius: AppConstants.radiusLg,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 28),
-              Padding(
-                padding: EdgeInsets.fromLTRB(4, 0, 4, 12),
-                child: SkeletonBox(width: 120, height: 16),
-              ),
-              // ── Insights grid ──
-              Row(
-                children: [
-                  Expanded(
-                    child: SkeletonBox(height: 64, radius: AppConstants.radiusMd),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: SkeletonBox(height: 64, radius: AppConstants.radiusMd),
-                  ),
-                ],
-              ),
-              SizedBox(height: 28),
-              Padding(
-                padding: EdgeInsets.fromLTRB(4, 0, 4, 12),
-                child: SkeletonBox(width: 120, height: 16),
-              ),
-              // ── Category breakdown chart card ──
-              SkeletonBox(height: 280, radius: AppConstants.radiusLg),
-              SizedBox(height: 28),
-              Padding(
-                padding: EdgeInsets.fromLTRB(4, 0, 4, 12),
-                child: SkeletonBox(width: 120, height: 16),
-              ),
-              // ── Monthly trend chart card ──
-              SkeletonBox(height: 260, radius: AppConstants.radiusLg),
-              SizedBox(height: 32),
-            ],
+                  ],
+                ),
+                SizedBox(height: 28),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(4, 0, 4, 12),
+                  child: SkeletonBox(width: 120, height: 16),
+                ),
+                // ── Insights grid ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: SkeletonBox(height: 64, radius: AppConstants.radiusMd),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: SkeletonBox(height: 64, radius: AppConstants.radiusMd),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 28),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(4, 0, 4, 12),
+                  child: SkeletonBox(width: 120, height: 16),
+                ),
+                // ── Category breakdown chart card ──
+                SkeletonBox(height: 280, radius: AppConstants.radiusLg),
+                SizedBox(height: 28),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(4, 0, 4, 12),
+                  child: SkeletonBox(width: 120, height: 16),
+                ),
+                // ── Monthly trend chart card ──
+                SkeletonBox(height: 260, radius: AppConstants.radiusLg),
+                SizedBox(height: 32),
+              ],
+            ),
           ),
+          error: (e, _) => ErrorDisplay(
+            message: e is Failure ? e.message : 'Could not load reports.',
+            onRetry: () => ref.invalidate(reportsProvider),
+          ),
+          data: (data) => _ReportsContent(data: data),
         ),
-        error: (e, _) => ErrorDisplay(
-          message: e is Failure ? e.message : 'Could not load reports.',
-          onRetry: () => ref.invalidate(reportsProvider),
-        ),
-        data: (data) => _ReportsContent(data: data),
       ),
     );
   }

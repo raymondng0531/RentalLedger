@@ -11,6 +11,7 @@ import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/animated_entrance.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../domain/entities/house_entity.dart';
 import '../../domain/entities/house_member_entity.dart';
@@ -37,15 +38,18 @@ class MemberListPage extends ConsumerWidget {
         ),
         title: Text(house?.houseName ?? 'Members'),
       ),
-      body: membersAsync.when(
-        loading: () => const Shimmer(child: SkeletonListBody(itemCount: 5)),
-        error: (error, _) => ErrorDisplay(
-          message: error is Failure
-              ? error.message
-              : 'Could not load members.',
-          onRetry: () => ref.invalidate(membersStreamProvider),
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: membersAsync.when(
+          loading: () => const Shimmer(child: SkeletonListBody(itemCount: 5)),
+          error: (error, _) => ErrorDisplay(
+            message: error is Failure
+                ? error.message
+                : 'Could not load members.',
+            onRetry: () => ref.invalidate(membersStreamProvider),
+          ),
+          data: (members) => _buildMemberList(context, ref, members, house),
         ),
-        data: (members) => _buildMemberList(context, ref, members, house),
       ),
     );
   }

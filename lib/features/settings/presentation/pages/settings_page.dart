@@ -7,6 +7,7 @@ import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/spring_sheet.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
@@ -35,251 +36,254 @@ class SettingsPage extends ConsumerWidget {
         ),
         title: const Text('Settings'),
       ),
-      body: ListView(
-        children: [
-          // ── Profile header ──
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: Colors.white,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppTheme.primaryGreen.withAlpha(30),
-                  foregroundImage: (profile?.photoUrl?.isNotEmpty == true)
-                      ? NetworkImage(profile!.photoUrl!) as ImageProvider
-                      : null,
-                  child: (profile?.photoUrl?.isNotEmpty == true)
-                      ? null
-                      : Text(
-                          avatarInitial(profile?.displayName),
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                color: AppTheme.primaryGreen,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile?.displayName ?? 'User',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        profile?.email ?? '',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: ListView(
+          children: [
+            // ── Profile header ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: AppTheme.primaryGreen.withAlpha(30),
+                    foregroundImage: (profile?.photoUrl?.isNotEmpty == true)
+                        ? NetworkImage(profile!.photoUrl!) as ImageProvider
+                        : null,
+                    child: (profile?.photoUrl?.isNotEmpty == true)
+                        ? null
+                        : Text(
+                            avatarInitial(profile?.displayName),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  color: AppTheme.primaryGreen,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => context.push(RouteNames.profile),
-                  tooltip: 'Edit Profile',
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile?.displayName ?? 'User',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          profile?.email ?? '',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => context.push(RouteNames.profile),
+                    tooltip: 'Edit Profile',
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
 
-          // ── House Section ──
-          _SectionHeader(title: 'House'),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.home_outlined),
-                  title: const Text('House Name'),
-                  subtitle: Text(house?.houseName ?? 'Not set'),
-                ),
-                if (house != null) ...[
+            // ── House Section ──
+            _SectionHeader(title: 'House'),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.home_outlined),
+                    title: const Text('House Name'),
+                    subtitle: Text(house?.houseName ?? 'Not set'),
+                  ),
+                  if (house != null) ...[
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      leading: const Icon(Icons.vpn_key_outlined),
+                      title: const Text('Invite Code'),
+                      subtitle: Text(house.inviteCode),
+                      trailing: const Icon(Icons.copy_rounded, size: 18),
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: house.inviteCode));
+                        SnackbarUtils.showSuccess(context, 'Invite code copied');
+                      },
+                    ),
+                  ],
                   const Divider(height: 1, indent: 56),
                   ListTile(
-                    leading: const Icon(Icons.vpn_key_outlined),
-                    title: const Text('Invite Code'),
-                    subtitle: Text(house.inviteCode),
-                    trailing: const Icon(Icons.copy_rounded, size: 18),
+                    leading: const Icon(Icons.people_outlined),
+                    title: const Text('Members'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(RouteNames.members),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Account Section ──
+            _SectionHeader(title: 'Account'),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.person_outlined),
+                    title: const Text('Edit Profile'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(RouteNames.profile),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Appearance Section ──
+            _SectionHeader(title: 'Appearance'),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SwitchListTile(
+                secondary: const Icon(Icons.dark_mode_outlined),
+                title: const Text('Dark Mode'),
+                subtitle: const Text('Coming soon'),
+                value: settings.darkMode,
+                onChanged: (_) {
+                  SnackbarUtils.showInfo(context, 'Dark mode coming soon');
+                },
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Notifications Section ──
+            _SectionHeader(title: 'Notifications'),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SwitchListTile(
+                secondary: const Icon(Icons.notifications_outlined),
+                title: const Text('Push Notifications'),
+                subtitle: const Text('Receive alerts for expense updates'),
+                value: settings.notificationsEnabled,
+                onChanged: (v) =>
+                    ref.read(appSettingsProvider.notifier).setNotificationsEnabled(v),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Preferences Section ──
+            _SectionHeader(title: 'Preferences'),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.language_outlined),
+                    title: const Text('Language'),
+                    subtitle: Text(settings.language == 'ms' ? 'Bahasa Melayu' : 'English'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showLanguagePicker(context, ref, settings),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.attach_money_outlined),
+                    title: const Text('Currency'),
+                    subtitle: Text(settings.currency),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showCurrencyPicker(context, ref, settings),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Help Section ──
+            _SectionHeader(title: 'Support'),
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.help_outline),
+                    title: const Text('Help Center'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showHelpDialog(context),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: const Text('About'),
+                    subtitle: const Text('Version 1.0.0'),
                     onTap: () {
-                      Clipboard.setData(ClipboardData(text: house.inviteCode));
-                      SnackbarUtils.showSuccess(context, 'Invite code copied');
+                      showAboutDialog(
+                        context: context,
+                        applicationName: 'Rental Ledger',
+                        applicationVersion: '1.0.0',
+                        applicationLegalese: 'A household finance management app.',
+                      );
                     },
                   ),
                 ],
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.people_outlined),
-                  title: const Text('Members'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push(RouteNames.members),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Account Section ──
-          _SectionHeader(title: 'Account'),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.person_outlined),
-                  title: const Text('Edit Profile'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push(RouteNames.profile),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Appearance Section ──
-          _SectionHeader(title: 'Appearance'),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: SwitchListTile(
-              secondary: const Icon(Icons.dark_mode_outlined),
-              title: const Text('Dark Mode'),
-              subtitle: const Text('Coming soon'),
-              value: settings.darkMode,
-              onChanged: (_) {
-                SnackbarUtils.showInfo(context, 'Dark mode coming soon');
-              },
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Notifications Section ──
-          _SectionHeader(title: 'Notifications'),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: SwitchListTile(
-              secondary: const Icon(Icons.notifications_outlined),
-              title: const Text('Push Notifications'),
-              subtitle: const Text('Receive alerts for expense updates'),
-              value: settings.notificationsEnabled,
-              onChanged: (v) =>
-                  ref.read(appSettingsProvider.notifier).setNotificationsEnabled(v),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Preferences Section ──
-          _SectionHeader(title: 'Preferences'),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.language_outlined),
-                  title: const Text('Language'),
-                  subtitle: Text(settings.language == 'ms' ? 'Bahasa Melayu' : 'English'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showLanguagePicker(context, ref, settings),
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.attach_money_outlined),
-                  title: const Text('Currency'),
-                  subtitle: Text(settings.currency),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showCurrencyPicker(context, ref, settings),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Help Section ──
-          _SectionHeader(title: 'Support'),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.help_outline),
-                  title: const Text('Help Center'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showHelpDialog(context),
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: const Text('About'),
-                  subtitle: const Text('Version 1.0.0'),
-                  onTap: () {
-                    showAboutDialog(
-                      context: context,
-                      applicationName: 'Rental Ledger',
-                      applicationVersion: '1.0.0',
-                      applicationLegalese: 'A household finance management app.',
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Sign Out (at the very end) ──
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: ListTile(
-              leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
-              title: const Text('Sign Out'),
-              titleTextStyle: const TextStyle(
-                color: AppTheme.errorRed,
-                fontWeight: FontWeight.w500,
               ),
-              onTap: () async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Sign Out'),
-                    content: const Text('Are you sure you want to sign out?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Sign Out'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true) {
-                  await ref.read(logoutProvider.notifier).logout();
-                  if (context.mounted) {
-                    context.go(RouteNames.login);
-                  }
-                }
-              },
             ),
-          ),
 
-          const SizedBox(height: 32),
-        ],
+            const SizedBox(height: 8),
+
+            // ── Sign Out (at the very end) ──
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: ListTile(
+                leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
+                title: const Text('Sign Out'),
+                titleTextStyle: const TextStyle(
+                  color: AppTheme.errorRed,
+                  fontWeight: FontWeight.w500,
+                ),
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Sign Out'),
+                      content: const Text('Are you sure you want to sign out?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Sign Out'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await ref.read(logoutProvider.notifier).logout();
+                    if (context.mounted) {
+                      context.go(RouteNames.login);
+                    }
+                  }
+                },
+              ),
+            ),
+
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }

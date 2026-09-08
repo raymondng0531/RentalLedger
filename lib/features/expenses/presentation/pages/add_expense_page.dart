@@ -10,8 +10,10 @@ import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/receipt_viewer.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/category_picker.dart';
 
@@ -188,183 +190,186 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         title: const Text('Add Expense'),
         backgroundColor: Colors.white,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppConstants.pagePadding),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Title ──
-                TextFormField(
-                  controller: _titleController,
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    hintText: 'What did you buy?',
-                    prefixIcon: Icon(Icons.receipt_outlined),
-                  ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-
-                // ── Amount ──
-                TextFormField(
-                  controller: _amountController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Amount (RM)',
-                    hintText: '0.00',
-                    prefixIcon: Icon(Icons.attach_money),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Required';
-                    final amount = double.tryParse(v);
-                    if (amount == null || amount <= 0) {
-                      return 'Enter a valid amount';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // ── Description ──
-                TextFormField(
-                  controller: _descriptionController,
-                  textCapitalization: TextCapitalization.sentences,
-                  maxLines: 3,
-                  textInputAction: TextInputAction.newline,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    hintText: 'Add more details...',
-                    alignLabelWithHint: true,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── Receipt Upload ──
-                Text(
-                  'Receipt',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                _buildReceiptSection(),
-                const SizedBox(height: 20),
-
-                // ── Category ──
-                Text(
-                  'Category',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                categoriesAsync.when(
-                  loading: () => const Wrap(
-                    spacing: 8,
-                    children: [CircularProgressIndicator()],
-                  ),
-                  error: (_, __) => const Text('Could not load categories'),
-                  data: (categories) => CategoryPicker(
-                    categories: categories,
-                    selectedId: _selectedCategory,
-                    onSelected: (id) =>
-                        setState(() => _selectedCategory = id),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── Payment Source ──
-                Text(
-                  'Payment Source',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _PaymentChip(
-                      label: 'Central Account',
-                      selected: _paymentSource == 'central',
-                      onTap: () => setState(() => _paymentSource = 'central'),
+      body: ResponsivePage(
+        maxWidth: AppContentWidth.form,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppConstants.pagePadding),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Title ──
+                  TextFormField(
+                    controller: _titleController,
+                    textCapitalization: TextCapitalization.sentences,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'What did you buy?',
+                      prefixIcon: Icon(Icons.receipt_outlined),
                     ),
-                    _PaymentChip(
-                      label: 'Personal (reimburse me)',
-                      selected: _paymentSource == 'personal',
-                      onTap: () => setState(() => _paymentSource = 'personal'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // ── Info text ──
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withAlpha(13),
-                    borderRadius: BorderRadius.circular(12),
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline,
-                          size: 18, color: Colors.blue),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _paymentSource == 'personal'
-                              ? 'You will be reimbursed from the Central Account after approval.'
-                              : 'This will be paid directly from the Central Account.',
-                          style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(height: 16),
+
+                  // ── Amount ──
+                  TextFormField(
+                    controller: _amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Amount (RM)',
+                      hintText: '0.00',
+                      prefixIcon: Icon(Icons.attach_money),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      final amount = double.tryParse(v);
+                      if (amount == null || amount <= 0) {
+                        return 'Enter a valid amount';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Description ──
+                  TextFormField(
+                    controller: _descriptionController,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.newline,
+                    decoration: const InputDecoration(
+                      labelText: 'Description (optional)',
+                      hintText: 'Add more details...',
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Receipt Upload ──
+                  Text(
+                    'Receipt',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildReceiptSection(),
+                  const SizedBox(height: 20),
+
+                  // ── Category ──
+                  Text(
+                    'Category',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  categoriesAsync.when(
+                    loading: () => const Wrap(
+                      spacing: 8,
+                      children: [CircularProgressIndicator()],
+                    ),
+                    error: (_, __) => const Text('Could not load categories'),
+                    data: (categories) => CategoryPicker(
+                      categories: categories,
+                      selectedId: _selectedCategory,
+                      onSelected: (id) =>
+                          setState(() => _selectedCategory = id),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Payment Source ──
+                  Text(
+                    'Payment Source',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _PaymentChip(
+                        label: 'Central Account',
+                        selected: _paymentSource == 'central',
+                        onTap: () => setState(() => _paymentSource = 'central'),
+                      ),
+                      _PaymentChip(
+                        label: 'Personal (reimburse me)',
+                        selected: _paymentSource == 'personal',
+                        onTap: () => setState(() => _paymentSource = 'personal'),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
-                // ── Submit button (primary CTA, taller & with icon) ──
-                SizedBox(
-                  height: 56,
-                  child: PressScale(
-                    child: FilledButton.icon(
-                      onPressed: isLoading ? null : _handleSubmit,
-                      icon: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.check_circle_outline_rounded),
-                      label: Text(
-                        isLoading ? 'Submitting...' : 'Submit Expense',
-                      ),
-                      style: FilledButton.styleFrom(
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                  // ── Info text ──
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withAlpha(13),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            size: 18, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _paymentSource == 'personal'
+                                ? 'You will be reimbursed from the Central Account after approval.'
+                                : 'This will be paid directly from the Central Account.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppConstants.radiusLg,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Submit button (primary CTA, taller & with icon) ──
+                  SizedBox(
+                    height: 56,
+                    child: PressScale(
+                      child: FilledButton.icon(
+                        onPressed: isLoading ? null : _handleSubmit,
+                        icon: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.check_circle_outline_rounded),
+                        label: Text(
+                          isLoading ? 'Submitting...' : 'Submit Expense',
+                        ),
+                        style: FilledButton.styleFrom(
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.radiusLg,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

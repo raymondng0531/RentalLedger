@@ -15,6 +15,7 @@ import '../../../../core/widgets/animated_balance.dart';
 import '../../../../core/widgets/animated_status_badge.dart';
 import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/receipt_viewer.dart';
+import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
@@ -207,251 +208,254 @@ class _ExpenseDetailContent extends StatelessWidget {
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppConstants.pagePadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header card: icon + title + status + amount ──
-            Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              color: AppTheme.backgroundLight,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: categoryColor.withAlpha(22),
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Icon(
-                            categoryIcon(expense.categoryId),
-                            size: 24,
-                            color: categoryColor,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            expense.title,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        AnimatedStatusBadge(
-                          status: expense.status,
-                          size: StatusBadgeSize.medium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    AnimatedBalance(
-                      balance: expense.amount,
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Purchased by $purchaserName',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
+      body: ResponsivePage(
+        // maxWidth omitted — defaults to AppContentWidth.detail (800).
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.pagePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header card: icon + title + status + amount ──
+              Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                color: AppTheme.backgroundLight,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // ── Receipt image ──
-            if (expense.receiptUrl != null &&
-                expense.receiptUrl!.isNotEmpty) ...[
-              Text(
-                'Receipt',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                // onTap (not a wrapping GestureDetector) so the web HTML
-                // <img> platform view can forward its DOM click here too.
-                child: ReceiptImage(
-                  receiptUrl: expense.receiptUrl!,
-                  height: 200,
-                  width: double.infinity,
-                  onTap: () =>
-                      _showReceiptFullscreen(context, expense.receiptUrl!),
-                  loadingBuilder: (_) => Container(
-                    height: 200,
-                    color: Colors.grey.withAlpha(20),
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorBuilder: (_) => Container(
-                    height: 200,
-                    color: Colors.grey.withAlpha(20),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Icon(
-                            Icons.image_not_supported_outlined,
-                            color: Colors.grey,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: categoryColor.withAlpha(22),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: Icon(
+                              categoryIcon(expense.categoryId),
+                              size: 24,
+                              color: categoryColor,
+                            ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Receipt unavailable',
-                            style: TextStyle(color: Colors.grey),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              expense.title,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          AnimatedStatusBadge(
+                            status: expense.status,
+                            size: StatusBadgeSize.medium,
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      AnimatedBalance(
+                        balance: expense.amount,
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Purchased by $purchaserName',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
-              // Explicit affordance: the web platform-view slot can swallow
-              // taps over the image, so offer an obvious button as well.
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _showReceiptFullscreen(context, expense.receiptUrl!),
-                  icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
-                  label: const Text('Preview Receipt'),
-                ),
-              ),
               const SizedBox(height: 20),
-            ],
 
-            // ── Details card ──
-            _buildInfoSection(context, [
-              _InfoRow(
-                label: 'Category',
-                value: categoryName,
-                icon: Icons.category_outlined,
-              ),
-              _InfoRow(
-                label: 'Payment Source',
-                value:
-                    expense.isPersonal
-                        ? 'Personal (reimbursement)'
-                        : 'Central Account',
-                icon: Icons.account_balance_wallet_outlined,
-              ),
-              _InfoRow(
-                label: 'Submitted',
-                value: DateFormatUtils.formatDate(expense.createdAt),
-                icon: Icons.calendar_today_outlined,
-              ),
-              _InfoRow(
-                label: 'Purchased By',
-                value: purchaserName,
-                icon: Icons.person_outlined,
-              ),
-            ]),
-
-            // ── Reject reason (shown when rejected) ──
-            if (expense.isRejected &&
-                expense.rejectReason != null &&
-                expense.rejectReason!.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppTheme.errorRed.withAlpha(12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.errorRed.withAlpha(50)),
+              // ── Receipt image ──
+              if (expense.receiptUrl != null &&
+                  expense.receiptUrl!.isNotEmpty) ...[
+                Text(
+                  'Receipt',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          size: 18,
-                          color: AppTheme.errorRed,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Rejected',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: AppTheme.errorRed,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+                  // onTap (not a wrapping GestureDetector) so the web HTML
+                  // <img> platform view can forward its DOM click here too.
+                  child: ReceiptImage(
+                    receiptUrl: expense.receiptUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    onTap: () =>
+                        _showReceiptFullscreen(context, expense.receiptUrl!),
+                    loadingBuilder: (_) => Container(
+                      height: 200,
+                      color: Colors.grey.withAlpha(20),
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Reason: ${expense.rejectReason}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textPrimary,
-                        height: 1.4,
+                    errorBuilder: (_) => Container(
+                      height: 200,
+                      color: Colors.grey.withAlpha(20),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Receipt unavailable',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                // Explicit affordance: the web platform-view slot can swallow
+                // taps over the image, so offer an obvious button as well.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        _showReceiptFullscreen(context, expense.receiptUrl!),
+                    icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
+                    label: const Text('Preview Receipt'),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
-            // ── Description ──
-            if (expense.description != null &&
-                expense.description!.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              // ── Details card ──
+              _buildInfoSection(context, [
+                _InfoRow(
+                  label: 'Category',
+                  value: categoryName,
+                  icon: Icons.category_outlined,
+                ),
+                _InfoRow(
+                  label: 'Payment Source',
+                  value:
+                      expense.isPersonal
+                          ? 'Personal (reimbursement)'
+                          : 'Central Account',
+                  icon: Icons.account_balance_wallet_outlined,
+                ),
+                _InfoRow(
+                  label: 'Submitted',
+                  value: DateFormatUtils.formatDate(expense.createdAt),
+                  icon: Icons.calendar_today_outlined,
+                ),
+                _InfoRow(
+                  label: 'Purchased By',
+                  value: purchaserName,
+                  icon: Icons.person_outlined,
+                ),
+              ]),
+
+              // ── Reject reason (shown when rejected) ──
+              if (expense.isRejected &&
+                  expense.rejectReason != null &&
+                  expense.rejectReason!.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.errorRed.withAlpha(12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.errorRed.withAlpha(50)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 18,
+                            color: AppTheme.errorRed,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Rejected',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: AppTheme.errorRed,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Reason: ${expense.rejectReason}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textPrimary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // ── Description ──
+              if (expense.description != null &&
+                  expense.description!.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(
+                  'Description',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  expense.description!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+
+              // ── Timeline ──
+              const SizedBox(height: 24),
               Text(
-                'Description',
+                'Timeline',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                expense.description!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-            ],
+              const SizedBox(height: 12),
+              _buildTimeline(context),
 
-            // ── Timeline ──
-            const SizedBox(height: 24),
-            Text(
-              'Timeline',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildTimeline(context),
+              // ── Treasurer Actions ──
+              if (expense.isPending || expense.isApproved) ...[
+                const SizedBox(height: 32),
+                _buildTreasurerActions(context, expense),
+              ],
 
-            // ── Treasurer Actions ──
-            if (expense.isPending || expense.isApproved) ...[
               const SizedBox(height: 32),
-              _buildTreasurerActions(context, expense),
             ],
-
-            const SizedBox(height: 32),
-          ],
+          ),
         ),
       ),
     );

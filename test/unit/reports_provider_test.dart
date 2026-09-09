@@ -457,5 +457,212 @@ void main() {
         isTrue,
       );
     });
+
+    test('all-time report sets allTimeBalance == balance', () {
+      final data = computeReportsData(
+        now: DateTime(2026, 3, 10),
+        categoryNames: const {},
+        bills: const [],
+        transactions: [
+          _tx(
+              id: 'd1',
+              type: 'Deposit',
+              amount: 100,
+              createdAt: DateTime(2026, 1, 5)),
+          _tx(
+              id: 'r1',
+              type: 'Reimbursement',
+              amount: -40,
+              createdAt: DateTime(2026, 1, 2)),
+        ],
+        expenses: const [],
+      );
+      // Without a window the report IS all-time, so the two balances coincide.
+      expect(data.balance, 60);
+      expect(data.allTimeBalance, data.balance);
+    });
+  });
+
+  group('computeReportsData with a ReportsWindow', () {
+    test('scopes totals, the net balance, and the trend to the window', () {
+      final now = DateTime(2026, 3, 15);
+      final data = computeReportsData(
+        now: now,
+        categoryNames: const {},
+        bills: const [],
+        window: resolveReportWindow(
+            const ReportFilter(period: ReportPeriod.thisMonth),
+            now: now),
+        transactions: [
+          // Before the window → excluded.
+          _tx(
+              id: 'd-old',
+              type: 'Deposit',
+              amount: 1000,
+              createdAt: DateTime(2026, 2, 2)),
+          _tx(
+              id: 'd-in',
+              type: 'Deposit',
+              amount: 300,
+              createdAt: DateTime(2026, 3, 2)),
+          _tx(
+              id: 'r-in',
+              type: 'Reimbursement',
+              amount: -100,
+              createdAt: DateTime(2026, 3, 5)),
+          // Exactly at window.end → excluded (half-open [start, end)).
+          _tx(
+              id: 'd-boundary',
+              type: 'Deposit',
+              amount: 50,
+              createdAt: DateTime(2026, 4)),
+        ],
+        expenses: [
+          _expense(
+              id: 'e-old',
+              amount: 500,
+              categoryId: 'a',
+              status: 'paid',
+              createdAt: DateTime(2026, 1, 10)),
+          _expense(
+              id: 'e-in',
+              amount: 200,
+              categoryId: 'a',
+              status: 'paid',
+              createdAt: DateTime(2026, 3, 3)),
+          _expense(
+              id: 'e-approv',
+              amount: 25,
+              categoryId: 'a',
+              status: 'approved',
+              createdAt: DateTime(2026, 3, 4)),
+        ],
+      );
+
+      // Only the window's records count.
+      expect(data.totalDeposits, 300);
+      expect(data.moneyIn, 300);
+      expect(data.moneyOut, 100);
+      expect(data.totalExpenses, 200);
+      expect(data.pendingReimbursements, 25);
+
+      // The windowed balance reconciles and equals the period net.
+      expect(data.balance, 200); // 300 − 100
+      expect(data.moneyIn - data.moneyOut, data.balance);
+
+      // The all-time balance still sees every transaction (Feb 1000 + Apr 50).
+      expect(data.allTimeBalance, 1250);
+
+      // Trend is a single March bar, unlabelled by year (single-year span).
+      expect(data.monthlyTrend, hasLength(1));
+      expect(data.monthlyTrend.first.month, 'Mar');
+      expect(data.monthlyTrend.first.moneyIn, 300);
+      expect(data.monthlyTrend.first.moneyOut, 100);
+    });
+
+    test('a year-boundary window renders the right months with year labels', () {
+      final now = DateTime(2026, 1, 15);
+      final data = computeReportsData(
+        now: now,
+        categoryNames: const {},
+        bills: const [],
+        window: resolveReportWindow(
+            const ReportFilter(period: ReportPeriod.last3Months),
+            now: now),
+        transactions: [
+          // Before the window (Oct 2025) → excluded from totals but still in
+          // the all-time balance.
+          _tx(
+              id: 'd-oct',
+              type: 'Deposit',
+              amount: 9999,
+              createdAt: DateTime(2025, 10, 5)),
+          _tx(
+              id: 'd-nov',
+              type: 'Deposit',
+              amount: 100,
+              createdAt: DateTime(2025, 11, 10)),
+          _tx(
+              id: 'd-dec',
+              type: 'Deposit',
+              amount: 200,
+              createdAt: DateTime(2025, 12, 10)),
+          _tx(
+              id: 'd-jan',
+              type: 'Deposit',
+              amount: 300,
+              createdAt: DateTime(2026, 1, 10)),
+        ],
+        expenses: const [],
+      );
+
+      expect(data.moneyIn, 600); // Nov + Dec + Jan
+      expect(data.balance, 600);
+      expect(data.allTimeBalance, 600 + 9999); // the Oct deposit stays in
+
+      // Nov 2025 → Jan 2026, labelled with two-digit years because the window
+      // spans a year boundary.
+      expect(data.monthlyTrend, hasLength(3));
+      expect(data.monthlyTrend[0].month, 'Nov 25');
+      expect(data.monthlyTrend[0].moneyIn, 100);
+      expect(data.monthlyTrend[1].month, 'Dec 25');
+      expect(data.monthlyTrend[2].month, 'Jan 26');
+    });
+  });
+
+  group('resolveReportWindow', () {
+    final now = DateTime(2026, 3, 15);
+
+    test('all time (default) has no window', () {
+      expect(resolveReportWindow(const ReportFilter(), now: now), isNull);
+    });
+
+    test('This month is [1st of month, 1st of next month)', () {
+      final w = resolveReportWindow(
+          const ReportFilter(period: ReportPeriod.thisMonth),
+          now: now)!;
+      expect(w.start, DateTime(2026, 3));
+      expect(w.end, DateTime(2026, 4));
+      expect(w.contains(DateTime(2026, 3, 31, 23, 59, 59)), isTrue);
+      expect(w.contains(DateTime(2026, 4)), isFalse);
+    });
+
+    test('Last 3 months is [1st two months ago, 1st of next month)', () {
+      final w = resolveReportWindow(
+          const ReportFilter(period: ReportPeriod.last3Months),
+          now: now)!;
+      expect(w.start, DateTime(2026));
+      expect(w.end, DateTime(2026, 4));
+    });
+
+    test('This year is [Jan 1, Jan 1 next year)', () {
+      final w = resolveReportWindow(
+          const ReportFilter(period: ReportPeriod.thisYear),
+          now: now)!;
+      expect(w.start, DateTime(2026));
+      expect(w.end, DateTime(2027));
+    });
+
+    test('Custom uses the given half-open range', () {
+      final w = resolveReportWindow(
+        ReportFilter(
+          period: ReportPeriod.custom,
+          customStart: DateTime(2026, 1, 15),
+          customEnd: DateTime(2026, 2, 20),
+        ),
+        now: now,
+      )!;
+      expect(w.start, DateTime(2026, 1, 15));
+      expect(w.end, DateTime(2026, 2, 20));
+      expect(w.contains(DateTime(2026, 2, 19, 23, 59, 59)), isTrue);
+      expect(w.contains(DateTime(2026, 2, 20)), isFalse);
+    });
+
+    test('Custom with no dates falls back to all time', () {
+      expect(resolveReportWindow(
+        const ReportFilter(period: ReportPeriod.custom),
+        now: now,
+      ), isNull);
+    });
   });
 }

@@ -141,6 +141,11 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
 
   @override
   Widget build(BuildContext context) {
+    // The active period filter decides whether the third summary box reads
+    // "Net" (a filtered period, In − Out reconciles) or "Current Balance".
+    final filter = ref.watch(reportFilterProvider);
+    final windowed = resolveReportWindow(filter) != null;
+
     // A brand-new house has no data yet — show an empty state instead of a
     // row of RM 0.00 boxes. Any money movement (Money In/Out) counts as data,
     // even if no expense claims have been recorded yet.
@@ -148,7 +153,140 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
         data.moneyOut == 0 &&
         data.categoryBreakdown.isEmpty;
 
-    if (isEmpty) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Period filter — always visible so it never scrolls out of reach ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppConstants.pagePadding,
+            AppConstants.pagePadding,
+            AppConstants.pagePadding,
+            4,
+          ),
+          child: _ReportsFilterBar(
+            filter: filter,
+            onSelect: _applyFilter,
+            onPickCustom: _pickCustomRange,
+          ),
+        ),
+
+        Expanded(
+          child: isEmpty
+              ? _buildEmptyState(windowed)
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppConstants.pagePadding,
+                    12,
+                    AppConstants.pagePadding,
+                    AppConstants.pagePadding,
+                  ),
+                  children: _buildContent(windowed),
+                ),
+        ),
+      ],
+    );
+  }
+
+  /// The scrollable report body: summary → insights → money-out breakdown →
+  /// category breakdown → monthly trend.
+  List<Widget> _buildContent(bool windowed) {
+    // Entrance animations: summary boxes first, insights stagger, then the
+    // two chart cards. Keep them subtle (fade + small slide-up, ~400ms).
+    const entrance = Duration(milliseconds: 400);
+
+    return [
+      // ── At-a-glance summary. All-time: In − Out = Current Balance. Under a
+      //    period filter the third box is the period's Net and the true
+      //    all-time central-account balance is called out beneath the row. ──
+      Row(
+        children: [
+          Expanded(
+            child: AnimatedEntrance(
+              duration: entrance,
+              child: _SummaryBox(
+                label: 'Money In',
+                amount: data.moneyIn,
+                color: AppTheme.successGreen,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: AnimatedEntrance(
+              delay: const Duration(milliseconds: 60),
+              duration: entrance,
+              child: _SummaryBox(
+                label: 'Money Out',
+                amount: data.moneyOut,
+                color: AppTheme.errorRed,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: AnimatedEntrance(
+              delay: const Duration(milliseconds: 120),
+              duration: entrance,
+              child: _SummaryBox(
+                label: windowed ? 'Net' : 'Current Balance',
+                amount: data.balance,
+                color: data.balance >= 0
+                    ? AppTheme.primaryGreen
+                    : AppTheme.errorRed,
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      if (windowed) ...[
+        const SizedBox(height: 12),
+        _AllTimeBalanceNote(amount: data.allTimeBalance),
+      ],
+
+      const SizedBox(height: 28),
+
+      // ── Insights ──
+      const _SectionTitle('Insights'),
+      _InsightsGrid(data: data),
+
+      // ── Where the Money Goes (only when money actually went out) ──
+      if (data.moneyOutBreakdown.total > 0) ...[
+        const SizedBox(height: 28),
+        const _SectionTitle('Where the Money Goes'),
+        _MoneyOutCard(data: data),
+      ],
+
+      // ── Category Breakdown ──
+      const SizedBox(height: 28),
+      const _SectionTitle('Category Breakdown'),
+      AnimatedEntrance(
+        delay: const Duration(milliseconds: 200),
+        duration: entrance,
+        child: _CategoryBreakdownCard(
+          data: data,
+          selectedIndex: _selectedCategory,
+          onSelect: (i) => setState(() => _selectedCategory = i),
+          delay: const Duration(milliseconds: 200),
+        ),
+      ),
+
+      // ── Monthly Trend ──
+      const SizedBox(height: 28),
+      const _SectionTitle('Monthly Trend'),
+      AnimatedEntrance(
+        delay: const Duration(milliseconds: 260),
+        duration: entrance,
+        child: _MonthlyTrendCard(data: data),
+      ),
+
+      const SizedBox(height: 32),
+    ];
+  }
+
+  Widget _buildEmptyState(bool windowed) {
+    if (!windowed) {
       return const EmptyState(
         title: 'No reports yet',
         description:
@@ -156,89 +294,56 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
         icon: Icons.bar_chart_outlined,
       );
     }
-
-    // Entrance animations: summary boxes first, insights stagger, then the
-    // two chart cards. Keep them subtle (fade + small slide-up, ~400ms).
-    const entrance = Duration(milliseconds: 400);
-
-    return ListView(
-      padding: const EdgeInsets.all(AppConstants.pagePadding),
-      children: [
-        // ── At-a-glance summary: In − Out = Balance, so it reads like a
-        //    bank statement and always reconciles. ──
-        Row(
-          children: [
-            Expanded(
-              child: AnimatedEntrance(
-                duration: entrance,
-                child: _SummaryBox(
-                  label: 'Money In',
-                  amount: data.moneyIn,
-                  color: AppTheme.successGreen,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: AnimatedEntrance(
-                delay: const Duration(milliseconds: 60),
-                duration: entrance,
-                child: _SummaryBox(
-                  label: 'Money Out',
-                  amount: data.moneyOut,
-                  color: AppTheme.errorRed,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: AnimatedEntrance(
-                delay: const Duration(milliseconds: 120),
-                duration: entrance,
-                child: _SummaryBox(
-                  label: 'Current Balance',
-                  amount: data.balance,
-                  color: data.balance >= 0
-                      ? AppTheme.primaryGreen
-                      : AppTheme.errorRed,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 28),
-
-        // ── Insights ──
-        _SectionTitle('Insights'),
-        _InsightsGrid(data: data),
-
-        // ── Category Breakdown ──
-        const SizedBox(height: 28),
-        _SectionTitle('Category Breakdown'),
-        AnimatedEntrance(
-          delay: const Duration(milliseconds: 200),
-          duration: entrance,
-          child: _CategoryBreakdownCard(
-            data: data,
-            selectedIndex: _selectedCategory,
-            onSelect: (i) => setState(() => _selectedCategory = i),
-            delay: const Duration(milliseconds: 200),
-          ),
-        ),
-
-        // ── Monthly Trend ──
-        const SizedBox(height: 28),
-        _SectionTitle('Monthly Trend'),
-        AnimatedEntrance(
-          delay: const Duration(milliseconds: 260),
-          duration: entrance,
-          child: _MonthlyTrendCard(data: data),
-        ),
-
-        const SizedBox(height: 32),
-      ],
+    // A filter with no matching activity: offer a one-tap way back to all time.
+    return EmptyState(
+      title: 'Nothing in this period',
+      description: 'No deposits, expense claims, or reimbursements fell '
+          'inside the selected period.',
+      icon: Icons.event_busy_outlined,
+      actionLabel: 'Show all time',
+      onActionTap: () => _applyFilter(ReportPeriod.allTime),
     );
+  }
+
+  void _applyFilter(ReportPeriod period) {
+    ref
+        .read(reportFilterProvider.notifier)
+        .apply(ReportFilter(period: period));
+  }
+
+  /// Opens the date-range picker. The chosen inclusive "end day" becomes an
+  /// EXCLUSIVE report-window end (one day later), matching History so a range
+  /// "to 20 Aug" includes all of 20 Aug.
+  Future<void> _pickCustomRange() async {
+    final now = DateTime.now();
+    final current = ref.read(reportFilterProvider);
+
+    // Re-open the previously chosen range when it is already the active filter.
+    DateTimeRange? initial;
+    if (current.period == ReportPeriod.custom &&
+        current.customStart != null &&
+        current.customEnd != null) {
+      initial = DateTimeRange(
+        start: current.customStart!,
+        end: current.customEnd!.subtract(const Duration(days: 1)),
+      );
+    }
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 3),
+      lastDate: now.add(const Duration(days: 1)),
+      initialDateRange: initial,
+      helpText: 'Choose a report period',
+      saveText: 'Apply',
+    );
+    if (picked == null || !mounted) return;
+
+    ref.read(reportFilterProvider.notifier).apply(ReportFilter(
+          period: ReportPeriod.custom,
+          customStart: picked.start,
+          customEnd: picked.end.add(const Duration(days: 1)),
+        ));
   }
 }
 
@@ -379,6 +484,42 @@ class _InsightsGrid extends StatelessWidget {
           color: AppTheme.primaryGreen,
         ),
       ),
+      staggered(
+        5,
+        _InsightCard(
+          title: 'Average Deposit',
+          amount: data.avgDeposit,
+          icon: Icons.savings_outlined,
+          color: AppTheme.successGreen,
+        ),
+      ),
+      staggered(
+        6,
+        _InsightCard(
+          title: 'Largest Deposit',
+          amount: data.largestDeposit,
+          icon: Icons.trending_up_rounded,
+          color: AppTheme.primaryGreen,
+        ),
+      ),
+      staggered(
+        7,
+        _InsightCard(
+          title: 'Bills Paid',
+          count: data.billsPaid,
+          icon: Icons.fact_check_outlined,
+          color: AppTheme.successGreen,
+        ),
+      ),
+      staggered(
+        8,
+        _InsightCard(
+          title: 'Bills Pending',
+          count: data.billsPending,
+          icon: Icons.schedule_rounded,
+          color: AppTheme.warningOrange,
+        ),
+      ),
     ];
 
     return LayoutBuilder(
@@ -407,7 +548,8 @@ class _InsightsGrid extends StatelessWidget {
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
     required this.title,
-    required this.amount,
+    this.amount,
+    this.count,
     this.subtitle,
     required this.icon,
     required this.color,
@@ -415,6 +557,9 @@ class _InsightCard extends StatelessWidget {
 
   final String title;
   final double? amount;
+
+  /// A plain whole-number value (bill counts) instead of a currency amount.
+  final int? count;
   final String? subtitle;
   final IconData icon;
   final Color color;
@@ -444,8 +589,16 @@ class _InsightCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             // The number is always its own line at the same left position, so
-            // long titles can never push the values around.
-            if (amount != null)
+            // long titles can never push the values around. Counts (e.g. bills
+            // paid) are plain numbers; money animates and formats as currency.
+            if (count != null)
+              Text(
+                '$count',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: valueStyle,
+              )
+            else if (amount != null)
               AnimatedBalance(
                 balance: amount!,
                 maxLines: 1,
@@ -475,6 +628,215 @@ class _InsightCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The true all-time central-account balance, shown under the summary when a
+/// period filter turns the third box into the period's Net — so the filtered
+/// In/Out/Net numbers are never mistaken for the actual account balance.
+class _AllTimeBalanceNote extends StatelessWidget {
+  const _AllTimeBalanceNote({required this.amount});
+  final double amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.account_balance_outlined,
+          size: 14,
+          color: AppTheme.textSecondary,
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            'Central Account balance (all time): '
+            '${CurrencyUtils.format(amount)}',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Horizontally scrollable period-filter chips. The choice lives in
+/// [reportFilterProvider], so picking one recomputes every report below.
+class _ReportsFilterBar extends StatelessWidget {
+  const _ReportsFilterBar({
+    required this.filter,
+    required this.onSelect,
+    required this.onPickCustom,
+  });
+
+  final ReportFilter filter;
+  final ValueChanged<ReportPeriod> onSelect;
+  final VoidCallback onPickCustom;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final period in ReportPeriod.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(period.label),
+                selected: filter.period == period,
+                showCheckmark: false,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onSelected: (_) => period == ReportPeriod.custom
+                    ? onPickCustom()
+                    : onSelect(period),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Where the Money Goes" — what each negative transaction type made up of
+/// Money Out, drawn as a stacked bar plus a legend. Only mounted when there
+/// is outgoing money, so it is never an empty card.
+class _MoneyOutCard extends StatelessWidget {
+  const _MoneyOutCard({required this.data});
+  final ReportsData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final breakdown = data.moneyOutBreakdown;
+    final total = breakdown.total;
+
+    // Buckets in display order; zero buckets are hidden so only money that
+    // actually moved is shown.
+    final buckets = <({String label, double amount, Color color})>[
+      (
+        label: 'Expense reimbursements',
+        amount: breakdown.expenseReimbursements,
+        color: AppTheme.statusApproved,
+      ),
+      (
+        label: 'Direct payments',
+        amount: breakdown.directPayments,
+        color: AppTheme.warningOrange,
+      ),
+      (
+        label: 'Bill payments',
+        amount: breakdown.billPayments,
+        color: AppTheme.primaryGreen,
+      ),
+      (
+        label: 'Adjustments',
+        amount: breakdown.negativeAdjustments,
+        color: AppTheme.errorRed,
+      ),
+      (
+        label: 'Other',
+        amount: breakdown.other,
+        color: AppTheme.textSecondary,
+      ),
+    ].where((b) => b.amount > 0).toList();
+
+    if (buckets.isEmpty || total <= 0) {
+      // Defensive — the caller only mounts this card when total > 0.
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.cardPadding + 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'From ${CurrencyUtils.format(total)} of Money Out',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Stacked bar: each segment ∝ its share of the total ──
+            ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: SizedBox(
+                height: 12,
+                child: Row(
+                  children: [
+                    for (final b in buckets)
+                      Expanded(
+                        flex: (b.amount * 1000).round(),
+                        child: ColoredBox(color: b.color),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // ── Legend rows ──
+            for (final b in buckets)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: b.color,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        b.label,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      CurrencyUtils.format(b.amount),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        '${((b.amount / total) * 100).toStringAsFixed(0)}%',
+                        textAlign: TextAlign.right,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

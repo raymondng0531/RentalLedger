@@ -19,37 +19,48 @@ Widget _buildReports(ReportsData data) {
 const ReportsData _sampleData = ReportsData(
   totalExpenses: 350,
   totalDeposits: 800,
-  // Money In − Money Out = Balance (800 − 649 = 151), mirroring a real
-  // household where Money Out includes direct/bill payments beyond claims.
+  // Money In − Money Out = Balance (800 − 600 = 200), mirroring a real
+  // household where Money Out (600) includes reimbursements, direct and bill
+  // payments beyond just the paid expense claims (350).
   moneyIn: 800,
-  moneyOut: 649,
-  balance: 151,
+  moneyOut: 600,
+  balance: 200,
+  allTimeBalance: 200,
   highestCategoryName: 'Rent',
   highestCategoryAmount: 200,
   largestExpense: 150,
   averageMonthlyExpense: 116.67,
   avgExpenseClaim: 175,
-  pendingReimbursements: 0,
   avgDeposit: 400,
   largestDeposit: 600,
   billsPaid: 1,
   billsPending: 2,
+  // The money-out breakdown always sums to moneyOut in real reports; canned
+  // data mirrors that so "Where the Money Goes" renders its buckets.
+  moneyOutBreakdown: MoneyOutBreakdown(
+    expenseReimbursements: 400,
+    directPayments: 150,
+    billPayments: 50,
+  ),
   categoryBreakdown: [
-    // Slices sweep clockwise from 0° (east): Food ≈ 0°–103°, Rent ≈
-    // 103°–309°, Utilities ≈ 309°–360°.
+    // Slices sweep clockwise from 0° (east): Food ≈ 0°–60°, Rent ≈
+    // 60°–180°, Utilities ≈ 180°–360°.
     CategorySpending(name: 'Food', amount: 100, color: 0xFF16A34A),
     CategorySpending(name: 'Rent', amount: 200, color: 0xFF2563EB),
     CategorySpending(name: 'Utilities', amount: 50, color: 0xFFF97316),
   ],
   monthlyTrend: [
-    MonthlyComparison(month: 'Aug', moneyIn: 800, moneyOut: 649),
+    MonthlyComparison(month: 'Aug', moneyIn: 800, moneyOut: 600),
   ],
 );
+
+/// A report with no money movement at all — the page shows an empty state.
+const ReportsData _emptyData = ReportsData();
 
 Future<void> _pumpReports(WidgetTester tester, ReportsData data) async {
   // The page is a ListView; give the viewport enough height that every
   // section (including the Monthly Trend card) actually gets built.
-  tester.view.physicalSize = const Size(800, 2000);
+  tester.view.physicalSize = const Size(800, 3600);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
@@ -84,15 +95,21 @@ void main() {
     expect(find.text('Money In'), findsWidgets);
     expect(find.text('Money Out'), findsWidgets);
     expect(find.text('Current Balance'), findsOneWidget);
+    // On the default all-time report the Net/all-time call-out is not shown.
+    expect(find.text('Net'), findsNothing);
+    expect(find.textContaining('Central Account balance (all time)'),
+        findsNothing);
     // The old, misleading labels are gone.
     expect(find.text('Total Expenses'), findsNothing);
     expect(find.text('Total Deposits'), findsNothing);
     expect(find.text('Net Flow'), findsNothing);
   });
 
-  testWidgets('insights show the five analytics cards', (tester) async {
+  testWidgets('insights show the analytics cards incl. deposits and bills',
+      (tester) async {
     await _pumpReports(tester, _sampleData);
 
+    // The original five expense analytics…
     expect(find.text('Highest Expense Category'), findsOneWidget);
     // The category name is the card's subtitle (scoped to the insight grid,
     // since 'Rent' also appears in the category legend).
@@ -108,12 +125,66 @@ void main() {
     expect(find.text('Pending Reimbursements'), findsOneWidget);
     expect(find.text('Average Monthly Expense'), findsOneWidget);
 
-    // The low-value statistics were removed.
-    expect(find.text('Average Expense Claim'), findsNothing);
-    expect(find.text('Total Bills Paid'), findsNothing);
-    expect(find.text('Total Bills Pending'), findsNothing);
-    expect(find.text('Average Deposit'), findsNothing);
-    expect(find.text('Largest Deposit'), findsNothing);
+    // …plus the new deposit and bills analytics.
+    expect(find.text('Average Deposit'), findsOneWidget);
+    expect(find.text('Largest Deposit'), findsOneWidget);
+    expect(find.text('Bills Paid'), findsOneWidget);
+    expect(find.text('Bills Pending'), findsOneWidget);
+  });
+
+  testWidgets('shows the "Where the Money Goes" money-out breakdown',
+      (tester) async {
+    await _pumpReports(tester, _sampleData);
+
+    expect(find.text('Where the Money Goes'), findsOneWidget);
+    // Buckets with money are listed; the empty Adjustment bucket is skipped.
+    expect(find.text('Expense reimbursements'), findsOneWidget);
+    expect(find.text('Direct payments'), findsOneWidget);
+    expect(find.text('Bill payments'), findsOneWidget);
+    expect(find.text('Adjustments'), findsNothing);
+    // The card describes the source total.
+    expect(find.textContaining('of Money Out'), findsOneWidget);
+  });
+
+  testWidgets('selecting a period flips the third box to Net and reveals the '
+      'all-time balance note', (tester) async {
+    await _pumpReports(tester, _sampleData);
+
+    // The filter bar offers every period.
+    expect(find.text('All time'), findsOneWidget);
+    expect(find.text('This month'), findsOneWidget);
+    expect(find.text('Last 3 months'), findsOneWidget);
+    expect(find.text('This year'), findsOneWidget);
+    expect(find.text('Custom range'), findsOneWidget);
+
+    await tester.tap(find.text('This month'));
+    await tester.pumpAndSettle();
+
+    // Under a period the summary reconciles to the period's Net…
+    expect(find.text('Net'), findsOneWidget);
+    expect(find.text('Current Balance'), findsNothing);
+    // …and the true all-time account balance is called out beneath it.
+    expect(find.textContaining('Central Account balance (all time)'),
+        findsOneWidget);
+  });
+
+  testWidgets('a period with no activity offers "Show all time" to reset',
+      (tester) async {
+    await _pumpReports(tester, _emptyData);
+
+    expect(find.text('No reports yet'), findsOneWidget);
+
+    await tester.tap(find.text('This month'));
+    await tester.pumpAndSettle();
+
+    // The filtered empty state replaces the brand-new-house one…
+    expect(find.text('Nothing in this period'), findsOneWidget);
+    expect(find.text('Show all time'), findsOneWidget);
+
+    // …and tapping it returns to the all-time empty state.
+    await tester.tap(find.text('Show all time'));
+    await tester.pumpAndSettle();
+    expect(find.text('No reports yet'), findsOneWidget);
   });
 
   testWidgets('bar chart tooltip is configured to stay inside the chart',
@@ -141,7 +212,7 @@ void main() {
     final pieRect = tester.getRect(find.byType(PieChart));
 
     // Tap inside the "Food" slice (mid of its arc, mid of the ring).
-    await tester.tapAt(_pointOnSlice(pieRect, 50, 50));
+    await tester.tapAt(_pointOnSlice(pieRect, 30, 50));
     await tester.pumpAndSettle();
 
     // Selection shown: detail panel now shows "Food" next to the legend.

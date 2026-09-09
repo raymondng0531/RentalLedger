@@ -12,6 +12,13 @@ class TransactionEntity {
     required this.performedBy,
     this.notes,
     required this.createdAt,
+    // ── Proof / attribution (all optional for backward compatibility) ──
+    this.receiptUrl,
+    this.paidByUserId,
+    this.paymentMethod,
+    this.periodLabel,
+    this.purpose,
+    this.categoryId,
   });
 
   final String transactionId;
@@ -20,8 +27,34 @@ class TransactionEntity {
   final String type; // Deposit | Reimbursement | Direct Payment | Adjustment
   final double amount;
   final String performedBy;
+
+  /// Free-form notes / display title (e.g. deposit notes, direct-payment title,
+  /// or `Bill: <title>` for bill payments).
   final String? notes;
   final DateTime createdAt;
+
+  /// Receipt/proof image download URL for the money movement. Every actual
+  /// money movement carries its own proof; null on legacy transactions.
+  final String? receiptUrl;
+
+  /// The member who actually paid the money in (deposits / contributions).
+  /// The recorder is [performedBy] (the Treasurer) — this is who PHYSICALLY
+  /// provided the funds. Null for money-out and legacy transactions.
+  final String? paidByUserId;
+
+  /// How the money moved (e.g. 'Cash', 'Bank Transfer', 'e-Wallet').
+  final String? paymentMethod;
+
+  /// The month/period a payment or contribution covers, e.g. `2026-09`.
+  final String? periodLabel;
+
+  /// Structured purpose, e.g. 'Monthly Rental' / 'House Contribution' /
+  /// 'General Top-up'. May equal [notes] for human-readable display.
+  final String? purpose;
+
+  /// Category (Direct Payments only, e.g. a paid utility bill). Null for
+  /// deposits, reimbursements, and legacy transactions.
+  final String? categoryId;
 
   bool get isDeposit => type == 'Deposit';
   bool get isReimbursement => type == 'Reimbursement';

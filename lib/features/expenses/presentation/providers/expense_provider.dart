@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/firebase_service.dart';
 import '../../../../core/utils/date_utils.dart';
@@ -9,6 +10,7 @@ import '../../../../features/notifications/data/datasources/notification_remote_
 import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../members/presentation/providers/house_provider.dart';
+import '../../data/datasources/expense_ledger_datasource.dart';
 import '../../data/datasources/expense_remote_datasource.dart';
 import '../../data/repositories/expense_repository_impl.dart';
 import '../../domain/entities/bill_entity.dart';
@@ -27,6 +29,16 @@ import '../../domain/repositories/expense_repository.dart';
 /// Firestore access and avoids duplicated live listeners fighting over state.
 final expenseDataSourceProvider = Provider<ExpenseRemoteDataSource>((ref) {
   return ExpenseRemoteDataSource();
+});
+
+/// Narrow money-movement surface used by the financial notifiers.
+///
+/// Resolves to the shared [ExpenseRemoteDataSource] at runtime, but is typed as
+/// the [ExpenseLedgerDataSource] contract so deposit / direct-payment / bill
+/// actions can be unit-tested against a recording fake (the concrete class
+/// cannot be instantiated outside Firebase).
+final expenseLedgerProvider = Provider<ExpenseLedgerDataSource>((ref) {
+  return ref.watch(expenseDataSourceProvider);
 });
 
 // ───── Repository Provider ─────
@@ -333,9 +345,26 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
+  /// Local path to the proof image pending upload.
+  String? _pendingProofPath;
+
+  /// Stores the locally-chosen proof image path (blob URL on web) to upload
+  /// when [deposit] runs. Mirrors [CreateExpenseNotifier.setReceiptPath].
+  void setProofPath(String? path) {
+    _pendingProofPath = path;
+  }
+
+  /// Whether a proof image has been selected (deposits move real money into
+  /// the Central Account, so a receipt/proof is required).
+  bool get hasProof => _pendingProofPath != null;
+
   Future<String?> deposit({
     required double amount,
     String? notes,
+    String? paidByUserId,
+    String? paymentMethod,
+    String? periodLabel,
+    String? purpose,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -349,17 +378,44 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
         );
       }
 
-      final dataSource = ref.read(expenseDataSourceProvider);
+      // Proof is REQUIRED for an actual money movement. Upload BEFORE the
+      // transaction is committed so the transaction stores the resolved URL;
+      // a failed upload returns an error and NO transaction is created.
+      final proofPath = _pendingProofPath;
+      if (proofPath == null) {
+        throw const ValidationFailure(
+          'A receipt or proof image is required to record a deposit.',
+        );
+      }
+
+      final dataSource = ref.read(expenseLedgerProvider);
+      final receiptUrl = await dataSource.uploadReceipt(
+        houseId: house.houseId,
+        filePath: proofPath,
+      );
+      // Upload succeeded — only now is the ledger touched.
+      _pendingProofPath = null;
+
       await dataSource.recordDeposit(
         houseId: house.houseId,
         amount: amount,
         performedBy: _readUserId(ref) ?? '',
         notes: notes,
+        receiptUrl: receiptUrl,
+        paidByUserId: paidByUserId,
+        paymentMethod: paymentMethod,
+        periodLabel: periodLabel,
+        purpose: purpose,
       );
       ref.invalidate(dashboardDataProvider);
       state = const AsyncValue.data(null);
       return null;
     } on Failure catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      return e.message;
+    } on AppException catch (e) {
+      // e.g. a receipt upload failure — surface the real reason so the user can
+      // retry (the pending proof is only cleared after a successful upload).
       state = AsyncValue.error(e, StackTrace.current);
       return e.message;
     } catch (e) {
@@ -380,9 +436,25 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
+  /// Local path to the proof image pending upload.
+  String? _pendingProofPath;
+
+  /// Stores the locally-chosen proof image path (blob URL on web) to upload
+  /// when [payDirectly] runs.
+  void setProofPath(String? path) {
+    _pendingProofPath = path;
+  }
+
+  /// Whether a proof image has been selected (direct payments move real money
+  /// out of the Central Account, so a receipt/proof is required).
+  bool get hasProof => _pendingProofPath != null;
+
   Future<String?> payDirectly({
     required double amount,
     String? notes,
+    String? categoryId,
+    String? paymentMethod,
+    String? periodLabel,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -396,17 +468,43 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
         );
       }
 
-      final dataSource = ref.read(expenseDataSourceProvider);
+      // Proof is REQUIRED for an actual money movement. Upload BEFORE the
+      // transaction is committed; a failed upload returns an error and NO
+      // transaction is created.
+      final proofPath = _pendingProofPath;
+      if (proofPath == null) {
+        throw const ValidationFailure(
+          'A receipt or proof image is required to record a direct payment.',
+        );
+      }
+
+      final dataSource = ref.read(expenseLedgerProvider);
+      final receiptUrl = await dataSource.uploadReceipt(
+        houseId: house.houseId,
+        filePath: proofPath,
+      );
+      // Upload succeeded — only now is the ledger touched.
+      _pendingProofPath = null;
+
       await dataSource.recordDirectPayment(
         houseId: house.houseId,
         amount: amount,
         performedBy: _readUserId(ref) ?? '',
         notes: notes,
+        receiptUrl: receiptUrl,
+        categoryId: categoryId,
+        paymentMethod: paymentMethod,
+        periodLabel: periodLabel,
       );
       ref.invalidate(dashboardDataProvider);
       state = const AsyncValue.data(null);
       return null;
     } on Failure catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      return e.message;
+    } on AppException catch (e) {
+      // e.g. a receipt upload failure — surface the real reason so the user can
+      // retry (the pending proof is only cleared after a successful upload).
       state = AsyncValue.error(e, StackTrace.current);
       return e.message;
     } catch (e) {
@@ -450,7 +548,7 @@ class CreateBillNotifier extends AutoDisposeAsyncNotifier<void> {
       final house = ref.read(currentHouseProvider);
       if (house == null) return 'No house found.';
 
-      final ds = ref.read(expenseDataSourceProvider);
+      final ds = ref.read(expenseLedgerProvider);
       await ds.createBill(
         houseId: house.houseId,
         title: title,
@@ -481,35 +579,65 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
 
   /// Toggles the recurring flag.
   Future<void> toggleRecurring(BillEntity bill) async {
-    final ds = ref.read(expenseDataSourceProvider);
+    final ds = ref.read(expenseLedgerProvider);
     await ds.updateBill(bill.billId, {'isRecurring': !bill.isRecurring});
     ref.invalidate(billsProvider);
   }
 
   /// Toggles the reminder flag.
   Future<void> toggleReminder(BillEntity bill) async {
-    final ds = ref.read(expenseDataSourceProvider);
+    final ds = ref.read(expenseLedgerProvider);
     await ds.updateBill(bill.billId, {'reminderEnabled': !bill.reminderEnabled});
     ref.invalidate(billsProvider);
   }
 
   /// Marks a bill as paid (rolls to next month if recurring).
   ///
-  /// When the bill has an amount this records a Direct Payment transaction,
-  /// so it is a Treasurer-only financial action. The Member-facing bill
-  /// controls are the reminder toggle and Remind Treasurer — not Mark Paid.
-  Future<void> markPaid(BillEntity bill) async {
+  /// When the bill has an amount this records a Direct Payment transaction —
+  /// one per paid month — so it is a Treasurer-only financial action, and the
+  /// caller must supply that month's [proofPath] (receipt image). The proof is
+  /// uploaded BEFORE the bill update + ledger write; a failed upload throws
+  /// and no transaction is created. Bills without an amount record no
+  /// transaction and need no proof. The Member-facing bill controls are the
+  /// reminder toggle and Remind Treasurer — not Mark Paid.
+  Future<void> markPaid(
+    BillEntity bill, {
+    String? proofPath,
+    String? paymentMethod,
+    String? periodLabel,
+  }) async {
     if (!_isCurrentUserTreasurer(ref)) {
       throw const PermissionFailure(
         'Only the Treasurer can mark a bill as paid.',
       );
     }
 
-    final ds = ref.read(expenseDataSourceProvider);
+    final ds = ref.read(expenseLedgerProvider);
+
+    // An amount-bearing bill payment moves real money out of the Central
+    // Account → its receipt/proof must be present. Upload BEFORE any write so
+    // a failed upload never leaves a transaction behind.
+    String? receiptUrl;
+    if (bill.hasAmount) {
+      if (proofPath == null) {
+        throw const AppFirebaseException(
+          'A receipt or proof image is required to mark this bill as paid.',
+        );
+      }
+      receiptUrl = await ds.uploadReceipt(
+        houseId: bill.houseId,
+        filePath: proofPath,
+      );
+      // Upload succeeded — only now is the ledger touched.
+    }
+
     await ds.markBillPaid(
       bill.billId,
       bill,
       performedBy: _readUserId(ref) ?? '',
+      receiptUrl: receiptUrl,
+      paymentMethod: paymentMethod,
+      periodLabel: periodLabel,
     );
     ref.invalidate(billsProvider);
   }
@@ -523,7 +651,7 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
     DateTime? dueDate,
     bool? isRecurring,
   }) async {
-    final ds = ref.read(expenseDataSourceProvider);
+    final ds = ref.read(expenseLedgerProvider);
     final updates = <String, dynamic>{
       if (title != null) 'title': title,
       if (amount != null) 'amount': amount,
@@ -537,7 +665,7 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
 
   /// Deletes a bill.
   Future<void> deleteBill(String billId) async {
-    final ds = ref.read(expenseDataSourceProvider);
+    final ds = ref.read(expenseLedgerProvider);
     await ds.deleteBill(billId);
     ref.invalidate(billsProvider);
   }

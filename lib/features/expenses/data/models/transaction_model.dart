@@ -13,6 +13,12 @@ class TransactionModel extends TransactionEntity {
     required super.performedBy,
     super.notes,
     required super.createdAt,
+    super.receiptUrl,
+    super.paidByUserId,
+    super.paymentMethod,
+    super.periodLabel,
+    super.purpose,
+    super.categoryId,
   });
 
   factory TransactionModel.fromFirestore(DocumentSnapshot doc) {
@@ -30,6 +36,13 @@ class TransactionModel extends TransactionEntity {
       performedBy: map['performedBy'] as String? ?? '',
       notes: map['notes'] as String?,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      // Proof / attribution — null when absent (legacy documents load fine).
+      receiptUrl: map['receiptUrl'] as String?,
+      paidByUserId: map['paidByUserId'] as String?,
+      paymentMethod: map['paymentMethod'] as String?,
+      periodLabel: map['periodLabel'] as String?,
+      purpose: map['purpose'] as String?,
+      categoryId: map['categoryId'] as String?,
     );
   }
 
@@ -42,6 +55,13 @@ class TransactionModel extends TransactionEntity {
       'performedBy': performedBy,
       'notes': notes,
       'createdAt': Timestamp.fromDate(createdAt),
+      // Proof / attribution (nullable — old readers ignore absent keys).
+      'receiptUrl': receiptUrl,
+      'paidByUserId': paidByUserId,
+      'paymentMethod': paymentMethod,
+      'periodLabel': periodLabel,
+      'purpose': purpose,
+      'categoryId': categoryId,
     };
   }
 

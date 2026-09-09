@@ -1117,7 +1117,12 @@ class _HistoryTile extends StatelessWidget {
         (event.title?.isNotEmpty ?? false)
             ? event.title!
             : _fallbackTitle(event.type);
-    final userName = event.userId == null ? null : nameMap[event.userId];
+    // The person named on the tile: for a money-in transaction this is the
+    // member who physically paid (paidByUserId) when recorded — deposits show
+    // the payer, not the Treasurer who recorded it. Legacy deposits fall back
+    // to the recorder. Everything else uses the performer.
+    final personId = event.paidByUserId ?? event.userId;
+    final userName = personId == null ? null : nameMap[personId];
     final categoryName =
         event.categoryId == null ? null : categoryMap[event.categoryId];
     final (IconData icon, Color color) = _tileVisual(

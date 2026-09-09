@@ -9,9 +9,19 @@ import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../authentication/presentation/providers/auth_provider.dart';
+import '../../../members/domain/entities/house_member_entity.dart';
+import '../../../members/presentation/providers/house_provider.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/payment_method_chips.dart';
+import '../widgets/proof_picker.dart';
 
 /// Record Deposit screen — add money to the Central Account.
+///
+/// An actual money movement IN, so a receipt/proof image is required and the
+/// deposit is attributed to the member who physically paid it ([paidByUserId]),
+/// with optional payment method, month/period (e.g. monthly rental) and purpose.
+/// The Treasurer records it — [performedBy] stays the Treasurer.
 class DepositPage extends ConsumerStatefulWidget {
   const DepositPage({super.key});
 
@@ -19,26 +29,58 @@ class DepositPage extends ConsumerStatefulWidget {
   ConsumerState<DepositPage> createState() => _DepositPageState();
 }
 
+/// Common purposes for a Central Account contribution / top-up.
+const List<String> _depositPurposes = [
+  'Monthly Rental',
+  'House Contribution',
+  'General Top-up',
+  'Utilities',
+  'Other',
+];
+
 class _DepositPageState extends ConsumerState<DepositPage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  final _periodController = TextEditingController();
+
+  /// Selected member who physically paid (null → falls back to the Treasurer).
+  String? _paidByUserId;
+  String? _purpose;
+  String? _paymentMethod;
+
+  /// Whether a proof image is currently staged for upload.
+  bool _hasProof = false;
 
   @override
   void dispose() {
     _amountController.dispose();
     _notesController.dispose();
+    _periodController.dispose();
     super.dispose();
+  }
+
+  void _onProofChanged(String? path) {
+    setState(() => _hasProof = path != null);
+    ref.read(depositProvider.notifier).setProofPath(path);
   }
 
   Future<void> _handleDeposit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_hasProof) return; // Button is disabled; belt-and-braces.
 
     final amount = double.parse(_amountController.text);
+    final user = ref.read(currentUserProvider);
 
     final errorMessage = await ref.read(depositProvider.notifier).deposit(
           amount: amount,
           notes: _notesController.text.trim(),
+          paidByUserId: _paidByUserId ?? user?.uid,
+          paymentMethod: _paymentMethod,
+          periodLabel: _periodController.text.trim().isEmpty
+              ? null
+              : _periodController.text.trim(),
+          purpose: _purpose,
         );
 
     if (!mounted) return;
@@ -52,10 +94,30 @@ class _DepositPageState extends ConsumerState<DepositPage> {
     }
   }
 
+  String _memberLabel(HouseMemberEntity m) =>
+      (m.displayName?.isNotEmpty ?? false) ? m.displayName! : 'Member';
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(depositProvider);
     final isLoading = state.isLoading;
+    final membersAsync = ref.watch(membersStreamProvider);
+    final currentUser = ref.watch(currentUserProvider);
+
+    final members = membersAsync.value ?? const <HouseMemberEntity>[];
+    final memberUids = {for (final m in members) m.userId};
+
+    // Default the payer to the Treasurer themselves (the usual contributor)
+    // once the member list is known; a real payer can be chosen below.
+    String? selectedPaidBy = _paidByUserId;
+    if (selectedPaidBy == null &&
+        currentUser != null &&
+        memberUids.contains(currentUser.uid)) {
+      selectedPaidBy = currentUser.uid;
+    }
+    final dropdownValue = memberUids.contains(selectedPaidBy)
+        ? selectedPaidBy
+        : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -126,6 +188,79 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   ),
                   const SizedBox(height: 16),
 
+                  // ── Paid by (who physically paid the money in) ──
+                  DropdownButtonFormField<String>(
+                    value: dropdownValue,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Paid by',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    items: [
+                      for (final m in members)
+                        DropdownMenuItem(
+                          value: m.userId,
+                          child: Text(
+                            _memberLabel(m),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _paidByUserId = v),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Purpose (optional) ──
+                  DropdownButtonFormField<String>(
+                    value: _purpose,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Purpose (optional)',
+                      hintText: 'e.g. Monthly Rental',
+                      prefixIcon: Icon(Icons.label_outline),
+                    ),
+                    items: [
+                      for (final p in _depositPurposes)
+                        DropdownMenuItem(value: p, child: Text(p)),
+                    ],
+                    onChanged: (v) => setState(() => _purpose = v),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Payment method (optional) ──
+                  Text(
+                    'Payment Method',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  PaymentMethodChips(
+                    selected: _paymentMethod,
+                    onSelected: (v) => setState(() => _paymentMethod = v),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── For month / period (optional, e.g. monthly rental) ──
+                  TextFormField(
+                    controller: _periodController,
+                    keyboardType: TextInputType.datetime,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'For month (optional)',
+                      hintText: 'e.g. 2026-09',
+                      prefixIcon: Icon(Icons.calendar_month_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Proof (required — actual money movement) ──
+                  ProofPicker(
+                    heading: 'Receipt / Proof (required)',
+                    onChanged: _onProofChanged,
+                  ),
+                  const SizedBox(height: 24),
+
                   // ── Notes ──
                   TextFormField(
                     controller: _notesController,
@@ -133,7 +268,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                     textInputAction: TextInputAction.done,
                     decoration: const InputDecoration(
                       labelText: 'Notes (optional)',
-                      hintText: 'e.g. Monthly top-up',
+                      hintText: 'e.g. Sep rent for Ahmad & Mei',
                       prefixIcon: Icon(Icons.note_outlined),
                     ),
                   ),
@@ -141,18 +276,29 @@ class _DepositPageState extends ConsumerState<DepositPage> {
 
                   PressScale(
                     child: FilledButton(
-                      onPressed: isLoading ? null : _handleDeposit,
+                      onPressed: (isLoading || !_hasProof)
+                          ? null
+                          : _handleDeposit,
                       child: isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white,
+                                strokeWidth: 2,
+                                color: Colors.white,
                               ),
                             )
                           : const Text('Record Deposit'),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  if (!_hasProof)
+                    Text(
+                      'Attach a receipt or proof above to record the deposit.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                    ),
                 ],
               ),
             ),

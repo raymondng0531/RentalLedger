@@ -10,6 +10,7 @@ import '../../../../core/widgets/implicit_animated_list.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
 import '../../../../features/expenses/domain/entities/bill_entity.dart';
 import '../../../../features/expenses/presentation/providers/expense_provider.dart';
+import '../../../../features/expenses/presentation/widgets/bill_mark_paid_sheet.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
 
 /// Upcoming Bills — the house's recurring/due bills, newest-first, with the
@@ -415,6 +416,27 @@ class UpcomingBillsSection extends ConsumerWidget {
     WidgetRef ref,
     BillEntity bill,
   ) async {
+    if (bill.hasAmount) {
+      // An amount-bearing bill payment moves real money out of the Central
+      // Account (one Direct Payment transaction per paid month) → require that
+      // month's receipt/proof via the Mark Paid sheet.
+      final paid = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => BillMarkPaidSheet(bill: bill),
+      );
+      if (paid == true && context.mounted) {
+        SnackbarUtils.showSuccess(context, 'Bill marked as paid');
+      }
+      return;
+    }
+
+    // A bill without an amount records no transaction — the plain confirm is
+    // enough.
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -437,8 +459,11 @@ class UpcomingBillsSection extends ConsumerWidget {
             ],
           ),
     );
-    if (confirmed == true) {
+    if (confirmed == true && context.mounted) {
       await ref.read(billActionsProvider.notifier).markPaid(bill);
+      if (context.mounted) {
+        SnackbarUtils.showSuccess(context, 'Bill marked as paid');
+      }
     }
   }
 

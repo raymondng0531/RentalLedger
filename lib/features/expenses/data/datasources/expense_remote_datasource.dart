@@ -16,9 +16,14 @@ import '../../domain/entities/expense_entity.dart';
 import '../models/bill_model.dart';
 import '../models/expense_model.dart';
 import '../models/transaction_model.dart';
+import 'expense_ledger_datasource.dart';
 
 /// Remote data source for expense CRUD, receipt upload, and categories.
-class ExpenseRemoteDataSource {
+///
+/// Implements the [ExpenseLedgerDataSource] money-movement contract (deposits,
+/// direct payments, bill payments) so the financial notifiers can be tested
+/// against that narrow interface rather than this concrete Firebase class.
+class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
   ExpenseRemoteDataSource({
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
@@ -301,6 +306,10 @@ class ExpenseRemoteDataSource {
           'performedBy': treasurerId,
           'notes': 'Reimbursement: ${expense.title}',
           'createdAt': Timestamp.fromDate(now),
+          // Copy the expense's proof so the Reimbursement (money-out) row is
+          // self-contained. ONE transaction per money movement — the same
+          // receipt is referenced, never a second upload.
+          'receiptUrl': expense.receiptUrl,
         },
       );
 
@@ -333,6 +342,12 @@ class ExpenseRemoteDataSource {
     required double amount,
     required String performedBy,
     String? notes,
+    String? receiptUrl,
+    String? paidByUserId,
+    String? paymentMethod,
+    String? periodLabel,
+    String? purpose,
+    String? categoryId,
   }) async {
     try {
       final txId = _uuid.v4();
@@ -351,6 +366,13 @@ class ExpenseRemoteDataSource {
         'performedBy': performedBy,
         'notes': notes,
         'createdAt': Timestamp.fromDate(now),
+        // Proof / attribution — optional, so legacy transactions still parse.
+        'receiptUrl': receiptUrl,
+        'paidByUserId': paidByUserId,
+        'paymentMethod': paymentMethod,
+        'periodLabel': periodLabel,
+        'purpose': purpose,
+        'categoryId': categoryId,
       });
 
       // Best-effort: update the cached balance on the house doc.
@@ -377,6 +399,12 @@ class ExpenseRemoteDataSource {
         performedBy: performedBy,
         notes: notes,
         createdAt: now,
+        receiptUrl: receiptUrl,
+        paidByUserId: paidByUserId,
+        paymentMethod: paymentMethod,
+        periodLabel: periodLabel,
+        purpose: purpose,
+        categoryId: categoryId,
       );
     } catch (e) {
       debugPrint('[ExpenseDataSource] recordTransaction error: $e');
@@ -390,6 +418,11 @@ class ExpenseRemoteDataSource {
     required double amount,
     required String performedBy,
     String? notes,
+    String? receiptUrl,
+    String? paidByUserId,
+    String? paymentMethod,
+    String? periodLabel,
+    String? purpose,
   }) {
     return recordTransaction(
       houseId: houseId,
@@ -397,6 +430,11 @@ class ExpenseRemoteDataSource {
       amount: amount, // positive = inflow
       performedBy: performedBy,
       notes: notes ?? 'Deposit',
+      receiptUrl: receiptUrl,
+      paidByUserId: paidByUserId,
+      paymentMethod: paymentMethod,
+      periodLabel: periodLabel,
+      purpose: purpose,
     );
   }
 
@@ -406,6 +444,10 @@ class ExpenseRemoteDataSource {
     required double amount,
     required String performedBy,
     String? notes,
+    String? receiptUrl,
+    String? paymentMethod,
+    String? periodLabel,
+    String? categoryId,
   }) {
     return recordTransaction(
       houseId: houseId,
@@ -413,6 +455,10 @@ class ExpenseRemoteDataSource {
       amount: -amount.abs(), // negative = outflow
       performedBy: performedBy,
       notes: notes ?? 'Direct Payment',
+      receiptUrl: receiptUrl,
+      paymentMethod: paymentMethod,
+      periodLabel: periodLabel,
+      categoryId: categoryId,
     );
   }
 
@@ -422,6 +468,7 @@ class ExpenseRemoteDataSource {
     required String expenseId,
     required double amount,
     required String performedBy,
+    String? receiptUrl,
   }) {
     return recordTransaction(
       houseId: houseId,
@@ -430,6 +477,7 @@ class ExpenseRemoteDataSource {
       amount: -amount.abs(), // negative = outflow
       performedBy: performedBy,
       notes: 'Reimbursement',
+      receiptUrl: receiptUrl,
     );
   }
 
@@ -610,10 +658,18 @@ class ExpenseRemoteDataSource {
   /// Non-recurring bills are marked `isPaid: true` (so the dashboard's
   /// "Upcoming Bills" — which only shows unpaid bills — drops them).
   /// Recurring bills roll forward to next month with `isPaid: false`.
+  ///
+  /// The bill is a TEMPLATE: each actual monthly payment creates its own
+  /// Direct Payment transaction carrying that month's [periodLabel] and its
+  /// own [receiptUrl] proof. Rolling a recurring bill forward never creates a
+  /// second transaction — exactly one transaction per paid month.
   Future<void> markBillPaid(
     String billId,
     BillEntity bill, {
     required String performedBy,
+    String? receiptUrl,
+    String? paymentMethod,
+    String? periodLabel,
   }) async {
     try {
       if (bill.isRecurring) {
@@ -631,12 +687,18 @@ class ExpenseRemoteDataSource {
       }
 
       // Record a Direct Payment transaction so it shows in History/Reports.
+      // ONE transaction per month's payment; the recurring roll above only
+      // moves the template's due date, it does not touch the ledger.
       if (bill.hasAmount) {
         await recordDirectPayment(
           houseId: bill.houseId,
           amount: bill.amount!,
           performedBy: performedBy,
           notes: 'Bill: ${bill.title}',
+          receiptUrl: receiptUrl,
+          paymentMethod: paymentMethod,
+          periodLabel: periodLabel,
+          categoryId: bill.categoryId,
         );
       }
     } catch (e) {

@@ -50,6 +50,12 @@ class HistoryEvent {
     this.status,
     this.userId,
     this.paymentSource,
+    // ── Financial proof / attribution (money-movement transactions) ──
+    this.paidByUserId,
+    this.receiptUrl,
+    this.paymentMethod,
+    this.periodLabel,
+    this.purpose,
   });
 
   /// Stable unique id (milestone-prefixed so one expense's events don't clash).
@@ -81,6 +87,22 @@ class HistoryEvent {
 
   /// Payment source ('personal' | 'central') — powers the method chip.
   final String? paymentSource;
+
+  /// The member who physically paid money IN (deposit payer). The recorder is
+  /// [userId] (the Treasurer). Null for money-out events and legacy deposits.
+  final String? paidByUserId;
+
+  /// Receipt/proof download URL for the money movement, when present.
+  final String? receiptUrl;
+
+  /// How the money moved (e.g. 'Cash', 'Bank Transfer').
+  final String? paymentMethod;
+
+  /// The month/period a payment or contribution covers, e.g. `2026-09`.
+  final String? periodLabel;
+
+  /// Structured purpose (e.g. 'Monthly Rental' / 'House Contribution').
+  final String? purpose;
 }
 
 /// Provider that streams business events for the house in real-time.
@@ -226,6 +248,13 @@ List<HistoryEvent> buildHistoryEvents({
             date: t.createdAt,
             userId: t.performedBy,
             paymentSource: FirestoreConstants.paymentCentral,
+            // Money-in attribution: who physically paid (may equal the
+            // Treasurer recorder on legacy deposits, where this is null).
+            paidByUserId: t.paidByUserId,
+            receiptUrl: t.receiptUrl,
+            paymentMethod: t.paymentMethod,
+            periodLabel: t.periodLabel,
+            purpose: t.purpose,
           ),
         );
       case FirestoreConstants.transactionDirectPayment:
@@ -252,9 +281,15 @@ List<HistoryEvent> buildHistoryEvents({
             title: description,
             amount: t.amount,
             date: t.createdAt,
-            categoryId: isBill ? billCategoryByTitle[description] : null,
+            categoryId:
+                isBill
+                    ? (billCategoryByTitle[description] ?? t.categoryId)
+                    : t.categoryId,
             userId: t.performedBy,
             paymentSource: FirestoreConstants.paymentCentral,
+            receiptUrl: t.receiptUrl,
+            paymentMethod: t.paymentMethod,
+            periodLabel: t.periodLabel,
           ),
         );
       case FirestoreConstants.transactionAdjustment:

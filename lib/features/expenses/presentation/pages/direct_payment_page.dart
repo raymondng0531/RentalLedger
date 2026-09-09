@@ -10,8 +10,15 @@ import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/category_picker.dart';
+import '../widgets/payment_method_chips.dart';
+import '../widgets/proof_picker.dart';
 
-/// Direct Payment screen — record a payment made directly from the Central Account.
+/// Direct Payment screen — record a payment made directly from the Central
+/// Account.
+///
+/// An actual money movement OUT, so a receipt/proof image is required. The
+/// payment may carry an optional category, payment method and month/period.
 class DirectPaymentPage extends ConsumerStatefulWidget {
   const DirectPaymentPage({super.key});
 
@@ -23,16 +30,30 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
+  final _periodController = TextEditingController();
+
+  String? _selectedCategory;
+  String? _paymentMethod;
+
+  /// Whether a proof image is currently staged for upload.
+  bool _hasProof = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     _amountController.dispose();
+    _periodController.dispose();
     super.dispose();
+  }
+
+  void _onProofChanged(String? path) {
+    setState(() => _hasProof = path != null);
+    ref.read(directPaymentProvider.notifier).setProofPath(path);
   }
 
   Future<void> _handlePayment() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_hasProof) return; // Button is disabled; belt-and-braces.
 
     final amount = double.parse(_amountController.text);
 
@@ -40,6 +61,11 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
         await ref.read(directPaymentProvider.notifier).payDirectly(
               amount: amount,
               notes: _titleController.text.trim(),
+              categoryId: _selectedCategory,
+              paymentMethod: _paymentMethod,
+              periodLabel: _periodController.text.trim().isEmpty
+                  ? null
+                  : _periodController.text.trim(),
             );
 
     if (!mounted) return;
@@ -57,6 +83,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(directPaymentProvider);
     final isLoading = state.isLoading;
+    final categoriesAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -137,22 +164,90 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 20),
+
+                  // ── Category (optional) ──
+                  Text(
+                    'Category',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  categoriesAsync.when(
+                    loading: () => const Wrap(
+                      spacing: 8,
+                      children: [CircularProgressIndicator()],
+                    ),
+                    error: (_, __) => const Text('Could not load categories'),
+                    data: (categories) => CategoryPicker(
+                      categories: categories,
+                      selectedId: _selectedCategory,
+                      onSelected: (id) =>
+                          setState(() => _selectedCategory = id),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Payment method (optional) ──
+                  Text(
+                    'Payment Method',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  PaymentMethodChips(
+                    selected: _paymentMethod,
+                    onSelected: (v) => setState(() => _paymentMethod = v),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── For month / period (optional) ──
+                  TextFormField(
+                    controller: _periodController,
+                    keyboardType: TextInputType.datetime,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'For month (optional)',
+                      hintText: 'e.g. 2026-09',
+                      prefixIcon: Icon(Icons.calendar_month_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Proof (required — actual money movement) ──
+                  ProofPicker(
+                    heading: 'Receipt / Proof (required)',
+                    onChanged: _onProofChanged,
+                  ),
                   const SizedBox(height: 24),
 
                   PressScale(
                     child: FilledButton(
-                      onPressed: isLoading ? null : _handlePayment,
+                      onPressed: (isLoading || !_hasProof)
+                          ? null
+                          : _handlePayment,
                       child: isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white,
+                                strokeWidth: 2,
+                                color: Colors.white,
                               ),
                             )
                           : const Text('Record Payment'),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  if (!_hasProof)
+                    Text(
+                      'Attach a receipt or proof above to record the payment.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                    ),
                 ],
               ),
             ),

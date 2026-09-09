@@ -41,6 +41,23 @@ abstract class AuthRepository {
   /// Sends a password reset email.
   Future<void> forgotPassword(String email);
 
+  /// Verifies a password-reset action code against Firebase and returns the
+  /// email the code was issued for.
+  ///
+  /// Throws [AuthenticationFailure] when the code is invalid or has expired so
+  /// the reset page can show a real "link problem" state.
+  Future<String?> verifyResetCode(String oobCode);
+
+  /// Completes a password reset for a verified action code (the real Firebase
+  /// reset — never a client-side-only change).
+  ///
+  /// Throws [AuthenticationFailure] on failure (e.g. weak password, an
+  /// already-used or expired code).
+  Future<void> resetPassword({
+    required String oobCode,
+    required String newPassword,
+  });
+
   /// Updates the current user's profile (display name / photo) across Firebase
   /// Auth and the `users/{uid}` profile, and refreshes the auth notifier so
   /// every page sees the change immediately. Pass `null` to leave a field as-is.

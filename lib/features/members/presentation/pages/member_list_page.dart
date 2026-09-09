@@ -13,6 +13,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../domain/entities/house_entity.dart';
 import '../../domain/entities/house_member_entity.dart';
 import '../providers/house_provider.dart';
@@ -21,13 +22,28 @@ import '../widgets/member_tile.dart';
 /// Member List screen — displays all house members with their roles.
 ///
 /// Shows Treasurer badge, join date, and allows management actions.
-class MemberListPage extends ConsumerWidget {
+/// The Treasurer can remove a former member (soft delete) from the row's
+/// trailing Remove action; the member's account and all historical records
+/// are untouched.
+class MemberListPage extends ConsumerStatefulWidget {
   const MemberListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MemberListPage> createState() => _MemberListPageState();
+}
+
+class _MemberListPageState extends ConsumerState<MemberListPage> {
+  bool _isRemoving = false;
+
+  @override
+  Widget build(BuildContext context) {
     final house = ref.watch(currentHouseProvider);
     final membersAsync = ref.watch(membersStreamProvider);
+    final user = ref.watch(currentUserProvider);
+    final isViewerTreasurer = house != null &&
+        user != null &&
+        user.uid.isNotEmpty &&
+        house.treasurerId == user.uid;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,20 +54,95 @@ class MemberListPage extends ConsumerWidget {
         ),
         title: Text(house?.houseName ?? 'Members'),
       ),
-      body: ResponsivePage(
-        // maxWidth omitted — defaults to AppContentWidth.detail (800).
-        child: membersAsync.when(
-          loading: () => const Shimmer(child: SkeletonListBody(itemCount: 5)),
-          error: (error, _) => ErrorDisplay(
-            message: error is Failure
-                ? error.message
-                : 'Could not load members.',
-            onRetry: () => ref.invalidate(membersStreamProvider),
+      body: Stack(
+        children: [
+          ResponsivePage(
+            // maxWidth omitted — defaults to AppContentWidth.detail (800).
+            child: membersAsync.when(
+              loading: () => const Shimmer(child: SkeletonListBody(itemCount: 5)),
+              error: (error, _) => ErrorDisplay(
+                message: error is Failure
+                    ? error.message
+                    : 'Could not load members.',
+                onRetry: () => ref.invalidate(membersStreamProvider),
+              ),
+              data: (members) => _buildMemberList(
+                context,
+                ref,
+                members,
+                house,
+                isViewerTreasurer,
+              ),
+            ),
           ),
-          data: (members) => _buildMemberList(context, ref, members, house),
-        ),
+          if (_isRemoving)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black26,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
       ),
     );
+  }
+
+  /// Confirms with the Treasurer, then soft-removes [member] from [house].
+  Future<void> _confirmRemove(
+    HouseEntity house,
+    HouseMemberEntity member,
+  ) async {
+    if (_isRemoving) return;
+
+    final label = _memberLabel(member);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove Member'),
+        content: Text(
+          'Remove $label from ${house.houseName}?\n\n'
+          'They will no longer be part of this house or be able to access '
+          'its data. Their account and all past expense and transaction '
+          'history will be kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isRemoving = true);
+    final error = await ref.read(removeMemberProvider.notifier).remove(member);
+    if (!mounted) return;
+    setState(() => _isRemoving = false);
+
+    if (error == null) {
+      SnackbarUtils.showSuccess(context, '$label removed from the house.');
+    } else {
+      SnackbarUtils.showError(context, error);
+    }
+  }
+
+  String _memberLabel(HouseMemberEntity member) {
+    if (member.displayName != null && member.displayName!.isNotEmpty) {
+      return member.displayName!;
+    }
+    if (member.email != null && member.email!.isNotEmpty) {
+      return member.email!;
+    }
+    return 'This member';
   }
 
   Widget _buildMemberList(
@@ -59,6 +150,7 @@ class MemberListPage extends ConsumerWidget {
     WidgetRef ref,
     List<HouseMemberEntity> members,
     HouseEntity? house,
+    bool isViewerTreasurer,
   ) {
     if (members.isEmpty) {
       return const EmptyState(
@@ -80,6 +172,8 @@ class MemberListPage extends ConsumerWidget {
         padding: const EdgeInsets.only(top: AppConstants.spacingSm),
         children: [
           // ── Section: Treasurer ──
+          // The Treasurer tile never offers a remove action — the house
+          // Treasurer can only leave after transferring ownership.
           if (treasurer.isNotEmpty) ...[
             _buildSectionHeader(context, 'Treasurer'),
             ...staggeredEntrance(
@@ -92,12 +186,22 @@ class MemberListPage extends ConsumerWidget {
           ],
 
           // ── Section: Members ──
+          // Only the house Treasurer sees the trailing Remove action, and only
+          // on regular members. The removal is a soft delete of the member's
+          // house_members record — the membersStreamProvider the page watches
+          // filters on isActive == true, so the list refreshes on its own.
           if (regulars.isNotEmpty) ...[
             _buildSectionHeader(context, 'Members'),
             ...staggeredEntrance(
               context,
               regulars,
-              (context, m) => MemberTile(member: m),
+              (context, m) => MemberTile(
+                member: m,
+                showActions: isViewerTreasurer,
+                onRemove: (isViewerTreasurer && house != null)
+                    ? () => _confirmRemove(house, m)
+                    : null,
+              ),
               keyOf: (m) => m.userId,
             ),
           ],

@@ -17,6 +17,17 @@ import '../../../../core/errors/exceptions.dart';
 ///
 /// Wraps Firebase Auth, Firestore and Storage calls, converting
 /// Firebase exceptions into application-specific exceptions.
+///
+/// Web-only: where the app re-hosts a Firebase action in its own UI (password
+/// reset), the reset email must hand the action code to THIS web app instead of
+/// Firebase's generic `/__/auth/action` page. `handleCodeInApp: true` makes the
+/// email open `webHref` with `mode` + `oobCode` in the query string. The origin
+/// is the deployed Firebase Hosting site (the same one `web/index.html` and
+/// `cors.json` hard-code). Native keeps Firebase's default (generic page).
+const String _webResetContinueUrl =
+    'https://rental-ledger-app.web.app/reset-password';
+
+/// Remote data source for authentication.
 class AuthRemoteDataSource {
   AuthRemoteDataSource({
     firebase_auth.FirebaseAuth? auth,
@@ -193,7 +204,48 @@ class AuthRemoteDataSource {
   /// Sends a password reset email.
   Future<void> forgotPassword(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      if (kIsWeb) {
+        // In-app (branded) reset: hand the action code to this web app rather
+        // than Firebase's generic action page. Native keeps the default flow.
+        await _auth.sendPasswordResetEmail(
+          email: email,
+          actionCodeSettings: firebase_auth.ActionCodeSettings(
+            url: _webResetContinueUrl,
+            handleCodeInApp: true,
+          ),
+        );
+      } else {
+        await _auth.sendPasswordResetEmail(email: email);
+      }
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _mapAuthException(e);
+    }
+  }
+
+  /// Verifies a password-reset action code against Firebase.
+  ///
+  /// Returns the email the code was issued for on success. Throws
+  /// [AuthException] when the code is invalid or has expired, so the reset UI
+  /// can show a "link problem" state instead of a fake form.
+  Future<String?> verifyResetCode(String oobCode) async {
+    try {
+      return await _auth.verifyPasswordResetCode(oobCode);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _mapAuthException(e);
+    }
+  }
+
+  /// Completes a password reset for a verified [oobCode].
+  ///
+  /// Performs the real Firebase reset (never a client-side-only "fake"
+  /// reset). Throws [AuthException] (e.g. weak password, already-used or
+  /// expired code) on failure.
+  Future<void> confirmPasswordReset({
+    required String oobCode,
+    required String newPassword,
+  }) async {
+    try {
+      await _auth.confirmPasswordReset(code: oobCode, newPassword: newPassword);
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _mapAuthException(e);
     }
@@ -219,6 +271,12 @@ class AuthRemoteDataSource {
         return const AuthException('Too many attempts. Please try again later.');
       case 'weak-password':
         return const AuthException('Password is too weak.');
+      case 'invalid-action-code':
+        return const AuthException(
+            'This reset link is invalid. Please request a new one.');
+      case 'expired-action-code':
+        return const AuthException(
+            'This reset link has expired. Please request a new one.');
       case 'network-request-failed':
         return const AuthException('Network error. Please check your connection.');
       default:

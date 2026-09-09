@@ -105,18 +105,30 @@ class _ExpenseDetailContent extends StatelessWidget {
   final WidgetRef ref;
 
   /// Opens a full-screen dialog to view the receipt image.
+  ///
+  /// The full-screen image is rendered as a normal Flutter canvas image
+  /// (`Image.network`) on every platform — including web. Previously this used
+  /// [ReceiptImage] (a DOM `<img>` platform view on web), whose browser-native
+  /// image surface sat above the Flutter canvas: it could not be panned/zoomed
+  /// by [ReceiptViewer]'s InteractiveViewer and exposed Safari/Chrome-native
+  /// image behavior (right-click "open image", long-press sheet, drag), which
+  /// made viewing differ between iPhone Safari and desktop Chrome. The Storage
+  /// bucket CORS already authorizes the deployed origin, so a canvas
+  /// `Image.network` loads the same download URL. (Thumbnails below still use
+  /// [ReceiptImage] — unchanged.)
   void _showReceiptFullscreen(BuildContext context, String url) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder:
             (_) => ReceiptViewer(
-              image: ReceiptImage(
-                receiptUrl: url,
+              image: Image.network(
+                url,
                 fit: BoxFit.contain,
-                loadingBuilder: (_) =>
-                    const Center(child: CircularProgressIndicator()),
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const Center(child: CircularProgressIndicator()),
                 errorBuilder:
-                    (_) => const Center(
+                    (_, __, ___) => const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1112,7 +1124,26 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
                 ),
         );
       case ReceiptPreviewSource.savedUrl:
-        _showReceiptFullscreen(ReceiptImage(receiptUrl: url!, fit: BoxFit.contain));
+        // Render the saved receipt in the full-screen viewer as a normal
+        // Flutter canvas image (same widget the new-receipt case above uses),
+        // NOT as a ReceiptImage DOM `<img>` platform view. The viewer then
+        // behaves identically on every platform/browser (zoomable in-app, no
+        // browser-native image surface). Storage CORS covers the deployed
+        // origin so the download URL loads through the canvas.
+        _showReceiptFullscreen(
+          Image.network(
+            url!,
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, progress) => progress == null
+                ? child
+                : const Center(child: CircularProgressIndicator()),
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.image_not_supported_outlined,
+              color: Colors.white54,
+              size: 48,
+            ),
+          ),
+        );
       case ReceiptPreviewSource.none:
         break;
     }

@@ -251,6 +251,60 @@ class LeaveHouseNotifier extends AutoDisposeAsyncNotifier<void> {
   }
 }
 
+// ───── Remove Member ─────
+
+final removeMemberProvider =
+    AutoDisposeAsyncNotifierProvider<RemoveMemberNotifier, void>(
+        RemoveMemberNotifier.new);
+
+class RemoveMemberNotifier extends AutoDisposeAsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  static const String permissionOnlyTreasurer =
+      'Only the Treasurer can remove a member.';
+  static const String cannotRemoveTreasurer =
+      'The Treasurer cannot be removed. Transfer ownership first.';
+
+  /// Removes [member] from the current house (soft delete: `isActive` → false).
+  ///
+  /// Treasurer-only, and the house Treasurer can never be removed (transfer
+  /// ownership first). Only the member's house_members record is touched — the
+  /// user's Firebase account, their global `users/{uid}` profile, and every
+  /// historical expense/transaction/notification are left intact, so they can
+  /// join another house later. Returns `null` on success or an error message.
+  Future<String?> remove(HouseMemberEntity member) async {
+    state = const AsyncValue.loading();
+    try {
+      final user = ref.read(currentUserProvider);
+      if (user == null || user.uid.isEmpty) {
+        return 'Not authenticated.';
+      }
+      final house = ref.read(currentHouseProvider);
+      if (house == null) {
+        return 'No active house.';
+      }
+      if (house.treasurerId != user.uid) {
+        return permissionOnlyTreasurer;
+      }
+      if (member.userId == house.treasurerId) {
+        return cannotRemoveTreasurer;
+      }
+
+      final repo = ref.read(houseRepositoryProvider);
+      await repo.removeMember(house.houseId, member.memberId, user.uid);
+      state = const AsyncValue.data(null);
+      return null;
+    } on Failure catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      return e.message;
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      return 'An unexpected error occurred.';
+    }
+  }
+}
+
 // ───── No-OP Stub ─────
 
 class _NoOpHouseRepository implements HouseRepository {

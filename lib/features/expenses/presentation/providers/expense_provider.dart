@@ -101,6 +101,12 @@ class CreateExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
   /// Whether a receipt has been selected.
   bool get hasReceipt => _pendingReceiptPath != null;
 
+  /// True while a create is awaiting its upload + write. Guards against
+  /// duplicate submission: a second call arriving before the first resolves
+  /// (e.g. a fast double-tap before the button rebuilds disabled) must not
+  /// create a second expense or re-upload the receipt.
+  bool _submitting = false;
+
   Future<String?> createExpense({
     required String title,
     String? description,
@@ -109,6 +115,12 @@ class CreateExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
     required String paymentSource,
     String? receiptUrl,
   }) async {
+    // Duplicate-submission guard: one create at a time. A second call while the
+    // first is still uploading/writing returns a no-op success (the work IS in
+    // progress and will complete) instead of creating a second expense.
+    if (_submitting) return null;
+    _submitting = true;
+
     state = const AsyncValue.loading();
     try {
       final house = ref.read(currentHouseProvider);
@@ -142,7 +154,10 @@ class CreateExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
         createdAt: DateTime.now(),
       ));
 
-      // Refresh the expense list.
+      // Refresh the expense list. The dashboard is NOT invalidated here
+      // deliberately: dashboardDataProvider is a realtime stream that already
+      // re-fetches when this Firestore write lands, and invalidating it would
+      // drop its retained data for a loading skeleton on the way back.
       ref.invalidate(expenseListProvider);
 
       state = const AsyncValue.data(null);
@@ -153,6 +168,8 @@ class CreateExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
       return 'An unexpected error occurred.';
+    } finally {
+      _submitting = false;
     }
   }
 

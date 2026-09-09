@@ -24,6 +24,7 @@ import '../../../members/domain/entities/house_member_entity.dart';
 import '../../../members/presentation/providers/house_provider.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/expense_entity.dart';
+import '../logic/receipt_edit_decision.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/category_picker.dart';
 import '../widgets/receipt_image.dart';
@@ -1072,13 +1073,49 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
     );
   }
 
-  /// Opens the currently-attached (stored) receipt in the full-screen viewer,
-  /// fitted to show the whole receipt. Shared by the preview tap and the
-  /// explicit "Preview Receipt" button.
-  void _openCurrentReceiptFullscreen() {
+  /// Opens the effective receipt in the full-screen viewer, fitted to show the
+  /// whole receipt. Which source to show is delegated to the pure, unit-tested
+  /// [effectiveReceiptPreviewSource]: a NEWLY-PICKED local receipt (which
+  /// replaces the stored one on save) is shown first, falling back to the
+  /// currently-stored receipt URL. Without this priority, "Preview Receipt"
+  /// showed the stale saved receipt after the member chose a replacement photo.
+  void _openEffectiveReceiptFullscreen() {
     final url = widget.expense.receiptUrl;
-    if (url == null || url.isEmpty) return;
-    _showReceiptFullscreen(ReceiptImage(receiptUrl: url, fit: BoxFit.contain));
+    switch (
+      effectiveReceiptPreviewSource(
+        hasNewLocal: _newReceiptFile != null,
+        removeReceipt: _removeReceipt,
+        savedReceiptUrl: url,
+      )
+    ) {
+      case ReceiptPreviewSource.newLocal:
+        // Mirror the web/native split the new-receipt thumbnail uses: on web
+        // the picker returns a blob URL (File() throws), on native a local path.
+        final file = _newReceiptFile!;
+        _showReceiptFullscreen(
+          kIsWeb
+              ? Image.network(
+                  file.path,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.white54,
+                      size: 48),
+                )
+              : Image.file(
+                  File(file.path),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.white54,
+                      size: 48),
+                ),
+        );
+      case ReceiptPreviewSource.savedUrl:
+        _showReceiptFullscreen(ReceiptImage(receiptUrl: url!, fit: BoxFit.contain));
+      case ReceiptPreviewSource.none:
+        break;
+    }
   }
 
   /// Shows the currently-attached receipt so the member can view it before
@@ -1095,7 +1132,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
         child: ReceiptImage(
           receiptUrl: url,
           fit: BoxFit.cover,
-          onTap: _openCurrentReceiptFullscreen,
+          onTap: _openEffectiveReceiptFullscreen,
           loadingBuilder: (_) =>
               const Center(child: CircularProgressIndicator()),
           errorBuilder: (_) => const Center(
@@ -1120,19 +1157,29 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
     try {
       final expense = widget.expense;
 
-      // Resolve the effective receipt: a newly-picked one replaces the current
-      // (uploaded on save); an explicit remove clears it.
+      // Resolve the effective receipt. The outcome decision is delegated to the
+      // pure, unit-tested [receiptSaveAction]: a newly-picked receipt replaces
+      // the stored one (uploaded on save); an explicit remove clears it;
+      // otherwise the stored receipt is kept untouched.
       String? receiptUrl = expense.receiptUrl;
-      if (_newReceiptFile != null) {
-        final house = ref.read(currentHouseProvider);
-        if (house != null) {
-          receiptUrl = await ref
-              .read(expenseDataSourceProvider)
-              .uploadReceipt(
-                  houseId: house.houseId, filePath: _newReceiptFile!.path);
-        }
-      } else if (_removeReceipt) {
-        receiptUrl = null;
+      switch (
+        receiptSaveAction(
+          hasNewLocal: _newReceiptFile != null,
+          removeReceipt: _removeReceipt,
+        )
+      ) {
+        case ReceiptSaveAction.replaceWithNew:
+          final house = ref.read(currentHouseProvider);
+          if (house != null) {
+            receiptUrl = await ref
+                .read(expenseDataSourceProvider)
+                .uploadReceipt(
+                    houseId: house.houseId, filePath: _newReceiptFile!.path);
+          }
+        case ReceiptSaveAction.removeReceipt:
+          receiptUrl = null;
+        case ReceiptSaveAction.keepSaved:
+          break;
       }
 
       final description = _descriptionController.text.trim();
@@ -1241,14 +1288,17 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
           const SizedBox(height: 6),
           Row(
             children: [
-              // Preview the CURRENT stored receipt (the new one, when picked,
-              // is previewed by tapping its thumbnail above). Explicit button:
-              // the web platform-view slot can swallow taps over the image, so
-              // the action must be obvious and not rely on the HTML tap alone.
-              if (hasCurrent) ...[
+              // "Preview Receipt" shows whichever receipt is currently
+              // effective — the newly-picked one when selected (it replaces the
+              // stored one on save), otherwise the stored receipt. Explicit
+              // button: the web platform-view slot can swallow taps over the
+              // image, so the action must be obvious and not rely on the HTML
+              // tap alone. (Outer gate already ensures at least one source
+              // exists and the receipt isn't being removed.)
+              if (hasCurrent || showingNew) ...[
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _openCurrentReceiptFullscreen,
+                    onPressed: _openEffectiveReceiptFullscreen,
                     icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
                     label: const Text('Preview Receipt'),
                   ),

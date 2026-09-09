@@ -41,6 +41,12 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   // picker returns a blob URL. (File(picked.path) throws on web.)
   XFile? _receiptFile;
 
+  /// Page-level duplicate-submit guard: set synchronously before the first
+  /// submit awaits, so a second tap that lands before the button rebuilds
+  /// disabled (its soft guard) is still dropped. Reset only on failure so the
+  /// user can retry.
+  bool _submitting = false;
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -150,6 +156,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    // Hard duplicate guard (see field doc) — the notifier also guards, but this
+    // stops a redundant success toast + navigation before they can happen.
+    if (_submitting) return;
+    _submitting = true;
 
     final amount = double.tryParse(_amountController.text) ?? 0;
 
@@ -169,6 +179,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       SnackbarUtils.showSuccess(context, 'Expense submitted');
       context.go(RouteNames.dashboard);
     } else {
+      // Failure — re-enable so the user can correct and retry.
+      _submitting = false;
       SnackbarUtils.showError(context, errorMessage);
     }
   }

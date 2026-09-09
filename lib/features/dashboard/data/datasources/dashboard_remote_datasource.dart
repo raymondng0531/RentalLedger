@@ -66,11 +66,23 @@ class DashboardRemoteDataSource {
   Stream<DashboardData> fetchDashboardStream(String houseId) {
     final controller = StreamController<DashboardData>();
 
+    // A single expense/deposit write touches several watched collections, so
+    // multiple snapshot listeners can call refetch() nearly simultaneously. The
+    // fetches run concurrently and previously resolved in completion order — a
+    // slower, STALE fetch could land last and overwrite a fresher one, leaving
+    // the dashboard showing old data until the next change. Guarding each
+    // refetch with a generation counter means only the newest fetch may emit;
+    // anything superseded is dropped even if it finishes later.
+    var refetchGeneration = 0;
+
     // Re-fetch on any relevant change.
     Future<void> refetch() async {
+      final generation = ++refetchGeneration;
       try {
         final data = await fetchDashboard(houseId);
-        if (!controller.isClosed) controller.add(data);
+        if (!controller.isClosed && generation == refetchGeneration) {
+          controller.add(data);
+        }
       } catch (e) {
         debugPrint('[DashboardDataSource] stream refetch error: $e');
       }

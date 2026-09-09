@@ -92,8 +92,15 @@ class HouseRemoteDataSource {
 
       return getHouse(houseId);
     } catch (e) {
+      // A genuine read failure (e.g. the Firestore SDK rejecting the request
+      // before the just-restored auth token has propagated) must PROPAGATE, not
+      // be swallowed as null. `null` is the caller's signal for "this user
+      // definitely has no active house" — returning it here for an error would
+      // tell the repo the user is house-less, strand them on the Create House
+      // screen, and (because nothing re-triggers the load) leave them stuck
+      // until a full reload. The repo retries thrown errors in-process instead.
       debugPrint('[HouseDataSource] findHouseByUserId error: $e');
-      return null;
+      throw const AppFirebaseException('Failed to load your house.');
     }
   }
 

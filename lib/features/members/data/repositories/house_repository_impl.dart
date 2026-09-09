@@ -27,14 +27,41 @@ class HouseRepositoryImpl implements HouseRepository {
   @override
   bool get hasHouse => _currentHouseNotifier.value != null;
 
+  /// Max house-resolution attempts (including the first) and the pause between
+  /// retries. On web the very first Firestore read after sign-in / session
+  /// restore can race the auth token reaching the Firestore SDK and be rejected
+  /// once; a short bounded retry lets it resolve in-process. This is NOT a
+  /// navigation workaround — it only runs after a genuine thrown error, and a
+  /// clean `null` ("no active house") still returns immediately so a first-time
+  /// user is not delayed before onboarding.
+  static const int _maxHouseLoadAttempts = 4;
+  static const Duration _houseLoadRetryDelay = Duration(milliseconds: 600);
+
   /// Must be called after auth is ready — loads the user's house.
+  ///
+  /// Retries transient read failures (see Issue 1): without this, a single
+  /// swallowed error leaves [currentHouseNotifier] null forever, so the router
+  /// holds a house-owning user on the Create House screen until a full reload.
   Future<void> loadUserHouse(String userId) async {
-    try {
-      final house = await _remote.findHouseByUserId(userId);
-      _currentHouseNotifier.value = house;
-    } catch (e) {
-      debugPrint('[HouseRepository] loadUserHouse error: $e');
-      _currentHouseNotifier.value = null;
+    for (var attempt = 1; attempt <= _maxHouseLoadAttempts; attempt++) {
+      try {
+        final house = await _remote.findHouseByUserId(userId);
+        // null is definitive ("no active membership") — no further retry.
+        _currentHouseNotifier.value = house;
+        return;
+      } catch (e) {
+        debugPrint(
+          '[HouseRepository] loadUserHouse attempt $attempt/$_maxHouseLoadAttempts '
+          'failed: $e',
+        );
+        if (attempt == _maxHouseLoadAttempts) {
+          // Give up for now rather than spin forever; the notifier stays null
+          // so the guard still shows the onboarding screen on a real failure.
+          _currentHouseNotifier.value = null;
+          return;
+        }
+        await Future<void>.delayed(_houseLoadRetryDelay);
+      }
     }
   }
 

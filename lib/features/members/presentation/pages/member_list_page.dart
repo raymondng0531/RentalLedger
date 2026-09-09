@@ -13,6 +13,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../authentication/domain/entities/user_entity.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../domain/entities/house_entity.dart';
 import '../../domain/entities/house_member_entity.dart';
@@ -33,7 +34,9 @@ class MemberListPage extends ConsumerStatefulWidget {
 }
 
 class _MemberListPageState extends ConsumerState<MemberListPage> {
-  bool _isRemoving = false;
+  /// True while a house-management write (remove / transfer / leave) is in
+  /// flight — shows a blocking progress veil so the action can't be double-tapped.
+  bool _isBusy = false;
 
   @override
   Widget build(BuildContext context) {
@@ -71,11 +74,12 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                 ref,
                 members,
                 house,
+                user,
                 isViewerTreasurer,
               ),
             ),
           ),
-          if (_isRemoving)
+          if (_isBusy)
             Positioned.fill(
               child: Container(
                 color: Colors.black26,
@@ -92,7 +96,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     HouseEntity house,
     HouseMemberEntity member,
   ) async {
-    if (_isRemoving) return;
+    if (_isBusy) return;
 
     final label = _memberLabel(member);
     final confirmed = await showDialog<bool>(
@@ -123,13 +127,162 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     );
     if (confirmed != true || !mounted) return;
 
-    setState(() => _isRemoving = true);
+    setState(() => _isBusy = true);
     final error = await ref.read(removeMemberProvider.notifier).remove(member);
     if (!mounted) return;
-    setState(() => _isRemoving = false);
+    setState(() => _isBusy = false);
 
     if (error == null) {
       SnackbarUtils.showSuccess(context, '$label removed from the house.');
+    } else {
+      SnackbarUtils.showError(context, error);
+    }
+  }
+
+  /// Confirms with the current Treasurer, then transfers ownership to [target].
+  ///
+  /// The current Treasurer becomes a regular Member and loses Treasurer-only
+  /// controls the moment the transfer commits; the member list and this card
+  /// update in realtime from the Firestore streams.
+  Future<void> _confirmTransfer(
+    HouseEntity house,
+    HouseMemberEntity target,
+  ) async {
+    if (_isBusy) return;
+
+    final viewer = ref.read(currentUserProvider);
+    if (viewer == null) return;
+
+    final label = _memberLabel(target);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Transfer Ownership'),
+        content: Text(
+          'Make $label the new Treasurer of ${house.houseName}?\n\n'
+          'You will become a regular Member and will no longer be able to '
+          'approve expenses, record deposits or manage the house until '
+          'ownership is transferred back to you.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Transfer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isBusy = true);
+    final error = await ref
+        .read(transferTreasurerProvider.notifier)
+        .transfer(house.houseId, house.treasurerId, target.userId);
+    if (!mounted) return;
+    setState(() => _isBusy = false);
+
+    if (error == null) {
+      SnackbarUtils.showSuccess(context, '$label is now the Treasurer.');
+    } else {
+      SnackbarUtils.showError(context, error);
+    }
+  }
+
+  /// Bottom sheet listing the other active members as transfer targets.
+  Future<HouseMemberEntity?> _pickTransferTarget(
+    HouseEntity house,
+    List<HouseMemberEntity> others,
+  ) {
+    return showModalBottomSheet<HouseMemberEntity>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                'Transfer to…',
+                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+            for (final m in others)
+              ListTile(
+                leading: CircleAvatar(
+                  child: Text(_memberLabel(m)[0].toUpperCase()),
+                ),
+                title: Text(_memberLabel(m)),
+                subtitle: const Text('Make this member the Treasurer'),
+                onTap: () => Navigator.of(sheetContext).pop(m),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Guards the current user's own membership: transfer-or-leave.
+  ///
+  /// - Treasurer → "Transfer ownership" (disabled until another member exists);
+  ///   they can only leave after ownership is transferred, at which point this
+  ///   card flips to the member's "Leave house".
+  /// - Member → "Leave house" (soft-delete of their own record; account and
+  ///   history are kept). The router's house guard then sends them to the
+  ///   Create / Join onboarding screen.
+  Future<void> _confirmLeave(HouseEntity house) async {
+    if (_isBusy) return;
+
+    final viewer = ref.read(currentUserProvider);
+    if (viewer == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Leave House'),
+        content: Text(
+          'Leave ${house.houseName}?\n\n'
+          'You will no longer be able to view this house or submit expenses '
+          'until you are invited back. Your account and all past records are '
+          'kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isBusy = true);
+    final error = await ref
+        .read(leaveHouseProvider.notifier)
+        .leave(house.houseId, viewer.uid, false);
+    if (!mounted) return;
+    setState(() => _isBusy = false);
+
+    if (error == null) {
+      SnackbarUtils.showSuccess(context, 'You left ${house.houseName}.');
+      // The repository cleared the active house; the router's house guard
+      // redirects to the Create / Join onboarding screen automatically.
     } else {
       SnackbarUtils.showError(context, error);
     }
@@ -150,6 +303,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     WidgetRef ref,
     List<HouseMemberEntity> members,
     HouseEntity? house,
+    UserEntity? user,
     bool isViewerTreasurer,
   ) {
     if (members.isEmpty) {
@@ -198,6 +352,12 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               (context, m) => MemberTile(
                 member: m,
                 showActions: isViewerTreasurer,
+                onMakeTreasurer: (isViewerTreasurer &&
+                        house != null &&
+                        user != null &&
+                        m.userId != user.uid)
+                    ? () => _confirmTransfer(house, m)
+                    : null,
                 onRemove: (isViewerTreasurer && house != null)
                     ? () => _confirmRemove(house, m)
                     : null,
@@ -211,10 +371,111 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
           // ── Invite code section ──
           if (house != null) _buildInviteCodeSection(context, ref, house),
 
+          const SizedBox(height: 24),
+
+          // ── The viewer's own membership: transfer (Treasurer) or leave ──
+          if (house != null && user != null && user.uid.isNotEmpty)
+            _buildMembershipCard(
+              context,
+              house,
+              user,
+              members,
+              isViewerTreasurer,
+            ),
+
           const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  /// The current user's own-membership card.
+  ///
+  /// A Treasurer must transfer ownership before leaving, so they get a
+  /// "Transfer ownership" action (disabled until another active member exists)
+  /// instead of a leave action. Once they transfer, the realtime role streams
+  /// flip them to Member and this card swaps to "Leave house".
+  Widget _buildMembershipCard(
+    BuildContext context,
+    HouseEntity house,
+    UserEntity user,
+    List<HouseMemberEntity> members,
+    bool isTreasurer,
+  ) {
+    final theme = Theme.of(context);
+    final others = members.where((m) => m.userId != user.uid).toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your membership',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              if (isTreasurer) ...[
+                Text(
+                  others.isEmpty
+                      ? 'You are the Treasurer and currently the only member. '
+                          'Another member must join before ownership can be '
+                          'transferred.'
+                      : 'You are the Treasurer. Transfer ownership to another '
+                          'member before you can leave this house.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: others.isEmpty
+                      ? null
+                      : () => _startTransfer(context, house, others),
+                  icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+                  label: const Text('Transfer ownership'),
+                ),
+              ] else ...[
+                Text(
+                  'You are a Member. You can leave this house at any time; '
+                  'your account and past records are kept.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.errorRed,
+                    side: const BorderSide(color: AppTheme.errorRed),
+                  ),
+                  onPressed: () => _confirmLeave(house),
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: const Text('Leave house'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Picks a transfer target from [others], then runs the transfer.
+  Future<void> _startTransfer(
+    BuildContext context,
+    HouseEntity house,
+    List<HouseMemberEntity> others,
+  ) async {
+    final target = await _pickTransferTarget(house, others);
+    if (target == null || !mounted) return;
+    await _confirmTransfer(house, target);
   }
 
   Widget _buildSectionHeader(BuildContext context, String title) {

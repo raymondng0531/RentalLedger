@@ -16,6 +16,7 @@ class MemberTile extends StatelessWidget {
     this.outstandingBalance,
     this.onTap,
     this.onRemove,
+    this.onMakeTreasurer,
     this.showActions = false,
   });
 
@@ -23,6 +24,10 @@ class MemberTile extends StatelessWidget {
   final double? outstandingBalance;
   final VoidCallback? onTap;
   final VoidCallback? onRemove;
+
+  /// Invoked when the house Treasurer chooses to transfer ownership to this
+  /// (regular) member. Only offered on regular-member tiles.
+  final VoidCallback? onMakeTreasurer;
   final bool showActions;
 
   @override
@@ -88,7 +93,7 @@ class MemberTile extends StatelessWidget {
                     color: AppTheme.primaryGreen.withAlpha(20),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(
+                  child: const Text(
                     'Treasurer',
                     style: TextStyle(
                       fontSize: 10,
@@ -123,12 +128,32 @@ class MemberTile extends StatelessWidget {
               ],
             ),
           ),
-          trailing: showActions && onRemove != null
-              ? IconButton(
-                  icon: const Icon(Icons.remove_circle_outline,
-                      color: AppTheme.errorRed, size: 20),
-                  onPressed: onRemove,
-                  tooltip: 'Remove member',
+          // Treasurer management actions on regular-member tiles. The tile is
+          // never given actions on the Treasurer's own row (ownership must be
+          // transferred, not removed).
+          trailing: showActions &&
+                  (!member.isTreasurer) &&
+                  (onMakeTreasurer != null || onRemove != null)
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onMakeTreasurer != null)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.admin_panel_settings_outlined,
+                            color: AppTheme.primaryGreen, size: 20),
+                        onPressed: onMakeTreasurer,
+                        tooltip: 'Make treasurer',
+                      ),
+                    if (onRemove != null)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: AppTheme.errorRed, size: 20),
+                        onPressed: onRemove,
+                        tooltip: 'Remove member',
+                      ),
+                  ],
                 )
               : null,
         ),

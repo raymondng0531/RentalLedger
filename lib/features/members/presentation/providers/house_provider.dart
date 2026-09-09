@@ -152,6 +152,25 @@ final membersStreamProvider = StreamProvider<List<HouseMemberEntity>>((ref) {
   return repo.membersStream(house.houseId);
 });
 
+/// Stream of ALL house member records — active AND inactive former members —
+/// one display record per user (active membership wins).
+///
+/// Read-only name source for HISTORICAL records: History, Expense/Transaction
+/// Details and the Expense List resolve a UID left on an old expense or
+/// transaction to a name. Using [membersStreamProvider] there would blank a
+/// former member's history ("Unknown Member") the moment they are removed,
+/// because it filters to active members only. This provider exists ONLY for
+/// name resolution — never for the current roster, deposit payer choices,
+/// role checks, or Treasurer tracing, which must keep using
+/// [membersStreamProvider].
+final allMembersStreamProvider = StreamProvider<List<HouseMemberEntity>>((ref) {
+  final house = ref.watch(currentHouseProvider);
+  if (house == null) return Stream.value([]);
+
+  final repo = ref.watch(houseRepositoryProvider);
+  return repo.allMembersStream(house.houseId);
+});
+
 // ───── Auth ↔ House Coordinator ─────
 
 /// Watches auth state and keeps the current house in sync automatically.
@@ -368,6 +387,10 @@ class _NoOpHouseRepository implements HouseRepository {
 
   @override
   Stream<List<HouseMemberEntity>> membersStream(String houseId) =>
+      Stream.value([]);
+
+  @override
+  Stream<List<HouseMemberEntity>> allMembersStream(String houseId) =>
       Stream.value([]);
 
   @override

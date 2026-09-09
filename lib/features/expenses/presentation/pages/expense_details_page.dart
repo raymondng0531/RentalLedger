@@ -188,9 +188,11 @@ class _ExpenseDetailContent extends StatelessWidget {
     // Always resolve the purchaser's display name — never show a UID.
     // Use a map lookup (not firstWhere + orElse) so we don't construct a
     // HouseMemberEntity where the stream actually holds HouseMemberModels.
-    final members =
-        ref.watch(membersStreamProvider).value ?? const <HouseMemberEntity>[];
-    final memberByName = {for (final m in members) m.userId: m};
+    // Resolve against ALL member records (active + inactive former members) so
+    // removing a member never blanks their historical expenses.
+    final allMembers = ref.watch(allMembersStreamProvider).value ??
+        const <HouseMemberEntity>[];
+    final memberByName = {for (final m in allMembers) m.userId: m};
     final purchaserName =
         memberByName[expense.purchasedBy]?.displayName ??
         expense.displayName ??

@@ -277,7 +277,9 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(historyProvider(_selectedTypes.join(',')));
     final categoriesAsync = ref.watch(categoriesProvider);
-    final membersAsync = ref.watch(membersStreamProvider);
+    // All records (active + inactive former members): a history tile still
+    // needs the actor/payer's name after they leave the house.
+    final membersAsync = ref.watch(allMembersStreamProvider);
     final categories = categoriesAsync.value ?? const <CategoryEntity>[];
     // Resolve display names for the tile subtitle + category chip.
     final categoryMap = {for (final c in categories) c.categoryId: c.name};

@@ -114,7 +114,10 @@ const _reportsData = ReportsData(
 final _expenseListOverrides = <Override>[
   expenseListProvider.overrideWith((ref, arg) => Stream.value([_expense])),
   categoriesProvider.overrideWith((ref) async => _categories),
-  membersStreamProvider.overrideWith((ref) => Stream.value([_member])),
+  // Expense cards resolve the purchaser's name from ALL member records
+  // (active + inactive former members), so this page uses the all-members
+  // name source, not the active-only roster.
+  allMembersStreamProvider.overrideWith((ref) => Stream.value([_member])),
 ];
 
 final _addExpenseOverrides = <Override>[
@@ -124,7 +127,9 @@ final _addExpenseOverrides = <Override>[
 final _historyOverrides = <Override>[
   historyProvider.overrideWith((ref, arg) => Stream.value([_event])),
   categoriesProvider.overrideWith((ref) async => _categories),
-  membersStreamProvider.overrideWith((ref) => Stream.value([_member])),
+  // History tiles resolve actor/payer names from ALL member records (active +
+  // inactive former members), so this page uses the all-members name source.
+  allMembersStreamProvider.overrideWith((ref) => Stream.value([_member])),
 ];
 
 final _reportsOverrides = <Override>[

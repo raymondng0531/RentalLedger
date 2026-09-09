@@ -13,6 +13,7 @@ import '../../features/authentication/presentation/pages/splash_page.dart';
 import '../../features/authentication/presentation/pages/login_page.dart';
 import '../../features/authentication/presentation/pages/register_page.dart';
 import '../../features/authentication/presentation/pages/forgot_password_page.dart';
+import '../../features/authentication/presentation/pages/reset_password_page.dart';
 import '../../features/authentication/presentation/providers/auth_provider.dart';
 import '../../features/members/presentation/pages/create_house_page.dart';
 import '../../features/members/presentation/pages/join_house_page.dart';
@@ -34,6 +35,7 @@ import '../../features/members/presentation/pages/member_list_page.dart';
 import '../../features/members/presentation/providers/house_provider.dart';
 
 import 'route_names.dart';
+import 'reset_deep_link.dart';
 import 'auth_guard.dart';
 
 /// Riverpod provider that creates and manages the GoRouter instance.
@@ -163,14 +165,21 @@ class AppRouter {
 
   static final AuthGuard _authGuard = AuthGuard();
 
+  /// Deep-link initial location when the app was opened from a reset email,
+  /// else `null` (the router falls back to the splash screen).
+  static String? _deepLinkInitialLocation() =>
+      resolveResetDeepLinkLocation(Uri.base);
+
   /// Creates the GoRouter instance, wired to auth + house notifiers.
   static GoRouter _create(
     ValueNotifier<UserEntity?> authNotifier,
     ValueNotifier<HouseEntity?> houseNotifier,
   ) {
+    final initialLocation =
+        AppRouter._deepLinkInitialLocation() ?? RouteNames.splash;
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
-      initialLocation: RouteNames.splash,
+      initialLocation: initialLocation,
       debugLogDiagnostics: true,
       observers: [_FabClosingObserver()],
 
@@ -210,6 +219,17 @@ class AppRouter {
           pageBuilder:
               (context, state) =>
                   _slideUpTransition(const ForgotPasswordPage()),
+        ),
+        // Public reset-password deep link. Opened by Firebase's in-app
+        // (`handleCodeInApp`) reset email with `mode` + `oobCode` query params.
+        GoRoute(
+          path: RouteNames.resetPassword,
+          name: RouteNames.resetPassword,
+          pageBuilder: (context, state) => _fadeTransition(
+            ResetPasswordPage(
+              oobCode: state.uri.queryParameters['oobCode'] ?? '',
+            ),
+          ),
         ),
 
         // ── House onboarding ──

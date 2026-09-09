@@ -191,6 +191,108 @@ class ForgotPasswordNotifier extends AutoDisposeAsyncNotifier<void> {
   }
 }
 
+// ───── Reset Password Provider ─────
+
+/// Lifecycle phase of the in-app password reset page.
+enum ResetPasswordStatus {
+  /// Validating the Firebase action code (page-level spinner).
+  verifying,
+
+  /// Code is valid — the branded new-password form is shown.
+  ready,
+
+  /// Code is missing, invalid, or expired — show a "request a new link" state.
+  linkInvalid,
+
+  /// Reset is being submitted (button spinner).
+  submitting,
+
+  /// Password changed successfully.
+  success,
+
+  /// Reset failed (e.g. weak password, already-used code) — inline error.
+  failed,
+}
+
+/// Immutable view-model for the reset page.
+class ResetPasswordState {
+  const ResetPasswordState(this.status, {this.email, this.message});
+
+  const ResetPasswordState.verifying() : this(ResetPasswordStatus.verifying);
+
+  const ResetPasswordState.ready(String email)
+      : this(ResetPasswordStatus.ready, email: email);
+
+  const ResetPasswordState.linkInvalid([String? message])
+      : this(ResetPasswordStatus.linkInvalid, message: message);
+
+  const ResetPasswordState.submitting() : this(ResetPasswordStatus.submitting);
+
+  const ResetPasswordState.success() : this(ResetPasswordStatus.success);
+
+  const ResetPasswordState.failed([String? message])
+      : this(ResetPasswordStatus.failed, message: message);
+
+  final ResetPasswordStatus status;
+
+  /// Account the (valid) action code was issued for.
+  final String? email;
+
+  /// User-facing detail for [ResetPasswordStatus.linkInvalid] / failed.
+  final String? message;
+}
+
+final resetPasswordProvider = AutoDisposeAsyncNotifierProvider<
+    ResetPasswordNotifier, ResetPasswordState>(ResetPasswordNotifier.new);
+
+class ResetPasswordNotifier
+    extends AutoDisposeAsyncNotifier<ResetPasswordState> {
+  @override
+  Future<ResetPasswordState> build() async =>
+      const ResetPasswordState.verifying();
+
+  /// Validates [oobCode] against Firebase. On success the page shows the
+  /// new-password form; on a missing/invalid/expired code it shows the
+  /// "link problem" state. Never fabricates a reset UI for an unverified code.
+  Future<void> verify(String oobCode) async {
+    if (oobCode.isEmpty) {
+      state = const AsyncValue.data(ResetPasswordState.linkInvalid(
+        'This reset link is missing its code. Please request a new one.',
+      ));
+      return;
+    }
+    state = const AsyncValue.loading();
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final email = await repo.verifyResetCode(oobCode);
+      state = AsyncValue.data(ResetPasswordState.ready(email ?? ''));
+    } on Failure catch (e) {
+      state = AsyncValue.data(ResetPasswordState.linkInvalid(e.message));
+    } catch (e) {
+      state = const AsyncValue.data(ResetPasswordState.linkInvalid(
+          'We could not verify this reset link. Please request a new one.'));
+    }
+  }
+
+  /// Submits the real Firebase reset for [oobCode] with [newPassword].
+  Future<void> reset({
+    required String oobCode,
+    required String newPassword,
+  }) async {
+    state = const AsyncValue.data(ResetPasswordState.submitting());
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.resetPassword(oobCode: oobCode, newPassword: newPassword);
+      state = const AsyncValue.data(ResetPasswordState.success());
+    } on Failure catch (e) {
+      state = AsyncValue.data(ResetPasswordState.failed(e.message));
+    } catch (e) {
+      state = const AsyncValue.data(ResetPasswordState.failed(
+          'Something went wrong. Please try again.'));
+    }
+  }
+}
+
 // ───── No-OP Stub (used when Firebase is not configured) ─────
 
 class _NoOpAuthRepository implements AuthRepository {
@@ -226,6 +328,17 @@ class _NoOpAuthRepository implements AuthRepository {
 
   @override
   Future<void> forgotPassword(String email) =>
+      throw const FirebaseFailure('Firebase is not configured.');
+
+  @override
+  Future<String?> verifyResetCode(String oobCode) =>
+      throw const FirebaseFailure('Firebase is not configured.');
+
+  @override
+  Future<void> resetPassword({
+    required String oobCode,
+    required String newPassword,
+  }) =>
       throw const FirebaseFailure('Firebase is not configured.');
 
   @override

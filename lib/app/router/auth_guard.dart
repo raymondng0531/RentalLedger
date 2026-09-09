@@ -21,6 +21,13 @@ class AuthGuard {
   }) {
     final isAuthenticated = currentUser != null && currentUser.uid.isNotEmpty;
     final location = state.uri.toString();
+
+    // The in-app password-reset deep link must be reachable both signed-out
+    // and signed-in (a member can click their reset email while logged in). It
+    // is always allowed — the reset page itself validates the Firebase action
+    // code and, on success, sends the user back to sign in.
+    if (_isResetRoute(location)) return null;
+
     final isAuthRoute = _isAuthRoute(location);
     final isOnboardingRoute = _isOnboardingRoute(location);
 
@@ -53,6 +60,16 @@ class AuthGuard {
         location == RouteNames.register ||
         location == RouteNames.splash ||
         location == RouteNames.forgotPassword;
+  }
+
+  /// True when the location is the reset-password route.
+  ///
+  /// Auth routes above are matched by exact string equality because they carry
+  /// no query string; the reset route is opened with Firebase action-code query
+  /// params (`?mode=resetPassword&oobCode=…`), so it must be matched by path.
+  bool _isResetRoute(String location) {
+    final path = Uri.tryParse(location)?.path;
+    return path != null && path == RouteNames.resetPassword;
   }
 
   bool _isOnboardingRoute(String location) {

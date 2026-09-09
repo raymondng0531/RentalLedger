@@ -190,6 +190,43 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<String?> verifyResetCode(String oobCode) async {
+    try {
+      return await _remote.verifyResetCode(oobCode);
+    } on AuthException catch (e) {
+      throw AuthenticationFailure(e.message);
+    } on AuthenticationFailure {
+      rethrow;
+    } on FirebaseFailure {
+      rethrow;
+    } catch (e) {
+      throw FirebaseFailure(
+          'Could not verify the reset link: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String oobCode,
+    required String newPassword,
+  }) async {
+    try {
+      await _remote.confirmPasswordReset(
+        oobCode: oobCode,
+        newPassword: newPassword,
+      );
+    } on AuthException catch (e) {
+      throw AuthenticationFailure(e.message);
+    } on AuthenticationFailure {
+      rethrow;
+    } on FirebaseFailure {
+      rethrow;
+    } catch (e) {
+      throw FirebaseFailure('Failed to reset your password: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<void> updateProfile({String? displayName, String? photoUrl}) async {
     final firebaseUser = _remote.currentUser;
     if (firebaseUser == null) {

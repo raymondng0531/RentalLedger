@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../features/members/domain/entities/house_member_entity.dart';
 import '../constants/firestore_constants.dart';
 
 /// Resolves a house member's display name for the UI.
@@ -91,3 +92,42 @@ String? emailLocalPartName(String? email) {
   if (atIndex <= 0) return email;
   return email.substring(0, atIndex);
 }
+
+/// Merges house-member records into ONE display record per user.
+///
+/// A person can hold more than one `house_members` record for the same house
+/// after being removed and later rejoining. Historical expenses/transactions
+/// store only the purchaser's UID, so resolving names against the ACTIVE
+/// member list alone blanks a former member's history ("Unknown Member") the
+/// moment they leave. This is the pure collapse used by the all-members name
+/// stream (the same source the Dashboard already reads for historical
+/// activity). Display data only:
+///   1. The ACTIVE record always wins — a live member's current name wins.
+///   2. Between inactive records the one carrying a display name wins over a
+///      nameless one, so a removed member's name keeps resolving.
+List<HouseMemberEntity> mergeMemberRecordsByUser(
+  Iterable<HouseMemberEntity> records,
+) {
+  final byUser = <String, HouseMemberEntity>{};
+  for (final record in records) {
+    final existing = byUser[record.userId];
+    if (existing == null) {
+      byUser[record.userId] = record;
+      continue;
+    }
+    // 1. Active membership wins over an inactive (removed) duplicate.
+    if (!existing.isActive && record.isActive) {
+      byUser[record.userId] = record;
+      continue;
+    }
+    // 2. Between equal-activity duplicates keep the one that resolves a name.
+    if (_hasDisplayName(existing) == false && _hasDisplayName(record)) {
+      byUser[record.userId] = record;
+    }
+  }
+  return byUser.values.toList();
+}
+
+/// Whether the record carries a resolvable display name.
+bool _hasDisplayName(HouseMemberEntity member) =>
+    member.displayName != null && member.displayName!.isNotEmpty;

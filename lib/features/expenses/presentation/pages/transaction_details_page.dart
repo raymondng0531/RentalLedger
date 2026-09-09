@@ -101,8 +101,10 @@ class _TransactionDetailsView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    // All records (active + inactive former members): a transaction detail
+    // still needs the performer/payer's name after they leave the house.
     final members =
-        ref.watch(membersStreamProvider).value ?? const <HouseMemberEntity>[];
+        ref.watch(allMembersStreamProvider).value ?? const <HouseMemberEntity>[];
     // Fallback order: displayName → "Unknown Member". Never a Firebase UID.
     final nameMap = {
       for (final m in members)
@@ -349,19 +351,35 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
+      // Uniform vertical rhythm so every row sits at the same spacing.
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
+        // Center vertically for single-line rows; a wrapped value still keeps
+        // the icon + label optically centered without shifting the columns.
+        // (Row defaults to CrossAxisAlignment.center.)
         children: [
-          Icon(icon, size: 18, color: AppTheme.textSecondary),
-          const SizedBox(width: 12),
+          // Fixed-width icon slot: every glyph is centered in the same
+          // footprint, so all labels begin at the same x regardless of the
+          // icon's shape.
+          SizedBox(
+            width: 24,
+            child: Center(
+              child: Icon(icon, size: 18, color: AppTheme.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Label follows the icon slot at a constant offset.
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppTheme.textSecondary,
             ),
           ),
-          const Spacer(),
-          Flexible(
+          const SizedBox(width: 16),
+          // Value column: right-aligned to a single shared edge (all rows are
+          // the same width). Expanded makes long values wrap instead of
+          // overflowing the row or pushing the label off.
+          Expanded(
             child: Text(
               value,
               textAlign: TextAlign.end,

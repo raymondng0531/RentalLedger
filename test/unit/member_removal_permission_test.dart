@@ -165,6 +165,13 @@ class _RecordingHouseRepository implements HouseRepository {
   }
 
   @override
+  Stream<List<HouseMemberEntity>> allMembersStream(String houseId) async* {
+    // All records, active AND inactive (soft-deleted) former members, so
+    // historical name resolution keeps working after a removal.
+    yield List.of(members);
+  }
+
+  @override
   Future<void> updateMemberDisplayInfo({
     required String userId,
     String? displayName,

@@ -63,6 +63,13 @@ abstract class HouseRepository {
   /// Stream of house members for real-time updates.
   Stream<List<HouseMemberEntity>> membersStream(String houseId);
 
+  /// Stream of ALL member records (active AND inactive former members), merged
+  /// to one display record per user (active wins). Read-only name resolution
+  /// for historical records — removing a member must never blank their past
+  /// expenses/transactions. Never used for the current member roster, roles or
+  /// permissions.
+  Stream<List<HouseMemberEntity>> allMembersStream(String houseId);
+
   /// Syncs the user's current display info (name/photo) onto their active
   /// member records, so every page resolving member names reflects changes.
   /// Display-only — no role, ownership or financial data is touched.

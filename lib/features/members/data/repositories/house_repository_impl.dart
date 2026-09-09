@@ -196,6 +196,11 @@ class HouseRepositoryImpl implements HouseRepository {
   }
 
   @override
+  Stream<List<HouseMemberEntity>> allMembersStream(String houseId) {
+    return _remote.allMembersStream(houseId);
+  }
+
+  @override
   Future<void> updateMemberDisplayInfo({
     required String userId,
     String? displayName,

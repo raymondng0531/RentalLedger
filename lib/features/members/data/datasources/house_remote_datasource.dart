@@ -272,6 +272,43 @@ class HouseRemoteDataSource {
         });
   }
 
+  /// Stream of ALL member records for a house — active AND inactive former
+  /// members — merged to one display record per user (active wins).
+  ///
+  /// Read-only name resolution for historical records. Expenses and
+  /// transactions keep only the purchaser's UID, so resolving that UID from
+  /// the active-member stream alone shows "Unknown Member" the moment the
+  /// person leaves the house. This is the equivalent of [membersStream]
+  /// without the activity filter — the same all-records source the Dashboard
+  /// already reads for historical activity names. Never used for permissions,
+  /// role decisions, or the current member roster.
+  Stream<List<HouseMemberEntity>> allMembersStream(String houseId) {
+    return _firestore
+        .collection(FirestoreConstants.houseMembers)
+        .where('houseId', isEqualTo: houseId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          final members = snapshot.docs
+              .map((doc) => HouseMemberModel.fromFirestore(doc))
+              .toList();
+          final resolved = <HouseMemberEntity>[];
+          for (final member in members) {
+            final name = await resolveMemberDisplayName(
+              _firestore,
+              userId: member.userId,
+              memberDisplayName: member.displayName,
+              memberEmail: member.email,
+            );
+            resolved.add(
+              name != null ? member.copyWith(displayName: name) : member,
+            );
+          }
+          // One display record per user: a removed member who rejoined would
+          // otherwise expose duplicate rows for the same UID.
+          return mergeMemberRecordsByUser(resolved);
+        });
+  }
+
   /// Fetches all active members, backfilling missing display names from the
   /// user profiles so every page resolves the same name.
   Future<List<HouseMemberEntity>> getMembers(String houseId) async {

@@ -36,7 +36,9 @@ class _ExpenseListPageState extends ConsumerState<ExpenseListPage> {
   Widget build(BuildContext context) {
     final expensesAsync = ref.watch(expenseListProvider(_statusFilter));
     final categoriesAsync = ref.watch(categoriesProvider);
-    final membersAsync = ref.watch(membersStreamProvider);
+    // All records (active + inactive former members): an expense card still
+    // needs the purchaser's name after they leave the house.
+    final membersAsync = ref.watch(allMembersStreamProvider);
 
     return Scaffold(
       appBar: AppBar(

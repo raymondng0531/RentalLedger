@@ -1,0 +1,10 @@
+node_modules/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Never commit admin credentials or their paths.
+*.serviceAccount.json
+serviceAccount*.json
+.env
+.env.*

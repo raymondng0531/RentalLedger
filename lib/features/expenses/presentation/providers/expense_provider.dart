@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/firebase_service.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/ledger_submission_key.dart';
 import '../../../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
@@ -348,6 +350,14 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
   /// Local path to the proof image pending upload.
   String? _pendingProofPath;
 
+  /// Idempotency key for the deposit currently being submitted.
+  ///
+  /// Held across retries and cleared only once the movement is committed, so a
+  /// double tap or a retry after a timeout reuses the SAME ledger document id
+  /// and the server refuses to record the deposit twice. The next deposit then
+  /// gets a fresh key and is a genuinely new movement.
+  final _submissionKey = LedgerSubmissionKey();
+
   /// Stores the locally-chosen proof image path (blob URL on web) to upload
   /// when [deposit] runs. Mirrors [CreateExpenseNotifier.setReceiptPath].
   void setProofPath(String? path) {
@@ -396,6 +406,7 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
       // Upload succeeded — only now is the ledger touched.
       _pendingProofPath = null;
 
+      final key = _submissionKey.key(() => const Uuid().v4());
       await dataSource.recordDeposit(
         houseId: house.houseId,
         amount: amount,
@@ -406,7 +417,10 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
         paymentMethod: paymentMethod,
         periodLabel: periodLabel,
         purpose: purpose,
+        transactionId: key,
       );
+      // Committed exactly once — the next deposit is a new movement.
+      _submissionKey.clear();
       ref.invalidate(dashboardDataProvider);
       state = const AsyncValue.data(null);
       return null;
@@ -438,6 +452,10 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
 
   /// Local path to the proof image pending upload.
   String? _pendingProofPath;
+
+  /// Idempotency key for the payment currently being submitted — see
+  /// [DepositNotifier._submissionKey].
+  final _submissionKey = LedgerSubmissionKey();
 
   /// Stores the locally-chosen proof image path (blob URL on web) to upload
   /// when [payDirectly] runs.
@@ -486,6 +504,7 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
       // Upload succeeded — only now is the ledger touched.
       _pendingProofPath = null;
 
+      final key = _submissionKey.key(() => const Uuid().v4());
       await dataSource.recordDirectPayment(
         houseId: house.houseId,
         amount: amount,
@@ -495,7 +514,10 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
         categoryId: categoryId,
         paymentMethod: paymentMethod,
         periodLabel: periodLabel,
+        transactionId: key,
       );
+      // Committed exactly once — the next payment is a new movement.
+      _submissionKey.clear();
       ref.invalidate(dashboardDataProvider);
       state = const AsyncValue.data(null);
       return null;
@@ -631,14 +653,22 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
       // Upload succeeded — only now is the ledger touched.
     }
 
-    await ds.markBillPaid(
-      bill.billId,
-      bill,
-      performedBy: _readUserId(ref) ?? '',
-      receiptUrl: receiptUrl,
-      paymentMethod: paymentMethod,
-      periodLabel: periodLabel,
-    );
+    try {
+      await ds.markBillPaid(
+        bill.billId,
+        bill,
+        performedBy: _readUserId(ref) ?? '',
+        receiptUrl: receiptUrl,
+        paymentMethod: paymentMethod,
+        periodLabel: periodLabel,
+      );
+    } on ConflictException catch (e) {
+      // Already paid for that period — a double tap, or a stale tab.
+      throw FirebaseFailure(e.message, code: e.code);
+    } on ValidationException catch (e) {
+      // The Central Account cannot cover this payment.
+      throw FirebaseFailure(e.message, code: 'insufficient-balance');
+    }
     ref.invalidate(billsProvider);
   }
 

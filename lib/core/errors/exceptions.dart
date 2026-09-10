@@ -33,3 +33,15 @@ class CacheException extends AppException {
 class ValidationException extends AppException {
   const ValidationException(super.message);
 }
+
+/// Exception thrown when a write is refused because the record is no longer in
+/// the state the operation requires.
+///
+/// This is the data layer's concurrency boundary. Two clients racing the same
+/// transition — a double-tapped Approve, a stale browser tab reimbursing an
+/// expense that was already paid — must not both succeed, and the loser must
+/// fail with a message explaining why rather than silently no-op or, worse,
+/// write a second time.
+class ConflictException extends AppException {
+  const ConflictException(super.message, {super.code});
+}

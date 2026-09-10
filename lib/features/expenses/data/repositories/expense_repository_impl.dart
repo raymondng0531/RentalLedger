@@ -1,3 +1,4 @@
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/expense_entity.dart';
@@ -73,7 +74,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     try {
       return await _remote.approveExpense(expenseId, treasurerId);
     } catch (e) {
-      throw FirebaseFailure('Failed to approve: ${e.toString()}');
+      throw _actionFailure(e, 'Failed to approve');
     }
   }
 
@@ -83,7 +84,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     try {
       return await _remote.rejectExpense(expenseId, treasurerId, reason: reason);
     } catch (e) {
-      throw FirebaseFailure('Failed to reject: ${e.toString()}');
+      throw _actionFailure(e, 'Failed to reject');
     }
   }
 
@@ -93,8 +94,25 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     try {
       return await _remote.markPaid(expenseId, treasurerId);
     } catch (e) {
-      throw FirebaseFailure('Failed to mark paid: ${e.toString()}');
+      throw _actionFailure(e, 'Failed to mark paid');
     }
+  }
+
+  /// Turns a data-layer refusal into the [Failure] the UI shows.
+  ///
+  /// A refusal the Treasurer can act on — the expense was already reviewed by
+  /// someone else, the Central Account cannot cover the payout — keeps its own
+  /// explanation. Wrapping it in the generic "Failed to …" text would tell the
+  /// user nothing about why the money did not move, which is exactly what the
+  /// edge-case rules require them to be told.
+  Failure _actionFailure(Object error, String fallbackPrefix) {
+    if (error is ConflictException) {
+      return FirebaseFailure(error.message, code: error.code);
+    }
+    if (error is ValidationException) {
+      return FirebaseFailure(error.message, code: 'insufficient-balance');
+    }
+    return FirebaseFailure('$fallbackPrefix: ${error.toString()}');
   }
 
   @override

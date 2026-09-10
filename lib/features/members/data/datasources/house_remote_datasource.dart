@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/utils/member_name_utils.dart';
+import '../../../../core/utils/member_profile_sync_utils.dart';
 import '../../domain/entities/house_member_entity.dart';
 import '../models/house_member_model.dart';
 import '../models/house_model.dart';
@@ -376,6 +377,18 @@ class HouseRemoteDataSource {
   /// All member-record writes go through a single Firestore batch so the
   /// cross-house sync is atomic — the user can never see a house with the new
   /// name and another with the old one.
+  ///
+  /// WHICH rows may be written, and WHICH fields each needs, is decided by
+  /// [planMemberProfileSync] — only the caller's own ACTIVE rows, only the
+  /// fields that actually changed. Inactive rows are historical records and
+  /// are never rewritten, and a sync where nothing moved writes nothing at all
+  /// rather than issuing a no-op update.
+  ///
+  /// The query is the caller's own rows by `userId`: `house_members` is
+  /// authorized for this shape by the deployed rules, which allow a read when
+  /// `resource.data.userId == request.auth.uid`. Do not add a filter that is
+  /// not in that rule — the rules evaluate a list, not a filter, so a query
+  /// they cannot prove is denied outright.
   Future<void> updateMemberDisplayInfo({
     required String userId,
     String? displayName,
@@ -390,12 +403,25 @@ class HouseRemoteDataSource {
 
       if (query.docs.isEmpty) return;
 
+      final patches = {
+        for (final patch in planMemberProfileSync(
+          userId: userId,
+          rows: query.docs.map(HouseMemberModel.fromFirestore).toList(),
+          displayName: displayName,
+          photoUrl: photoUrl,
+        ))
+          patch.memberId: patch.fields,
+      };
+
+      // Everything already matches the profile — a write here would change
+      // nothing but still cost a round trip.
+      if (patches.isEmpty) return;
+
       final batch = _firestore.batch();
       for (final doc in query.docs) {
-        batch.update(doc.reference, {
-          if (displayName != null) 'displayName': displayName,
-          if (photoUrl != null) 'photoUrl': photoUrl,
-        });
+        final fields = patches[doc.id];
+        if (fields == null) continue;
+        batch.update(doc.reference, fields);
       }
       await batch.commit();
     } catch (e) {

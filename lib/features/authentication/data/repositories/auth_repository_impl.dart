@@ -6,14 +6,32 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/utils/member_profile_sync_utils.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 
+/// Writes the signed-in user's current display info onto their OWN active
+/// house-membership rows.
+///
+/// Supplied by the members feature (`HouseRemoteDataSource
+/// .updateMemberDisplayInfo`) and injected rather than imported, so the auth
+/// data layer does not have to depend on the members data layer. Being a
+/// function rather than a Firestore handle also makes the sync observable in
+/// tests without a Firebase instance.
+typedef MemberDisplayInfoSync = Future<void> Function({
+  required String userId,
+  String? displayName,
+  String? photoUrl,
+});
+
 /// Implementation of [AuthRepository] backed by Firebase Auth + Firestore.
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl({required AuthRemoteDataSource remoteDataSource})
-      : _remote = remoteDataSource {
+  AuthRepositoryImpl({
+    required AuthRemoteDataSource remoteDataSource,
+    MemberDisplayInfoSync? syncMemberDisplayInfo,
+  })  : _remote = remoteDataSource,
+        _memberDisplayInfoSync = syncMemberDisplayInfo {
     // Listen to Firebase auth state and update the notifier.
     _authSubscription = _remote.authStateChanges.listen(_onAuthStateChanged);
 
@@ -25,6 +43,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   final AuthRemoteDataSource _remote;
+
+  /// Optional membership-photo synchronizer. `null` when the members feature
+  /// is not available (e.g. Firebase is unconfigured) — the sync is
+  /// display-only, so its absence must not change any auth behaviour.
+  final MemberDisplayInfoSync? _memberDisplayInfoSync;
+
   final ValueNotifier<UserEntity?> _currentUserNotifier =
       ValueNotifier<UserEntity?>(null);
 
@@ -84,6 +108,17 @@ class AuthRepositoryImpl implements AuthRepository {
       final userEntity = _firebaseUserToEntity(firebaseUser);
       _savePushToken(firebaseUser.uid);
       _currentUserNotifier.value = userEntity;
+
+      // A returning Google user's Auth photo may have changed since they last
+      // signed in. The member row keeps whatever it held, so the Members list
+      // would show a different face from the header. PHOTO ONLY — never the
+      // name, so a member's own display name is not overwritten by their
+      // Google account name. Non-fatal: see [_syncMemberDisplayInfo].
+      await _syncMemberDisplayInfo(
+        userId: firebaseUser.uid,
+        photoUrl: userEntity.photoUrl,
+      );
+
       return userEntity;
     } on AuthException catch (e) {
       throw AuthenticationFailure(e.message);
@@ -114,6 +149,14 @@ class AuthRepositoryImpl implements AuthRepository {
       final userEntity = _firebaseUserToEntity(firebaseUser);
       _savePushToken(firebaseUser.uid);
       _currentUserNotifier.value = userEntity;
+
+      // Same as Google: keep the user's own active member rows' photo in step
+      // with the Auth photo. Photo only, and non-fatal.
+      await _syncMemberDisplayInfo(
+        userId: firebaseUser.uid,
+        photoUrl: userEntity.photoUrl,
+      );
+
       return userEntity;
     } on AuthException catch (e) {
       throw AuthenticationFailure(e.message);
@@ -274,6 +317,17 @@ class AuthRepositoryImpl implements AuthRepository {
       // ValueNotifier stores it and notifies listeners.
       _currentUserNotifier.value =
           _firebaseUserToEntity(firebaseUser, appliedName, appliedPhotoUrl);
+
+      // The Auth photo and users/{uid} now hold the new values, but the
+      // user's own member rows still hold the old ones — that is exactly how
+      // the same person ends up with two different pictures (header vs
+      // Members list). Push the applied values onto those rows. Display-only
+      // and non-fatal: the profile update has already succeeded.
+      await _syncMemberDisplayInfo(
+        userId: firebaseUser.uid,
+        displayName: appliedName,
+        photoUrl: appliedPhotoUrl,
+      );
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
@@ -288,6 +342,31 @@ class AuthRepositoryImpl implements AuthRepository {
       throw const FirebaseFailure('Not signed in.');
     }
     return _remote.uploadProfilePhoto(uid: firebaseUser.uid, localPath: localPath);
+  }
+
+  /// Pushes display info onto the signed-in user's OWN active membership rows
+  /// (all their houses), so the member list, History and Dashboard keep
+  /// resolving the same name and photo as the profile.
+  ///
+  /// NON-FATAL by construction. The membership photo is display-only
+  /// bookkeeping, so it must never be able to fail a sign-in or a profile
+  /// update: [runMemberProfileSync] converts any failure — offline, denied by
+  /// the security rules, a transient Firestore error — into a log line.
+  ///
+  /// A no-op when no synchronizer was injected, or when the sync would write
+  /// nothing (the rows already match, or no new value was supplied): the
+  /// planner never blanks a stored photo with an empty one.
+  Future<void> _syncMemberDisplayInfo({
+    required String userId,
+    String? displayName,
+    String? photoUrl,
+  }) async {
+    final sync = _memberDisplayInfoSync;
+    if (sync == null || userId.isEmpty) return;
+
+    await runMemberProfileSync(
+      () => sync(userId: userId, displayName: displayName, photoUrl: photoUrl),
+    );
   }
 
   /// Registers this device's FCM token so the user receives push notifications.

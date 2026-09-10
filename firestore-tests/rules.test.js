@@ -378,6 +378,267 @@ describe('house_members — role escalation', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// The avatar/name synchronization (`updateMemberDisplayInfo`) writes
+// displayName + photoUrl onto the signed-in user's own row. Before this
+// permission existed only the Treasurer could write those two fields, so every
+// other member's member-list avatar went stale as soon as their profile photo
+// changed. These tests pin both halves of that trade: the narrow permission it
+// needs, and every escalation it must still refuse.
+describe('house_members — own-row profile sync (displayName / photoUrl)', () => {
+  test('a member CAN set displayName on their own active row', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        displayName: 'Raymond Ng',
+      }),
+    );
+
+    // Read back through the member's own read permission: the write landed,
+    // and it landed on displayName alone.
+    const snap = await getDoc(doc(as(MEMBER), 'house_members', 'm-member-1'));
+    assert.equal(snap.data().displayName, 'Raymond Ng');
+    assert.equal(snap.data().role, 'Member', 'role must be untouched');
+    assert.equal(snap.data().isActive, true, 'isActive must be untouched');
+    assert.equal(snap.data().userId, MEMBER, 'userId must be untouched');
+    assert.equal(snap.data().houseId, H1, 'houseId must be untouched');
+  });
+
+  test('a member CAN set photoUrl on their own active row', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        photoUrl: 'https://example.invalid/avatar.jpg',
+      }),
+    );
+
+    const snap = await getDoc(doc(as(MEMBER), 'house_members', 'm-member-1'));
+    assert.equal(snap.data().photoUrl, 'https://example.invalid/avatar.jpg');
+    assert.equal(snap.data().isActive, true);
+  });
+
+  test('a member CAN set displayName AND photoUrl together (the real sync)', async () => {
+    // What the app actually sends: one update carrying both changed fields.
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        displayName: 'Raymond Ng',
+        photoUrl: 'https://example.invalid/avatar.jpg',
+      }),
+    );
+
+    const snap = await getDoc(doc(as(MEMBER), 'house_members', 'm-member-1'));
+    assert.equal(snap.data().displayName, 'Raymond Ng');
+    assert.equal(snap.data().photoUrl, 'https://example.invalid/avatar.jpg');
+  });
+
+  test('a member CANNOT reactivate an inactive row of their own', async () => {
+    // FORMER left H1: the row survives as the historical record. Flipping it
+    // back is refused — the profile branch requires the row to be active
+    // ALREADY, and the Leave-House branch only ever turns activity off.
+    await assertFails(
+      updateDoc(doc(as(FORMER), 'house_members', 'm-former-1'), {
+        isActive: true,
+      }),
+    );
+  });
+
+  test('a member CANNOT rewrite their own inactive row\'s profile fields', async () => {
+    // Historical rows keep the name the person had while they lived there.
+    await assertFails(
+      updateDoc(doc(as(FORMER), 'house_members', 'm-former-1'), {
+        displayName: 'Renamed After Leaving',
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as(FORMER), 'house_members', 'm-former-1'), {
+        photoUrl: 'https://example.invalid/after.jpg',
+      }),
+    );
+  });
+
+  test('a member CANNOT set isActive on their own active row', async () => {
+    // The profile branch requires a NON-EMPTY change confined to
+    // displayName/photoUrl. `isActive: true` on a row that is already active
+    // changes no field at all, so there is no permitted update here to make —
+    // the write is refused rather than treated as a no-op.
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        isActive: true,
+      }),
+    );
+  });
+
+  test('asking for the isActive it already has is a no-op, not a privilege', async () => {
+    // Restating an unchanged value is not an "affected key", so this is really
+    // just the displayName write — and isActive stays true because nothing
+    // touched it. The dangerous direction (false -> true) is covered above.
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        isActive: true,
+        displayName: 'Raymond Ng',
+      }),
+    );
+
+    const snap = await getDoc(doc(as(MEMBER), 'house_members', 'm-member-1'));
+    assert.equal(snap.data().isActive, true);
+  });
+
+  test('a member CANNOT change their own role (still no self-promotion)', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        role: 'Treasurer',
+      }),
+    );
+  });
+
+  test('a member CANNOT change houseId on their own row', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        houseId: H2,
+      }),
+    );
+    // …and not as a passenger on an otherwise-permitted profile write either.
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        displayName: 'Raymond Ng',
+        houseId: H2,
+      }),
+    );
+  });
+
+  test('a member CANNOT change userId on their own row', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        userId: OTHER_TREASURER,
+      }),
+    );
+  });
+
+  test('a member CANNOT change any other membership field', async () => {
+    for (const field of [
+      'memberId',
+      'joinedAt',
+      'email',
+      'sourceRows',
+      'inviteCode',
+    ]) {
+      await assertFails(
+        updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+          [field]: 'attacker-value',
+        }),
+      );
+      // Nor smuggled alongside a permitted field.
+      await assertFails(
+        updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+          displayName: 'Raymond Ng',
+          [field]: 'attacker-value',
+        }),
+      );
+    }
+  });
+
+  test('a member CANNOT add an arbitrary extra field alongside photoUrl', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        photoUrl: 'https://example.invalid/avatar.jpg',
+        fcmToken: 'planted',
+      }),
+    );
+  });
+
+  test('a member CANNOT write displayName/photoUrl on ANOTHER member\'s row', async () => {
+    for (const rowId of ['m-treasurer-1', 'm-former-1', 'm-rejoined-new']) {
+      await assertFails(
+        updateDoc(doc(as(MEMBER), 'house_members', rowId), {
+          displayName: 'Not Mine',
+        }),
+      );
+      await assertFails(
+        updateDoc(doc(as(MEMBER), 'house_members', rowId), {
+          photoUrl: 'https://example.invalid/not-mine.jpg',
+        }),
+      );
+      // …and in the other house, which a member of H1 must never reach.
+      await assertFails(
+        updateDoc(doc(as(MEMBER), 'house_members', rowId), {
+          displayName: 'Not Mine',
+          houseId: H2,
+        }),
+      );
+    }
+  });
+
+  test('somebody with no membership at all CANNOT use the profile permission', async () => {
+    await assertFails(
+      updateDoc(doc(as(OUTSIDER), 'house_members', 'm-member-1'), {
+        displayName: 'Outsider',
+      }),
+    );
+  });
+
+  test('a member can STILL leave the house (isActive:false, unchanged)', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        isActive: false,
+      }),
+    );
+  });
+
+  test('a member CANNOT combine leaving with a profile-field change', async () => {
+    // The two key-sets are disjoint and neither branch admits their union, so
+    // Leave House can never carry a profile edit with it.
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        isActive: false,
+        displayName: 'Raymond Ng',
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        isActive: false,
+        photoUrl: 'https://example.invalid/avatar.jpg',
+      }),
+    );
+  });
+
+  test('the Treasurer CAN still sync their own row\'s displayName/photoUrl', async () => {
+    // The original live-QA case: the Treasurer's own row held a stale photo.
+    await assertSucceeds(
+      updateDoc(doc(as(TREASURER), 'house_members', 'm-treasurer-1'), {
+        displayName: 'Raymond Ng',
+        photoUrl: 'https://example.invalid/avatar.jpg',
+      }),
+    );
+  });
+
+  test('the Treasurer retains full update rights over the house\'s rows', async () => {
+    // Transfer Treasurer and Remove Member depend on these, and must not have
+    // been narrowed by the new own-row branch.
+    await assertSucceeds(
+      updateDoc(doc(as(TREASURER), 'house_members', 'm-member-1'), {
+        role: 'Treasurer',
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as(TREASURER), 'house_members', 'm-former-1'), {
+        displayName: 'Edited By Treasurer',
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as(TREASURER), 'house_members', 'm-member-1'), {
+        isActive: false,
+      }),
+    );
+  });
+
+  test('another house\'s Treasurer gains nothing in this house', async () => {
+    await assertFails(
+      updateDoc(doc(as(OTHER_TREASURER), 'house_members', 'm-member-1'), {
+        displayName: 'Not Yours',
+        photoUrl: 'https://example.invalid/not-yours.jpg',
+      }),
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
 describe('expenses', () => {
   test('a member CAN file their own pending claim', async () => {
     await assertSucceeds(
@@ -1406,7 +1667,8 @@ describe('query compatibility — the app\'s real queries under the new rules', 
 //
 // `getMembers` resolves each member's name through `resolveMemberDisplayName`
 // and then PERSISTS the resolved name onto the house_members row as a cache.
-// Under the tightened rules that persist is no longer universally allowed.
+// Under the tightened rules that persist narrowed to the caller's OWN active
+// rows — it is no longer a write a member can perform on anyone else.
 //
 // The question these tests answer is whether that is a REGRESSION or benign
 // graceful degradation. It is benign, and the reason is in the last test: the
@@ -1423,11 +1685,16 @@ describe('getMembers displayName backfill — degraded, not broken', () => {
     );
   });
 
-  test('a member CANNOT persist a backfilled name onto their OWN row either', async () => {
-    // Leave House is pinned to hasOnly(['isActive']) + isActive == false, which
-    // is what stops a member rewriting their own role. The cost is that the
-    // displayName cache write is refused too.
-    await assertFails(
+  test('a member CAN persist a backfilled name onto their OWN active row', async () => {
+    // This USED to be refused, and the refusal had a cost: the only member
+    // update branch was Leave House (hasOnly(['isActive'])), so a member could
+    // not refresh their own displayName or photo at all. That is precisely why
+    // the Members list kept showing a stale avatar after a profile edit.
+    //
+    // It is now permitted, but not as "write your own row" — the permission is
+    // own-row, ACTIVE-row, displayName/photoUrl only. The test above pins the
+    // "somebody else's row" half; the own-row profile-sync suite pins the rest.
+    await assertSucceeds(
       updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
         displayName: 'Resolved Name',
       }),

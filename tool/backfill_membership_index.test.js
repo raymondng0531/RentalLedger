@@ -429,3 +429,169 @@ describe('backfill — scale', () => {
     assert.strictEqual((await allIndexPaths()).length, total);
   });
 });
+
+describe('backfill — unexpected role values', () => {
+  test('a role that is neither Treasurer nor Member is reported', async () => {
+    // The app writes exactly two role strings. Anything else is a typo, a
+    // casing difference, or a value from some other writer — and it would
+    // otherwise pass through the backfill completely unmentioned, because
+    // summarizeMembership silently coerces it.
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-a', { role: 'Admin' });
+
+    const report = await backfillMembershipIndex(db, { apply: true });
+
+    const anomaly = report.anomalies.find((a) => a.kind === 'unexpected-role');
+    assert.ok(anomaly, 'the unexpected role must be reported');
+    assert.strictEqual(anomaly.role, 'Admin');
+    assert.strictEqual(anomaly.memberId, 'm-1');
+    assert.strictEqual(anomaly.houseId, 'h1');
+    assert.strictEqual(anomaly.userId, 'uid-a');
+    assert.strictEqual(report.summary.rowsWithUnexpectedRole, 1);
+  });
+
+  test('a near-miss casing is reported, not silently accepted', async () => {
+    // 'treasurer' is the dangerous one: it must NOT be read as Treasurer.
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-a', { role: 'treasurer' });
+
+    const report = await backfillMembershipIndex(db, { apply: true });
+
+    assert.strictEqual(report.summary.rowsWithUnexpectedRole, 1);
+    assert.ok(report.anomalies.some((a) => a.kind === 'unexpected-role'));
+  });
+
+  test('the DERIVATION is unchanged: an unexpected role still derives as Member', async () => {
+    // The security behaviour must NOT change with this report — fail CLOSED on
+    // the privileged role. This test is the guard on that.
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-a', { role: 'Treasurer ' }); // trailing space
+
+    await backfillMembershipIndex(db, { apply: true });
+
+    const entry = await indexEntry('h1', 'uid-a');
+    assert.strictEqual(entry.isActive, true);
+    assert.strictEqual(entry.role, 'Member', 'must never become Treasurer');
+  });
+
+  test('an unexpected role NEVER becomes Treasurer, whatever it says', async () => {
+    await seedHouse('h1');
+    for (const [i, role] of ['ADMIN', 'Owner', 'TREASURER', 'Superuser'].entries()) {
+      await seedMember(`m-${i}`, 'h1', `uid-${i}`, { role });
+    }
+
+    await backfillMembershipIndex(db, { apply: true });
+
+    for (let i = 0; i < 4; i++) {
+      assert.strictEqual((await indexEntry('h1', `uid-${i}`)).role, 'Member');
+    }
+  });
+
+  test('a valid Treasurer row still wins over a stray role on another row', async () => {
+    // The anomaly is per-ROW; the derivation is per-PAIR. A junk row must not
+    // be able to suppress the real Treasurer.
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-a', { role: 'Treasurer' });
+    await seedMember('m-2', 'h1', 'uid-a', { role: 'Admin' });
+
+    const report = await backfillMembershipIndex(db, { apply: true });
+
+    assert.strictEqual((await indexEntry('h1', 'uid-a')).role, 'Treasurer');
+    assert.strictEqual(report.summary.rowsWithUnexpectedRole, 1);
+  });
+
+  test('a MISSING role is NOT reported — the app defaults it to Member', async () => {
+    // `house_member_model.dart` reads `map['role'] ?? 'Member'`, so a row with
+    // no role is a supported legacy shape, exactly like a missing isActive.
+    // Flagging it would bury the real signal under legacy rows.
+    await seedHouse('h1');
+    await db.collection('house_members').doc('m-legacy').set({
+      houseId: 'h1',
+      userId: 'uid-legacy',
+      isActive: true,
+    });
+
+    const report = await backfillMembershipIndex(db, { apply: true });
+
+    assert.strictEqual(report.summary.rowsWithUnexpectedRole, 0);
+    assert.deepStrictEqual(report.anomalies, []);
+    assert.strictEqual((await indexEntry('h1', 'uid-legacy')).role, 'Member');
+  });
+
+  test('the dry run reports it too, and still writes nothing', async () => {
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-a', { role: 'Admin' });
+
+    const report = await backfillMembershipIndex(db);
+
+    assert.strictEqual(report.summary.rowsWithUnexpectedRole, 1);
+    assert.deepStrictEqual(await allIndexPaths(), []);
+  });
+
+  test('the row is reported, never modified or deleted', async () => {
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-a', { role: 'Admin' });
+
+    const before = (await db.collection('house_members').get()).docs.map((d) => ({
+      id: d.id,
+      data: d.data(),
+    }));
+
+    await backfillMembershipIndex(db, { apply: true });
+
+    const after = (await db.collection('house_members').get()).docs.map((d) => ({
+      id: d.id,
+      data: d.data(),
+    }));
+    assert.deepStrictEqual(after, before, 'the bad role must be left as-is');
+  });
+
+  test('a row missing keys AND carrying a bad role reports both', async () => {
+    // The role check runs before the key check, so an unattributable row's
+    // role is still surfaced rather than swallowed by the `continue`.
+    await seedHouse('h1');
+    await db.collection('house_members').doc('m-broken').set({
+      role: 'Admin',
+      isActive: true,
+    });
+
+    const report = await backfillMembershipIndex(db, { apply: true });
+
+    const kinds = report.anomalies.map((a) => a.kind).sort();
+    assert.deepStrictEqual(kinds, ['row-missing-keys', 'unexpected-role']);
+    assert.strictEqual(report.summary.rowsWithUnexpectedRole, 1);
+    assert.strictEqual(report.summary.rowsWithoutKeys, 1);
+  });
+
+  test('the existing anomaly types are unchanged', async () => {
+    // A guard on the instruction not to disturb what was already reported.
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-dup', { isActive: true });
+    await seedMember('m-2', 'h1', 'uid-dup', { isActive: true });
+    await seedMember('m-3', 'house-that-is-gone', 'uid-b');
+    await db.collection('house_members').doc('m-broken').set({ role: 'Member' });
+
+    const report = await backfillMembershipIndex(db, { apply: true });
+
+    const kinds = new Set(report.anomalies.map((a) => a.kind));
+    for (const kind of [
+      'row-missing-keys',
+      'multiple-active-rows',
+      'active-member-of-missing-house',
+    ]) {
+      assert.ok(kinds.has(kind), `${kind} must still be reported`);
+    }
+  });
+
+  test('a clean dataset with valid roles reports zero unexpected roles', async () => {
+    // The negative control.
+    await seedHouse('h1');
+    await seedMember('m-1', 'h1', 'uid-a', { role: 'Member' });
+    await seedMember('m-2', 'h1', 'uid-t', { role: 'Treasurer' });
+
+    const report = await backfillMembershipIndex(db, { apply: true });
+
+    assert.strictEqual(report.summary.rowsWithUnexpectedRole, 0);
+    assert.deepStrictEqual(report.anomalies, []);
+  });
+});

@@ -31,6 +31,10 @@ const {
   deleteDoc,
   collection,
   getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
 } = require('firebase/firestore');
 
 const PROJECT_ID = 'rental-ledger-rules';
@@ -41,6 +45,10 @@ const H2 = 'house-2'; // a different house we must never touch
 const TREASURER = 'uid-treasurer';
 const MEMBER = 'uid-member';
 const OTHER_TREASURER = 'uid-other-treasurer';
+const FORMER = 'uid-former'; // left H1 — historical record, inactive
+const REJOINED = 'uid-rejoined'; // left H1 and came back — two rows, one active
+const OUTSIDER = 'uid-outsider'; // belongs to no house at all
+const NEWCOMER = 'uid-newcomer'; // will join H1 through the callable
 
 let testEnv;
 
@@ -86,6 +94,78 @@ async function seed() {
       role: 'Treasurer',
       isActive: true,
     });
+    // A member who LEFT. The row survives (Leave House is a soft delete) and
+    // the historical member-name feature reads it. Must remain readable by the
+    // house's members.
+    await setDoc(doc(db, 'house_members', 'm-former-1'), {
+      houseId: H1,
+      userId: FORMER,
+      role: 'Member',
+      isActive: false,
+      displayName: 'Former Resident',
+      email: 'former@example.com',
+    });
+    // Removed, then REJOINED: two rows for one person, exactly one active. The
+    // aggregation in functions/index.js must OR these to "active" — a stale
+    // soft-deleted row must never deactivate a current member.
+    await setDoc(doc(db, 'house_members', 'm-rejoined-old'), {
+      houseId: H1,
+      userId: REJOINED,
+      role: 'Member',
+      isActive: false,
+    });
+    await setDoc(doc(db, 'house_members', 'm-rejoined-new'), {
+      houseId: H1,
+      userId: REJOINED,
+      role: 'Member',
+      isActive: true,
+    });
+
+    // ── The AUTHORIZATION INDEX ──
+    // What the tightened rules actually read. In production this is written
+    // only by the Admin SDK — the Cloud Function trigger (functions/index.js)
+    // for live workflows, and tool/backfill_membership_index.js for
+    // memberships that predate it. Seeding it here models a backfilled
+    // production database; a fixture WITHOUT an entry models someone who is
+    // not a member.
+    await setDoc(doc(db, 'houses', H1, 'members', TREASURER), {
+      userId: TREASURER,
+      houseId: H1,
+      isActive: true,
+      role: 'Treasurer',
+      sourceRows: 1,
+    });
+    await setDoc(doc(db, 'houses', H1, 'members', MEMBER), {
+      userId: MEMBER,
+      houseId: H1,
+      isActive: true,
+      role: 'Member',
+      sourceRows: 1,
+    });
+    await setDoc(doc(db, 'houses', H1, 'members', REJOINED), {
+      userId: REJOINED,
+      houseId: H1,
+      isActive: true,
+      role: 'Member',
+      sourceRows: 2,
+    });
+    // A deauthorized member keeps their entry with isActive:false rather than
+    // having it deleted — that is the record that they were deauthorized.
+    await setDoc(doc(db, 'houses', H1, 'members', FORMER), {
+      userId: FORMER,
+      houseId: H1,
+      isActive: false,
+      role: 'Member',
+      sourceRows: 1,
+    });
+    await setDoc(doc(db, 'houses', H2, 'members', OTHER_TREASURER), {
+      userId: OTHER_TREASURER,
+      houseId: H2,
+      isActive: true,
+      role: 'Treasurer',
+      sourceRows: 1,
+    });
+
     await setDoc(doc(db, 'bills', 'bill-1'), {
       houseId: H1,
       title: 'Electricity',
@@ -94,6 +174,7 @@ async function seed() {
       reminderEnabled: false,
       isPaid: false,
       isActive: true,
+      dueDate: new Date('2026-01-15'),
     });
     await setDoc(doc(db, 'expenses', 'exp-1'), {
       houseId: H1,
@@ -102,6 +183,45 @@ async function seed() {
       amount: 42.5,
       status: 'pending',
       paymentSource: 'personal',
+      createdAt: new Date('2026-01-10'),
+    });
+    await setDoc(doc(db, 'expenses', 'exp-h2'), {
+      houseId: H2,
+      purchasedBy: OTHER_TREASURER,
+      title: 'Other house groceries',
+      amount: 10,
+      status: 'pending',
+      paymentSource: 'personal',
+      createdAt: new Date('2026-01-10'),
+    });
+    await setDoc(doc(db, 'transactions', 'tx-1'), {
+      houseId: H1,
+      type: 'Deposit',
+      amount: 500,
+      performedBy: TREASURER,
+      createdAt: new Date('2026-01-05'),
+    });
+    await setDoc(doc(db, 'transactions', 'tx-h2'), {
+      houseId: H2,
+      type: 'Deposit',
+      amount: 700,
+      performedBy: OTHER_TREASURER,
+      createdAt: new Date('2026-01-05'),
+    });
+    await setDoc(doc(db, 'categories', `${H1}_cat-1`), {
+      categoryId: 'cat-1',
+      houseId: H1,
+      name: 'Groceries',
+      icon: 'cart',
+      color: '#FF0000',
+    });
+    await setDoc(doc(db, 'notifications', 'n-member'), {
+      userId: MEMBER,
+      title: 'Approved',
+      body: 'Your claim was approved',
+      type: 'expense_approved',
+      isRead: false,
+      createdAt: new Date('2026-01-11'),
     });
   });
 }
@@ -185,11 +305,16 @@ describe('house_members — role escalation', () => {
     );
   });
 
-  test('a joiner CAN create their own Member record', async () => {
-    await assertSucceeds(
-      setDoc(doc(as('uid-newcomer'), 'house_members', 'm-new-1'), {
+  test('a joiner CANNOT create their own Member record (moved to the callable)', async () => {
+    // This USED to succeed, and that was the whole vulnerability: a client that
+    // can write its own membership can satisfy any membership check the rules
+    // could express. Member rows are now written by the `joinHouse` Cloud
+    // Function with admin credentials (functions/index.js), so the client-side
+    // write is refused.
+    await assertFails(
+      setDoc(doc(as(NEWCOMER), 'house_members', 'm-new-1'), {
         houseId: H1,
-        userId: 'uid-newcomer',
+        userId: NEWCOMER,
         role: 'Member',
         isActive: true,
       }),
@@ -198,7 +323,7 @@ describe('house_members — role escalation', () => {
 
   test('a joiner CANNOT write a membership for somebody else', async () => {
     await assertFails(
-      setDoc(doc(as('uid-newcomer'), 'house_members', 'm-new-2'), {
+      setDoc(doc(as(NEWCOMER), 'house_members', 'm-new-2'), {
         houseId: H1,
         userId: MEMBER,
         role: 'Member',
@@ -209,10 +334,25 @@ describe('house_members — role escalation', () => {
 
   test('a joiner CANNOT self-assign the Treasurer role', async () => {
     await assertFails(
-      setDoc(doc(as('uid-newcomer'), 'house_members', 'm-new-3'), {
+      setDoc(doc(as(NEWCOMER), 'house_members', 'm-new-3'), {
         houseId: H1,
-        userId: 'uid-newcomer',
+        userId: NEWCOMER,
         role: 'Treasurer',
+        isActive: true,
+      }),
+    );
+  });
+
+  test('even a real member CANNOT write a Member row for their own house', async () => {
+    // The rule is about the RECORD, not the person: a Member row is a
+    // server-owned artifact now. Only the Treasurer create path (createHouse)
+    // survives, because that is the only client-side membership write the app
+    // still performs.
+    await assertFails(
+      setDoc(doc(as(MEMBER), 'house_members', 'm-new-4'), {
+        houseId: H1,
+        userId: MEMBER,
+        role: 'Member',
         isActive: true,
       }),
     );
@@ -286,7 +426,13 @@ describe('expenses', () => {
 
   test('a member CANNOT edit another member\'s claim', async () => {
     await assertFails(
-      updateDoc(doc(as('uid-newcomer'), 'expenses', 'exp-1'), { amount: 1 }),
+      updateDoc(doc(as(NEWCOMER), 'expenses', 'exp-1'), { amount: 1 }),
+    );
+  });
+
+  test('a member CANNOT edit another house\'s claim', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-h2'), { amount: 1 }),
     );
   });
 
@@ -296,19 +442,61 @@ describe('expenses', () => {
     );
   });
 
-  test('KNOWN GAP: a non-member can still file a pending claim in another house', async () => {
-    // Documented residual, not a desired outcome. Membership is not
-    // expressible in rules today: house_members uses random UUID doc ids and
-    // rules can only get() a document by path, never query a collection.
-    // When a path-addressable membership record exists, flip this to
-    // assertFails — the assertion is inverted on purpose so the gap is
-    // impossible to forget.
-    await assertSucceeds(
-      setDoc(doc(as('uid-outsider'), 'expenses', 'exp-outsider'), {
+  test('CLOSED: a non-member CANNOT file a claim in another house', async () => {
+    // The reported gap, inverted. It used to succeed because membership was
+    // not expressible in rules: `house_members` uses random UUID document ids
+    // and rules can only get() by path, never query a collection. With the
+    // addressable index in place the check is expressible — and, crucially,
+    // NOT satisfiable by the attacker, because the index is server-written.
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'expenses', 'exp-outsider'), {
         houseId: H2,
-        purchasedBy: 'uid-outsider',
+        purchasedBy: OUTSIDER,
         title: 'Misfiled',
         amount: 1,
+        status: 'pending',
+        paymentSource: 'personal',
+      }),
+    );
+  });
+
+  test('a member CANNOT file a claim in ANOTHER house they do not belong to', async () => {
+    // Belonging to house 1 must not confer anything in house 2.
+    await assertFails(
+      setDoc(doc(as(MEMBER), 'expenses', 'exp-cross'), {
+        houseId: H2,
+        purchasedBy: MEMBER,
+        title: 'Cross-house',
+        amount: 1,
+        status: 'pending',
+        paymentSource: 'personal',
+      }),
+    );
+  });
+
+  test('a REJOINED member CAN still file a claim', async () => {
+    // Guards the aggregation: two rows for this person, only the newer one
+    // active. If the index were derived from a single row, a stale soft-deleted
+    // row could have left them deauthorized.
+    await assertSucceeds(
+      setDoc(doc(as(REJOINED), 'expenses', 'exp-rejoined'), {
+        houseId: H1,
+        purchasedBy: REJOINED,
+        title: 'After rejoining',
+        amount: 5,
+        status: 'pending',
+        paymentSource: 'personal',
+      }),
+    );
+  });
+
+  test('a member who LEFT CANNOT file a claim any more', async () => {
+    await assertFails(
+      setDoc(doc(as(FORMER), 'expenses', 'exp-former'), {
+        houseId: H1,
+        purchasedBy: FORMER,
+        title: 'After leaving',
+        amount: 5,
         status: 'pending',
         paymentSource: 'personal',
       }),
@@ -390,16 +578,53 @@ describe('bills', () => {
     await assertFails(deleteDoc(doc(as(OTHER_TREASURER), 'bills', 'bill-1')));
   });
 
-  test('anyone signed in CAN still read a bill', async () => {
+  test('a member CAN read their own house\'s bill', async () => {
     await assertSucceeds(getDoc(doc(as(MEMBER), 'bills', 'bill-1')));
+  });
+
+  test('a NON-MEMBER CANNOT read a bill', async () => {
+    // Was `if request.auth != null` — every bill in the system was readable by
+    // anyone signed in.
+    await assertFails(getDoc(doc(as(OUTSIDER), 'bills', 'bill-1')));
+  });
+
+  test('another house\'s treasurer CANNOT read this house\'s bill', async () => {
+    await assertFails(getDoc(doc(as(OTHER_TREASURER), 'bills', 'bill-1')));
+  });
+
+  test('CLOSED: a non-member CANNOT flip another house\'s reminder flag', async () => {
+    // The reported residual. The reminder toggle stays member-reachable (it is
+    // an explicitly member-facing control), but it is now pinned to ACTIVE
+    // MEMBERSHIP as well as to the single field.
+    await assertFails(
+      updateDoc(doc(as(OUTSIDER), 'bills', 'bill-1'), {
+        reminderEnabled: true,
+      }),
+    );
+  });
+
+  test('a MEMBER of another house CANNOT flip this house\'s reminder flag', async () => {
+    await assertFails(
+      updateDoc(doc(as(OTHER_TREASURER), 'bills', 'bill-1'), {
+        reminderEnabled: true,
+      }),
+    );
+  });
+
+  test('a member who LEFT CANNOT flip the reminder flag', async () => {
+    await assertFails(
+      updateDoc(doc(as(FORMER), 'bills', 'bill-1'), { reminderEnabled: true }),
+    );
   });
 });
 
 // ─────────────────────────────────────────────────────────────
 describe('transactions (money movement)', () => {
   test('the treasurer CAN append a transaction', async () => {
+    // A NEW document id — `tx-1` is seeded by the fixture, and re-`setDoc`-ing
+    // an existing document is an UPDATE, which the append-only rule refuses.
     await assertSucceeds(
-      setDoc(doc(as(TREASURER), 'transactions', 'tx-1'), {
+      setDoc(doc(as(TREASURER), 'transactions', 'tx-new'), {
         houseId: H1,
         type: 'Deposit',
         amount: 500,
@@ -436,6 +661,18 @@ describe('transactions (money movement)', () => {
     );
     await assertFails(deleteDoc(doc(as(TREASURER), 'transactions', 'tx-1')));
   });
+
+  test('a member CAN read their own house\'s transactions', async () => {
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'transactions', 'tx-1')));
+  });
+
+  test('a NON-MEMBER CANNOT read a transaction', async () => {
+    await assertFails(getDoc(doc(as(OUTSIDER), 'transactions', 'tx-1')));
+  });
+
+  test('another house\'s treasurer CANNOT read this house\'s transactions', async () => {
+    await assertFails(getDoc(doc(as(OTHER_TREASURER), 'transactions', 'tx-1')));
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -454,6 +691,142 @@ describe('houses', () => {
 
   test('nobody can delete a house', async () => {
     await assertFails(deleteDoc(doc(as(TREASURER), 'houses', H1)));
+  });
+
+  test('a member CAN read their own house', async () => {
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'houses', H1)));
+  });
+
+  test('CLOSED: an outsider CANNOT read another house — invite code included', async () => {
+    // This used to return the document WITH its inviteCode. The invite code is
+    // the join secret, so reading it was equivalent to being handed the keys.
+    await assertFails(getDoc(doc(as(OUTSIDER), 'houses', H2)));
+  });
+
+  test('another house\'s treasurer CANNOT read this house', async () => {
+    await assertFails(getDoc(doc(as(OTHER_TREASURER), 'houses', H1)));
+  });
+
+  test('a member CANNOT enumerate the houses collection', async () => {
+    // `allow read` grants list as well as get, so "can read a house" used to
+    // mean "can read EVERY house". A list now requires a constraint the rule
+    // can prove, and there is none for an unscoped query.
+    await assertFails(getDocs(collection(as(MEMBER), 'houses')));
+  });
+
+  test('the creator MUST name themselves Treasurer', async () => {
+    // Previously any signed-in user could create a house naming someone ELSE
+    // as Treasurer — handing that person Treasurer powers over a house they
+    // never made, and leaving the creator with none.
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'houses', 'house-forged'), {
+        houseId: 'house-forged',
+        houseName: 'Forged',
+        inviteCode: 'AAAA11',
+        treasurerId: MEMBER,
+        balance: 0,
+        currency: 'MYR',
+        isArchived: false,
+      }),
+    );
+  });
+
+  test('the creator CAN create a house naming themselves Treasurer', async () => {
+    // The real createHouse path.
+    await assertSucceeds(
+      setDoc(doc(as(OUTSIDER), 'houses', 'house-own'), {
+        houseId: 'house-own',
+        houseName: 'My New House',
+        inviteCode: 'BBBB22',
+        treasurerId: OUTSIDER,
+        balance: 0,
+        currency: 'MYR',
+        isArchived: false,
+      }),
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// THE INDEX ITSELF.
+//
+// Everything above rests on one property: the client cannot write the document
+// the rules read. If that ever stops being true, every membership rule in this
+// file becomes decorative — so it is asserted directly rather than assumed.
+describe('membership index — server-owned', () => {
+  test('an outsider CANNOT create an index entry for themselves', async () => {
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'houses', H2, 'members', OUTSIDER), {
+        userId: OUTSIDER,
+        houseId: H2,
+        isActive: true,
+        role: 'Member',
+      }),
+    );
+  });
+
+  test('an outsider CANNOT create an index entry for themselves in a house they can name', async () => {
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'houses', H1, 'members', OUTSIDER), {
+        userId: OUTSIDER,
+        houseId: H1,
+        isActive: true,
+        role: 'Member',
+      }),
+    );
+  });
+
+  test('a member CANNOT activate their own deauthorized entry (re-entry)', async () => {
+    // The subtle one. A member who left still has an entry with
+    // isActive:false; if they could flip it back, leaving would be reversible
+    // unilaterally and removal would be meaningless.
+    await assertFails(
+      updateDoc(doc(as(FORMER), 'houses', H1, 'members', FORMER), {
+        isActive: true,
+      }),
+    );
+  });
+
+  test('a member CANNOT promote themselves in the index', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'houses', H1, 'members', MEMBER), {
+        role: 'Treasurer',
+      }),
+    );
+  });
+
+  test('even the TREASURER CANNOT write the index', async () => {
+    // Admin SDK only. The Cloud Functions writer bypasses rules entirely, so
+    // `write: if false` costs it nothing.
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'houses', H1, 'members', MEMBER), {
+        isActive: false,
+      }),
+    );
+  });
+
+  test('nobody can delete an index entry', async () => {
+    await assertFails(
+      deleteDoc(doc(as(TREASURER), 'houses', H1, 'members', MEMBER)),
+    );
+  });
+
+  test('a member CAN read their own house\'s index entries', async () => {
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'houses', H1, 'members', TREASURER)));
+  });
+
+  test('a user CAN read their own index entry in any house', async () => {
+    await assertSucceeds(getDoc(doc(as(FORMER), 'houses', H1, 'members', FORMER)));
+  });
+
+  test('a NON-MEMBER CANNOT read a house\'s index entries', async () => {
+    await assertFails(getDoc(doc(as(OUTSIDER), 'houses', H1, 'members', MEMBER)));
+  });
+
+  test('another house\'s treasurer CANNOT read this house\'s index entries', async () => {
+    await assertFails(
+      getDoc(doc(as(OTHER_TREASURER), 'houses', H1, 'members', MEMBER)),
+    );
   });
 });
 
@@ -514,60 +887,60 @@ describe('unauthenticated access', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// MEASURED SECURITY POSTURE — the evidence base for the membership
-// design decision.
+// CLOSURE EVIDENCE — what a house-less signed-in user can do NOW.
 //
-// Every assertion in this block records what the rules allow TODAY for a
-// signed-in user who belongs to NO house (OUTSIDER). These are NOT desired
-// outcomes. They are asserted as successes on purpose, so the exposure is
-// measured rather than assumed, and so each one becomes the acceptance test
-// for the fix: when a path-addressable membership record exists, these flip
-// to assertFails.
-//
-// Read together they show WHY a membership check on `expenses create` alone
-// would be security theatre: the outsider can already read every house's id
-// and invite code and can forge an active membership record for any house.
-// The fix has to close that loop, not just add a condition to one rule.
-describe('MEASURED POSTURE — what a house-less signed-in user can do', () => {
-  const OUTSIDER = 'uid-outsider';
-
-  test('an outsider CAN list EVERY house_members record (no filter)', async () => {
-    // `allow read` grants list as well as get, and no rule requires the query
-    // to be scoped — so one unfiltered query returns every house's roster
-    // (names, emails, photo URLs) and, with it, every houseId in the system.
-    const snap = await getDocs(collection(as(OUTSIDER), 'house_members'));
-    assert.ok(
-      snap.size >= 3,
-      `expected the full roster to be readable, saw ${snap.size} docs`,
-    );
-    assert.ok(snap.docs.every((d) => typeof d.data().houseId === 'string'));
+// Every one of these was measured as a SUCCESS before the membership index
+// landed (see the git history of this file). They are asserted as failures
+// here, so the closure is evidenced rather than claimed. If any of them
+// regresses, the vulnerability is back.
+describe('CLOSED — what a house-less signed-in user CANNOT do', () => {
+  test('an outsider CANNOT list the house_members collection', async () => {
+    // Used to return every house's roster: names, emails, photo URLs — and
+    // with it every houseId in the system.
+    await assertFails(getDocs(collection(as(OUTSIDER), 'house_members')));
   });
 
-  test('an outsider CAN read another house document, invite code included', async () => {
-    // The invite code is the join secret, and it is readable by anyone signed
-    // in who knows (or learned, above) the houseId.
-    const snap = await getDoc(doc(as(OUTSIDER), 'houses', H2));
-    assert.strictEqual(snap.data().inviteCode, 'ZZ99YY');
+  test('even a MEMBER cannot list house_members unfiltered', async () => {
+    // The rule is per-document and depends on houseId, so an unscoped query is
+    // not provable even for a legitimate member. Correct: no collection-wide
+    // reads. Every real caller scopes by houseId or userId (see the
+    // query-compatibility block below).
+    await assertFails(getDocs(collection(as(MEMBER), 'house_members')));
   });
 
-  test('an outsider CAN read another house\'s expenses', async () => {
-    await assertSucceeds(getDoc(doc(as(OUTSIDER), 'expenses', 'exp-1')));
+  test('an outsider CANNOT read another house document, invite code included', async () => {
+    await assertFails(getDoc(doc(as(OUTSIDER), 'houses', H2)));
   });
 
-  test('an outsider CAN list the transactions collection', async () => {
-    // Financial history is readable collection-wide, not just by document.
-    const snap = await getDocs(collection(as(OUTSIDER), 'transactions'));
-    assert.ok(Array.isArray(snap.docs));
+  test('an outsider CANNOT read another house\'s expenses', async () => {
+    await assertFails(getDoc(doc(as(OUTSIDER), 'expenses', 'exp-1')));
   });
 
-  test('an outsider CAN forge an ACTIVE membership in a house never joined', async () => {
-    // THE CRUX. Membership create only checks userId == auth.uid and a role,
-    // so a house-less user can write themselves an active Member record for
-    // any houseId — including one they just harvested from the roster leak
-    // above. This is why a membership *check* alone closes nothing: the
-    // attacker can satisfy it. Closing the gap requires membership to be
-    // asserted by something the client cannot write.
-    await assertSucceeds(
+  test('an outsider CANNOT list the expenses collection unfiltered', async () => {
+    await assertFails(getDocs(collection(as(OUTSIDER), 'expenses')));
+  });
+
+  test('an outsider CANNOT list the transactions collection unfiltered', async () => {
+    // Financial history used to be readable collection-wide, not just by
+    // document.
+    await assertFails(getDocs(collection(as(OUTSIDER), 'transactions')));
+  });
+
+  test('an outsider CANNOT list the bills collection unfiltered', async () => {
+    await assertFails(getDocs(collection(as(OUTSIDER), 'bills')));
+  });
+
+  test('an outsider CANNOT list the categories collection unfiltered', async () => {
+    await assertFails(getDocs(collection(as(OUTSIDER), 'categories')));
+  });
+
+  test('an outsider CANNOT forge an ACTIVE membership', async () => {
+    // THE CRUX, and the reason the fix is an index plus a server-side writer
+    // rather than a membership check alone. Membership create used to accept
+    // `userId == auth.uid` for any houseId, so the attacker could satisfy any
+    // membership condition the rules could express. Now the record they would
+    // have to forge is one they cannot write at all.
+    await assertFails(
       setDoc(doc(as(OUTSIDER), 'house_members', 'm-forged'), {
         houseId: H2,
         userId: OUTSIDER,
@@ -575,13 +948,19 @@ describe('MEASURED POSTURE — what a house-less signed-in user can do', () => {
         isActive: true,
       }),
     );
+    // …and the index entry that would actually authorize them.
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'houses', H2, 'members', OUTSIDER), {
+        userId: OUTSIDER,
+        houseId: H2,
+        isActive: true,
+        role: 'Member',
+      }),
+    );
   });
 
-  test('an outsider CAN flip the reminder flag on another house\'s bill', async () => {
-    // Confirms the reported bills residual — the member-facing reminder
-    // toggle is pinned to one field, but pinned for EVERYONE, not just
-    // members. No money moves and no data is destroyed.
-    await assertSucceeds(
+  test('an outsider CANNOT flip the reminder flag on another house\'s bill', async () => {
+    await assertFails(
       updateDoc(doc(as(OUTSIDER), 'bills', 'bill-1'), {
         reminderEnabled: true,
       }),
@@ -602,5 +981,422 @@ describe('MEASURED POSTURE — what a house-less signed-in user can do', () => {
     await assertFails(
       updateDoc(doc(as(OUTSIDER), 'expenses', 'exp-1'), { status: 'approved' }),
     );
+  });
+
+  test('an outsider CANNOT profit from the house they cannot read', async () => {
+    // End-to-end: no read, no claim, no approval, no money. The full chain a
+    // real attacker would walk.
+    await assertFails(getDoc(doc(as(OUTSIDER), 'houses', H2)));
+    await assertFails(getDoc(doc(as(OUTSIDER), 'houses', H2, 'members', OTHER_TREASURER)));
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'expenses', 'exp-attack'), {
+        houseId: H2,
+        purchasedBy: OUTSIDER,
+        title: 'Attack',
+        amount: 10000,
+        status: 'pending',
+        paymentSource: 'personal',
+      }),
+    );
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'transactions', 'tx-attack'), {
+        houseId: H2,
+        type: 'Deposit',
+        amount: 10000,
+      }),
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// HISTORICAL RECORDS — the e7f4813 member-name feature is protected.
+//
+// Tightening membership reads must not break the roster's historical names.
+// These pin that: inactive rows stay readable BY THE HOUSE, and the house's
+// members keep resolving a departed member's name from their surviving row.
+describe('historical membership records', () => {
+  test('a member CAN still read a DEPARTED member\'s row', async () => {
+    // This is what historical name resolution reads. If it broke, History
+    // would show "Unknown Member" for anyone who ever left.
+    const snap = await getDoc(doc(as(MEMBER), 'house_members', 'm-former-1'));
+    assert.strictEqual(snap.data().displayName, 'Former Resident');
+    assert.strictEqual(snap.data().isActive, false);
+  });
+
+  test('a member CAN still query the FULL roster, inactive rows included', async () => {
+    // allMembersStreamProvider's query — the one that feeds the historical
+    // name lookup. Scoped by houseId only, deliberately NOT filtered on
+    // isActive, so departed members remain resolvable.
+    const snap = await getDocs(
+      query(collection(as(MEMBER), 'house_members'), where('houseId', '==', H1)),
+    );
+    const ids = snap.docs.map((d) => d.id);
+    assert.ok(ids.includes('m-former-1'), 'departed member must remain readable');
+    assert.ok(ids.includes('m-rejoined-old'), 'superseded row must remain readable');
+  });
+
+  test('a DEPARTED member CAN still read their own row', async () => {
+    // So a removed member can still see their own membership history.
+    await assertSucceeds(getDoc(doc(as(FORMER), 'house_members', 'm-former-1')));
+  });
+
+  test('a DEPARTED member CANNOT read the house roster any more', async () => {
+    // They can see their own record and nothing else.
+    await assertFails(
+      getDocs(
+        query(
+          collection(as(FORMER), 'house_members'),
+          where('houseId', '==', H1),
+        ),
+      ),
+    );
+  });
+
+  test('a member CANNOT read ANOTHER house\'s historical roster', async () => {
+    await assertFails(
+      getDocs(
+        query(
+          collection(as(MEMBER), 'house_members'),
+          where('houseId', '==', H2),
+        ),
+      ),
+    );
+  });
+
+  test('no historical row was deleted, re-keyed or rewritten', async () => {
+    // The backfill and the index are additive by construction; this pins it.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const former = await getDoc(doc(db, 'house_members', 'm-former-1'));
+      assert.ok(former.exists(), 'departed member row must survive');
+      assert.strictEqual(former.data().displayName, 'Former Resident');
+      const rejoinedOld = await getDoc(doc(db, 'house_members', 'm-rejoined-old'));
+      assert.ok(rejoinedOld.exists(), 'superseded row must survive');
+      // Random UUID ids stay random — no deterministic re-keying.
+      assert.strictEqual(former.id, 'm-former-1');
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// QUERY COMPATIBILITY — the queries the real application actually runs.
+//
+// Firestore rules are NOT filters: a `list` succeeds only when the rule is
+// PROVABLE from the query's constraints. So tightening a read rule can break a
+// screen that looks unrelated, and an isolated per-document rule test would
+// never catch it. Every query below is transcribed from the Dart data sources
+// it names, and run as-is against the emulator with the real rules loaded.
+//
+// These are faithful transcriptions, not the Dart code itself — `cloud_firestore`
+// needs platform channels that `flutter test` does not provide, so the browser
+// or a device is the only place the literal Dart runs. The query SHAPE is what
+// the rules evaluate, and the shape is what is reproduced here.
+describe('query compatibility — the app\'s real queries under the new rules', () => {
+  // Thin aliases so each case reads like the Dart it transcribes.
+  const coll = (db, name) => collection(db, name);
+  const q = (_db, ...parts) => query(...parts);
+
+  test('Dashboard: house document listen (getHouse / houseStream)', async () => {
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'houses', H1)));
+    await assertSucceeds(getDoc(doc(as(TREASURER), 'houses', H1)));
+  });
+
+  test('Dashboard: house_members listener scoped by houseId', async () => {
+    // dashboard_remote_datasource.dart — `.where('houseId', isEqualTo: houseId)`
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'house_members'), where('houseId', '==', H1))),
+    );
+  });
+
+  test('Dashboard: expense + transaction listeners scoped by houseId', async () => {
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'expenses'), where('houseId', '==', H1))),
+    );
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'transactions'), where('houseId', '==', H1))),
+    );
+  });
+
+  test('Dashboard: this month\'s transactions (houseId + createdAt range)', async () => {
+    // `.where('houseId','==',h).where('createdAt','>=',start).where('createdAt','<=',end)`
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'transactions'),
+          where('houseId', '==', H1),
+          where('createdAt', '>=', new Date('2026-01-01')),
+          where('createdAt', '<=', new Date('2026-01-31')),
+        ),
+      ),
+    );
+  });
+
+  test('Dashboard: recent activity (houseId + orderBy + limit)', async () => {
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'transactions'),
+          where('houseId', '==', H1),
+          orderBy('createdAt', 'desc'),
+          limit(20),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'expenses'),
+          where('houseId', '==', H1),
+          orderBy('createdAt', 'desc'),
+          limit(20),
+        ),
+      ),
+    );
+  });
+
+  test('Dashboard: outstanding claims (houseId + status whereIn)', async () => {
+    // `.where('houseId','==',h).where('status', whereIn: ['pending','approved'])`
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'expenses'),
+          where('houseId', '==', H1),
+          where('status', 'in', ['pending', 'approved']),
+        ),
+      ),
+    );
+  });
+
+  test('Dashboard: member-name resolution (houseId, all rows)', async () => {
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'house_members'), where('houseId', '==', H1))),
+    );
+  });
+
+  test('Sign-in: findHouseByUserId (userId + isActive)', async () => {
+    // house_remote_datasource.dart — the query that discovers which house to
+    // load. It is scoped by the caller's OWN uid, which is exactly what the
+    // second branch of the read rule makes provable.
+    for (const uid of [TREASURER, MEMBER, REJOINED]) {
+      const db = as(uid);
+      const snap = await assertSucceeds(
+        getDocs(
+          q(
+            db,
+            coll(db, 'house_members'),
+            where('userId', '==', uid),
+            where('isActive', '==', true),
+          ),
+        ),
+      );
+      assert.ok(snap.size >= 1, `${uid} must find their own membership`);
+    }
+  });
+
+  test('Sign-in: getSwitcherHouses (the same userId-scoped query)', async () => {
+    const db = as(MEMBER);
+    await assertSucceeds(
+      getDocs(
+        q(
+          db,
+          coll(db, 'house_members'),
+          where('userId', '==', MEMBER),
+          where('isActive', '==', true),
+        ),
+      ),
+    );
+  });
+
+  test('Members: active roster stream (houseId + isActive)', async () => {
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'house_members'),
+          where('houseId', '==', H1),
+          where('isActive', '==', true),
+        ),
+      ),
+    );
+  });
+
+  test('Members: allMembersStream incl. inactive (protected feature)', async () => {
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'house_members'), where('houseId', '==', H1))),
+    );
+  });
+
+  test('Expenses: list ordered by createdAt, optional status filter', async () => {
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'expenses'),
+          where('houseId', '==', H1),
+          orderBy('createdAt', 'desc'),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'expenses'),
+          where('houseId', '==', H1),
+          orderBy('createdAt', 'desc'),
+          where('status', '==', 'pending'),
+        ),
+      ),
+    );
+  });
+
+  test('History: getTransactions (houseId + orderBy + limit)', async () => {
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'transactions'),
+          where('houseId', '==', H1),
+          orderBy('createdAt', 'desc'),
+          limit(20),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'transactions'),
+          where('houseId', '==', H1),
+          orderBy('createdAt', 'desc'),
+          where('type', '==', 'Deposit'),
+          limit(20),
+        ),
+      ),
+    );
+  });
+
+  test('History: getAllTransactions (houseId)', async () => {
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'transactions'), where('houseId', '==', H1))),
+    );
+  });
+
+  test('Reports: category totals (houseId + status whereIn + date range)', async () => {
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'expenses'),
+          where('houseId', '==', H1),
+          where('status', 'in', ['approved', 'paid']),
+          where('createdAt', '>=', new Date('2026-01-01')),
+          where('createdAt', '<=', new Date('2026-12-31')),
+        ),
+      ),
+    );
+  });
+
+  test('Bills: unpaid list (houseId + isActive + orderBy dueDate)', async () => {
+    await assertSucceeds(
+      getDocs(
+        q(
+          as(MEMBER),
+          coll(as(MEMBER), 'bills'),
+          where('houseId', '==', H1),
+          where('isActive', '==', true),
+          orderBy('dueDate'),
+        ),
+      ),
+    );
+  });
+
+  test('Bills: ledger listener (houseId)', async () => {
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'bills'), where('houseId', '==', H1))),
+    );
+  });
+
+  test('Categories: getCategories (houseId)', async () => {
+    await assertSucceeds(
+      getDocs(q(as(MEMBER), coll(as(MEMBER), 'categories'), where('houseId', '==', H1))),
+    );
+  });
+
+  test('Notifications: list + unread count, scoped to the recipient', async () => {
+    const db = as(MEMBER);
+    await assertSucceeds(
+      getDocs(
+        q(
+          db,
+          coll(db, 'notifications'),
+          where('userId', '==', MEMBER),
+          orderBy('createdAt', 'desc'),
+          limit(50),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        q(
+          db,
+          coll(db, 'notifications'),
+          where('userId', '==', MEMBER),
+          where('isRead', '==', false),
+        ),
+      ),
+    );
+  });
+
+  test('Notifications: user A CANNOT read user B\'s notifications', async () => {
+    await assertFails(
+      getDocs(
+        q(
+          as(TREASURER),
+          coll(as(TREASURER), 'notifications'),
+          where('userId', '==', MEMBER),
+        ),
+      ),
+    );
+  });
+
+  test('Join House: the invite-code lookup is DENIED to the client — by design', async () => {
+    // house_remote_datasource.joinHouse used to run exactly this. It cannot any
+    // more, and must not: the invite code is the join secret, so looking a
+    // house up by it reads a house the caller does not belong to. This is the
+    // query that moved to the `joinHouse` Cloud Function, and this test is the
+    // reason it had to.
+    await assertFails(
+      getDocs(
+        q(
+          as(NEWCOMER),
+          coll(as(NEWCOMER), 'houses'),
+          where('inviteCode', '==', 'AB12CD'),
+          where('isArchived', '==', false),
+          limit(1),
+        ),
+      ),
+    );
+  });
+
+  test('Create House: the creator can read the house they just made', async () => {
+    // The create path writes the house BEFORE the membership exists, so the
+    // treasurerId branch of the read rule is what keeps it readable in between.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'houses', 'house-fresh'), {
+        houseId: 'house-fresh',
+        houseName: 'Fresh',
+        inviteCode: 'CCCC33',
+        treasurerId: OUTSIDER,
+        balance: 0,
+        currency: 'MYR',
+        isArchived: false,
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(OUTSIDER), 'houses', 'house-fresh')));
   });
 });

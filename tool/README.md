@@ -1,7 +1,10 @@
-# `tool/` — read-only operational tools
+# `tool/` — operational tools
 
 Admin tools that need credentials the app itself never has. Nothing here is
 part of the Flutter app or the deployed Cloud Functions.
+
+`reconcile_balance.js` is READ-ONLY. `backfill_membership_index.js` writes, but
+only to a collection the app never writes, and only when you pass `--apply`.
 
 ## `reconcile_balance.js` — balance reconciliation
 
@@ -109,3 +112,89 @@ defect is surfaced rather than absorbed.
 `computeCentralBalance` because it runs outside Dart. If that formula ever
 changes, this tool must change with it.
 `test/unit/balance_utils_test.dart` pins the Dart side; these two must agree.
+
+## `backfill_membership_index.js` — membership index backfill
+
+Answers a different question:
+
+> For every `(houseId, userId)` pair in `house_members`, who should be
+> authorized in that house?
+
+`firestore.rules` authorizes a house-scoped read with a **`get()` on
+`houses/{houseId}/members/{uid}`** — a predictable path built from the
+requesting uid. Rules can `get()` a document but can never query a collection,
+which is exactly why the membership *index* exists: `house_members` is keyed by
+random id and cannot be looked up from a rule, so the answer is materialised
+where it can be.
+
+**This tool is what authorizes every existing member on the day the tightened
+rules land.** Run it BEFORE deploying `firestore.rules`, or every current member
+is locked out of their own house.
+
+### It writes only the index
+
+It reads `house_members` and writes `houses/{houseId}/members/{userId}`. It
+**never** writes, deletes or re-keys `house_members` — random document ids and
+historical (departed-member) rows survive untouched. That is asserted directly
+by `npm test`, not just intended.
+
+The derivation is `summarizeMembership` from `functions/membership_index.js` —
+the *same* module the live Cloud Function trigger uses, imported rather than
+re-implemented so the two writers cannot drift. If they disagreed, a member
+could be authorized by one and deauthorized by the other depending on which ran
+last.
+
+### It is idempotent and self-healing
+
+Running it twice writes the same entries. Running it after the Cloud Function
+has already written an entry agrees with that entry, and *repairs* one that has
+drifted from the row set. The answer is derived from the whole set of rows for a
+pair, so it does not depend on ordering or on which row fired last.
+
+### Dry run first — always
+
+`node backfill_membership_index.js` (no flag) writes **nothing** and prints the
+full report. Read it. Then:
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccount.json
+cd tool && npm install
+node backfill_membership_index.js --project rental-ledger-app            # dry run
+node backfill_membership_index.js --project rental-ledger-app --apply    # write
+```
+
+| Flag | Meaning |
+|---|---|
+| `--project <id>` | Firebase project id (default `rental-ledger-app`) |
+| `--emulator` | Target the local Firestore emulator instead of production |
+| `--apply` | Actually write. Without it this is a dry run. |
+| `--json` | Machine-readable report |
+
+Exit codes: `0` clean · `1` anomalies reported · `2` error.
+
+### Reading the output
+
+`written` is index entries written. `membershipPairs` is the number of distinct
+`(house, user)` pairs found — compare the two: equal means every pair got an
+entry. `activeEntries` vs `inactiveEntries` should match your expectation of who
+currently lives in each house; a surprise there is the thing to stop for.
+
+**Anomalies are reported, never repaired:**
+
+| Kind | Means |
+|---|---|
+| `row-missing-keys` | A `house_members` row with no `houseId`/`userId`. Skipped — it cannot be attributed to a house. |
+| `multiple-active-rows` | Two simultaneously-active rows for one person. The app never creates this, so it means a partial failure somewhere. Reported with both `memberIds`; **not** deduplicated, because deleting a membership row is not this tool's decision. |
+| `active-member-of-missing-house` | An active member whose house document does not exist. The index entry would be written under a house that is not there. |
+
+A non-zero exit is a signal to look, not a failure — the run still completes and
+still writes the pairs it could attribute.
+
+### Keeping it honest
+
+`npm test` runs 21 assertions against the emulator covering the derivation, the
+dry-run/apply agreement, identity preservation, idempotence, anomaly reporting
+and a dataset larger than one write batch (Firestore caps a batch at 500). The
+identity-preservation and idempotence tests exist because those are the two ways
+this tool could do real damage.
+

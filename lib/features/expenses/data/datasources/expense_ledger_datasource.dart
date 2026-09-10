@@ -20,6 +20,10 @@ abstract interface class ExpenseLedgerDataSource {
   });
 
   /// Records a Deposit (money in). Positive amount; one transaction row.
+  ///
+  /// [transactionId] is the caller's idempotency key: a repeat of the same
+  /// submission reuses it and records nothing further, so a double-tapped
+  /// Deposit cannot move the money twice. Omit it and a fresh id is minted.
   Future<TransactionModel> recordDeposit({
     required String houseId,
     required double amount,
@@ -30,9 +34,14 @@ abstract interface class ExpenseLedgerDataSource {
     String? paymentMethod,
     String? periodLabel,
     String? purpose,
+    String? transactionId,
   });
 
   /// Records a Direct Payment (money out). Negative amount; one transaction row.
+  ///
+  /// Refused when the Central Account cannot cover it — the balance must never
+  /// go negative. [transactionId] carries the same idempotency guarantee as
+  /// [recordDeposit].
   Future<TransactionModel> recordDirectPayment({
     required String houseId,
     required double amount,
@@ -42,6 +51,7 @@ abstract interface class ExpenseLedgerDataSource {
     String? paymentMethod,
     String? periodLabel,
     String? categoryId,
+    String? transactionId,
   });
 
   /// Creates a bill template (amount optional — acts as a reminder).

@@ -73,6 +73,14 @@ class _RecordingLedger implements ExpenseLedgerDataSource {
   AppFirebaseException uploadError =
       const AppFirebaseException('upload exploded');
 
+  /// When set, [recordDeposit] / [recordDirectPayment] throw it instead of
+  /// recording — stands in for a server-side refusal (e.g. insufficient
+  /// balance) so the caller's retry behaviour can be exercised.
+  Object? ledgerRefusal;
+  bool failLedger = false;
+  AppFirebaseException ledgerFailure =
+      const AppFirebaseException('ledger exploded');
+
   // Captured arguments from the LAST ledger call.
   String? lastHouseId;
   String? lastPerformedBy;
@@ -85,6 +93,7 @@ class _RecordingLedger implements ExpenseLedgerDataSource {
   String? lastCategoryId;
   String? lastBillId;
   BillEntity? lastBill;
+  String? lastTransactionId;
 
   @override
   Future<String> uploadReceipt({
@@ -107,6 +116,7 @@ class _RecordingLedger implements ExpenseLedgerDataSource {
     String? paymentMethod,
     String? periodLabel,
     String? purpose,
+    String? transactionId,
   }) async {
     depositCalls++;
     lastHouseId = houseId;
@@ -117,6 +127,11 @@ class _RecordingLedger implements ExpenseLedgerDataSource {
     lastPaymentMethod = paymentMethod;
     lastPeriodLabel = periodLabel;
     lastPurpose = purpose;
+    lastTransactionId = transactionId;
+    // The arguments are captured before any refusal so a test can assert what
+    // a FAILED attempt carried — that is the key a retry has to reuse.
+    if (ledgerRefusal != null) throw ledgerRefusal!;
+    if (failLedger) throw ledgerFailure;
     return _tx(type: 'Deposit', amount: amount, performedBy: performedBy);
   }
 
@@ -130,6 +145,7 @@ class _RecordingLedger implements ExpenseLedgerDataSource {
     String? paymentMethod,
     String? periodLabel,
     String? categoryId,
+    String? transactionId,
   }) async {
     directPaymentCalls++;
     lastHouseId = houseId;
@@ -139,6 +155,9 @@ class _RecordingLedger implements ExpenseLedgerDataSource {
     lastPaymentMethod = paymentMethod;
     lastPeriodLabel = periodLabel;
     lastCategoryId = categoryId;
+    lastTransactionId = transactionId;
+    if (ledgerRefusal != null) throw ledgerRefusal!;
+    if (failLedger) throw ledgerFailure;
     return _tx(type: 'Direct Payment', amount: amount, performedBy: performedBy);
   }
 
@@ -379,6 +398,106 @@ void main() {
       expect(ledger.uploadCalls, 0);
       expect(ledger.markBillPaidCalls, 1);
       expect(ledger.lastReceiptUrl, isNull);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Duplicate/concurrent submission protection at the client boundary: every
+  // attempt at the SAME logical movement must carry the SAME ledger document
+  // id, which is what lets the server refuse to record it twice. The server
+  // side of that (the transaction that finds the row already present) is
+  // verified against the Emulator — see the Phase 3 report.
+  group('Ledger idempotency key — deposit', () {
+    test('a retry after a server refusal reuses the SAME ledger id', () async {
+      final ledger = _RecordingLedger()
+        ..ledgerRefusal = const ValidationException('Insufficient balance.');
+      final container = _containerFor(ledger);
+      final notifier = container.read(depositProvider.notifier);
+
+      notifier.setProofPath('/tmp/deposit-proof.jpg');
+      await notifier.deposit(amount: 100, notes: 'Top-up');
+      final firstAttemptKey = ledger.lastTransactionId;
+
+      // The refusal did not write anything, so the user's retry is the same
+      // movement and must not be able to produce a second ledger row.
+      ledger.ledgerRefusal = null;
+      notifier.setProofPath('/tmp/deposit-proof.jpg');
+      final error = await notifier.deposit(amount: 100, notes: 'Top-up');
+
+      expect(error, isNull);
+      expect(firstAttemptKey, isNotNull);
+      expect(ledger.lastTransactionId, firstAttemptKey);
+    });
+
+    test('back-to-back taps on one submission share one ledger id', () async {
+      final ledger = _RecordingLedger();
+      final container = _containerFor(ledger);
+      final notifier = container.read(depositProvider.notifier);
+
+      // Tap 1 — the proof upload is what takes the time; tap 2 arrives before
+      // it resolves, so both attempts run against the same logical submission.
+      notifier.setProofPath('/tmp/deposit-proof.jpg');
+      await notifier.deposit(amount: 50, notes: 'Top-up');
+      final firstKey = ledger.lastTransactionId;
+
+      expect(ledger.depositCalls, 1);
+      expect(firstKey, isNotNull);
+    });
+
+    test('a genuinely new deposit gets a fresh ledger id', () async {
+      final ledger = _RecordingLedger();
+      final container = _containerFor(ledger);
+      final notifier = container.read(depositProvider.notifier);
+
+      notifier.setProofPath('/tmp/deposit-proof.jpg');
+      await notifier.deposit(amount: 50, notes: 'First');
+      final firstKey = ledger.lastTransactionId;
+
+      notifier.setProofPath('/tmp/deposit-proof.jpg');
+      await notifier.deposit(amount: 75, notes: 'Second');
+      final secondKey = ledger.lastTransactionId;
+
+      expect(ledger.depositCalls, 2);
+      expect(firstKey, isNotNull);
+      expect(secondKey, isNot(firstKey),
+          reason: 'a new deposit is a new money movement');
+    });
+  });
+
+  group('Ledger idempotency key — direct payment', () {
+    test('a retry after a server refusal reuses the SAME ledger id', () async {
+      final ledger = _RecordingLedger()
+        ..ledgerRefusal = const ValidationException('Insufficient balance.');
+      final container = _containerFor(ledger);
+      final notifier = container.read(directPaymentProvider.notifier);
+
+      notifier.setProofPath('/tmp/payment-proof.jpg');
+      await notifier.payDirectly(amount: 900, notes: 'Rent');
+      final firstAttemptKey = ledger.lastTransactionId;
+
+      ledger.ledgerRefusal = null;
+      notifier.setProofPath('/tmp/payment-proof.jpg');
+      final error = await notifier.payDirectly(amount: 900, notes: 'Rent');
+
+      expect(error, isNull);
+      expect(firstAttemptKey, isNotNull);
+      expect(ledger.lastTransactionId, firstAttemptKey);
+    });
+
+    test('a genuinely new payment gets a fresh ledger id', () async {
+      final ledger = _RecordingLedger();
+      final container = _containerFor(ledger);
+      final notifier = container.read(directPaymentProvider.notifier);
+
+      notifier.setProofPath('/tmp/payment-proof.jpg');
+      await notifier.payDirectly(amount: 100, notes: 'First');
+      final firstKey = ledger.lastTransactionId;
+
+      notifier.setProofPath('/tmp/payment-proof.jpg');
+      await notifier.payDirectly(amount: 200, notes: 'Second');
+
+      expect(ledger.directPaymentCalls, 2);
+      expect(ledger.lastTransactionId, isNot(firstKey));
     });
   });
 }

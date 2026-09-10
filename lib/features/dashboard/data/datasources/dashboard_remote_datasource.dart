@@ -165,6 +165,15 @@ class DashboardRemoteDataSource {
             (t) => (t.data()['amount'] as num?)?.toDouble() ?? 0,
           ),
         );
+        // Repair the `houses.balance` mirror if it has drifted from history.
+        // Not awaited: the dashboard must render on this frame regardless.
+        unawaited(
+          _repairBalanceMirror(
+            houseId: houseId,
+            storedBalance: storedBalance,
+            authoritativeBalance: balance,
+          ),
+        );
         return _HouseSnapshot(balance, name);
       }
     } catch (e) {
@@ -175,6 +184,55 @@ class DashboardRemoteDataSource {
 
     // No transactions yet (e.g., a manually seeded balance).
     return _HouseSnapshot(storedBalance, name);
+  }
+
+  /// Re-aligns the `houses.balance` mirror with the transaction history.
+  ///
+  /// `houses.balance` is a cache of the balance the Dashboard and Reports both
+  /// derive from history via `computeCentralBalance` — the documented source of
+  /// truth. It exists because a Firestore client transaction can only read
+  /// documents by path, never run a sum-over-collection query, so the money-path
+  /// guards in `expense_remote_datasource.dart` need a per-house counter they can
+  /// read inside their transaction. A cache that disagreed with history would
+  /// refuse a payment the house can afford, or allow one it cannot.
+  ///
+  /// New writes can no longer drift it (every money movement commits the ledger
+  /// row and the balance together), so this only ever closes a gap left by the
+  /// older best-effort update. It writes nothing when the two already agree.
+  ///
+  /// The compare-and-set transaction is what makes this safe to run from a read
+  /// path: if another client moved money between the history query and this
+  /// write, the stored value no longer matches what was read, and the repair
+  /// stands down rather than stamping a stale sum over the newer one.
+  ///
+  /// Failures are swallowed deliberately — `houses.update` is Treasurer-only, so
+  /// a member's dashboard load cannot repair the mirror. The Treasurer's own
+  /// load does, and that is the account whose money movements read it.
+  Future<void> _repairBalanceMirror({
+    required String houseId,
+    required double storedBalance,
+    required double authoritativeBalance,
+  }) async {
+    if ((storedBalance - authoritativeBalance).abs() < 0.005) return;
+
+    try {
+      final houseRef =
+          _firestore.collection(FirestoreConstants.houses).doc(houseId);
+
+      await _firestore.runTransaction<void>((tx) async {
+        final snapshot = await tx.get(houseRef);
+        if (!snapshot.exists) return;
+        final current = (snapshot.data()?['balance'] as num?)?.toDouble() ?? 0.0;
+        if ((current - storedBalance).abs() >= 0.005) return;
+
+        tx.update(houseRef, {
+          'balance': authoritativeBalance,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (e) {
+      debugPrint('[DashboardDataSource] balance mirror repair skipped: $e');
+    }
   }
 
   /// Calculates the monthly summary (money in/out) plus the Pending total.

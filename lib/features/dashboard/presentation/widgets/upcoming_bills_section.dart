@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
@@ -460,9 +461,23 @@ class UpcomingBillsSection extends ConsumerWidget {
           ),
     );
     if (confirmed == true && context.mounted) {
-      await ref.read(billActionsProvider.notifier).markPaid(bill);
-      if (context.mounted) {
-        SnackbarUtils.showSuccess(context, 'Bill marked as paid');
+      try {
+        await ref.read(billActionsProvider.notifier).markPaid(bill);
+        if (context.mounted) {
+          SnackbarUtils.showSuccess(context, 'Bill marked as paid');
+        }
+      } on Failure catch (e) {
+        // Surfaces the refusal as-is: "already marked paid" (a second tap) and
+        // "insufficient balance" both need to reach the Treasurer rather than
+        // failing silently.
+        if (context.mounted) SnackbarUtils.showError(context, e.message);
+      } catch (_) {
+        if (context.mounted) {
+          SnackbarUtils.showError(
+            context,
+            'Could not mark the bill as paid. Please try again.',
+          );
+        }
       }
     }
   }

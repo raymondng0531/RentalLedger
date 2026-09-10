@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/firebase_service.dart' show firebaseInitResultProvider;
+import '../../../members/data/datasources/house_remote_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user_entity.dart';
@@ -21,8 +22,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     return _NoOpAuthRepository();
   }
 
+  // Keeps the user's own ACTIVE member rows' photo in step with the Auth
+  // photo after a sign-in or a profile edit — see [MemberDisplayInfoSync].
+  // The members data source is used directly (rather than through
+  // houseRepositoryProvider) because house_provider already depends on this
+  // one; going the other way would make the two providers import each other.
   final repo = AuthRepositoryImpl(
     remoteDataSource: AuthRemoteDataSource(),
+    syncMemberDisplayInfo: HouseRemoteDataSource().updateMemberDisplayInfo,
   );
 
   // Clean up the auth subscription when the provider is disposed.

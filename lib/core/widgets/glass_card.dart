@@ -15,6 +15,7 @@ class GlassCard extends StatelessWidget {
     this.margin,
     this.onTap,
     this.opacity = 0.75,
+    this.blurBackdrop = true,
   });
 
   final Widget child;
@@ -24,26 +25,44 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double opacity;
 
+  /// Whether to blur whatever is painted behind the card.
+  ///
+  /// The blur is only meaningful when there is something behind the card to
+  /// blur — a gradient, an image, or another surface. Over a flat opaque
+  /// backdrop (the app's `#F5F5F5` scaffold) blurring a uniform colour is an
+  /// identity operation, so dropping it renders pixel-identically.
+  ///
+  /// It is not free, though: [BackdropFilter] forces a `saveLayer` plus a
+  /// gaussian-blur pass every time its layer repaints. On Flutter Web
+  /// (CanvasKit) that is among the most expensive operations available, and
+  /// inside a scrolling list it re-runs on every scroll frame. Pass `false`
+  /// wherever the backdrop is a flat colour to remove that cost for no
+  /// visible change.
+  final bool blurBackdrop;
+
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(borderRadius);
-    final glass = ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: padding ?? const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha((opacity * 255).round()),
-            borderRadius: radius,
-            border: Border.all(
-              color: Colors.white.withAlpha(120),
-              width: 0.8,
-            ),
-          ),
-          child: child,
+    final surface = Container(
+      padding: padding ?? const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha((opacity * 255).round()),
+        borderRadius: radius,
+        border: Border.all(
+          color: Colors.white.withAlpha(120),
+          width: 0.8,
         ),
       ),
+      child: child,
+    );
+    final glass = ClipRRect(
+      borderRadius: radius,
+      child: blurBackdrop
+          ? BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: surface,
+            )
+          : surface,
     );
 
     if (onTap == null) {

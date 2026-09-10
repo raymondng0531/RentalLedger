@@ -36,6 +36,13 @@ class SummaryCard extends StatelessWidget {
     return GlassCard(
       padding: const EdgeInsets.all(AppConstants.spacingMd),
       onTap: onTap,
+      // The summary row sits directly on the flat `#F5F5F5` scaffold with
+      // nothing painted behind it, so blurring the backdrop is an identity
+      // operation — it renders pixel-identically without the blur. Skipping it
+      // drops a `saveLayer` + gaussian-blur pass per card per frame inside the
+      // dashboard's scrolling list, which is the most expensive thing this
+      // screen did on CanvasKit Web.
+      blurBackdrop: false,
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

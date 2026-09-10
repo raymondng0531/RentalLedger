@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -177,47 +178,56 @@ class HouseRemoteDataSource {
   }
 
   /// Joins a house using an invite code.
+  ///
+  /// The code is validated SERVER-SIDE by the `joinHouse` Cloud Function, which
+  /// also writes both membership records. That is not a stylistic choice:
+  ///
+  ///  * The invite code is the join secret, so looking a house up by it reads a
+  ///    house the caller does not belong to — exactly what the tightened rules
+  ///    forbid. The lookup cannot be done from a client at all.
+  ///  * A membership is an authorization fact. While the client could write its
+  ///    own `house_members` row, every membership-based rule was satisfiable by
+  ///    the person it was meant to exclude.
+  ///
+  /// [userId] is retained for signature compatibility but deliberately NOT sent:
+  /// the function identifies the caller from their auth token, so a client
+  /// cannot join on someone else's behalf.
   Future<HouseModel> joinHouse(String inviteCode, String userId) async {
     try {
-      // Find house by invite code.
-      final query = await _firestore
-          .collection(FirestoreConstants.houses)
-          .where('inviteCode', isEqualTo: inviteCode)
-          .where('isArchived', isEqualTo: false)
-          .limit(1)
-          .get();
+      final callable = FirebaseFunctions.instance.httpsCallable('joinHouse');
+      final result = await callable.call<Map<String, dynamic>>({
+        'inviteCode': inviteCode,
+      });
 
-      if (query.docs.isEmpty) {
-        throw const AppFirebaseException('Invalid invite code.');
+      final houseId = result.data['houseId'] as String?;
+      if (houseId == null || houseId.isEmpty) {
+        throw const AppFirebaseException('Failed to join house.');
       }
 
-      final houseDoc = query.docs.first;
-      final house = HouseModel.fromFirestore(houseDoc);
-
-      // Check if user is already a member.
-      final existingMembership = await _firestore
-          .collection(FirestoreConstants.houseMembers)
-          .where('houseId', isEqualTo: house.houseId)
-          .where('userId', isEqualTo: userId)
-          .where('isActive', isEqualTo: true)
-          .limit(1)
-          .get();
-
-      if (existingMembership.docs.isNotEmpty) {
-        throw const AppFirebaseException(
-            'You are already a member of this house.');
+      // The membership exists now, so the rules permit reading the house.
+      final house = await getHouse(houseId);
+      if (house == null) {
+        throw const AppFirebaseException('Failed to join house.');
       }
-
-      // Create member record.
-      await _createMemberRecord(
-        houseId: house.houseId,
-        userId: userId,
-        role: FirestoreConstants.roleMember,
-      );
-
       return house;
     } on AppFirebaseException {
       rethrow;
+    } on FirebaseFunctionsException catch (e) {
+      // Surface the server's own message for the expected rejections; treat
+      // anything else as an unexpected failure.
+      switch (e.code) {
+        case 'not-found':
+          throw const AppFirebaseException('Invalid invite code.');
+        case 'already-exists':
+          throw const AppFirebaseException(
+              'You are already a member of this house.');
+        case 'unauthenticated':
+          throw const AppFirebaseException('Please sign in again.');
+        case 'invalid-argument':
+          throw const AppFirebaseException('Enter a valid invite code.');
+        default:
+          throw const AppFirebaseException('Failed to join house.');
+      }
     } catch (e) {
       debugPrint('[HouseDataSource] joinHouse error: $e');
       throw const AppFirebaseException('Failed to join house.');

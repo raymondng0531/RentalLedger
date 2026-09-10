@@ -2,9 +2,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: is the request signed in as the Treasurer of [houseId]?
-    // Used to gate writes that move money for the house (transactions) — the
-    // house document's treasurerId is the source of truth for the role.
+    // ─────────────────────────────────────────────────────────────
+    // MEMBERSHIP AUTHORIZATION
+    //
+    // `house_members` uses random UUID document ids, and rules can only get()
+    // a document BY PATH — never query a collection. So "is this user a member
+    // of this house?" used to be inexpressible, and every membership-dependent
+    // rule had to stay open.
+    //
+    // The fix is a second, path-addressable record maintained ONLY by Cloud
+    // Functions (see functions/index.js):
+    //
+    //     houses/{houseId}/members/{userId}  →  { isActive, role }
+    //
+    // `house_members` remains the historical record and is never rewritten,
+    // migrated or deleted. The index answers only "may this user act in this
+    // house RIGHT NOW?".
+    //
+    // CRITICAL: the index is `allow write: if false` for clients. A membership
+    // check alone would have closed nothing — under the old rules an attacker
+    // could write their own `house_members` row, so any condition the rules
+    // could express was satisfiable by the attacker. What makes this work is
+    // that the client cannot write the thing the rules read.
+    //
+    // get() on a missing index document returns null; reading `.data` off null
+    // makes the rule error, which DENIES. Failures are therefore closed.
+    // ─────────────────────────────────────────────────────────────
+    function membershipIndex(houseId) {
+      return get(/databases/$(database)/documents/houses/$(houseId)/members/$(request.auth.uid)).data;
+    }
+
+    /** Is the caller an ACTIVE member of [houseId]? */
+    function isMember(houseId) {
+      return request.auth != null && membershipIndex(houseId).isActive == true;
+    }
+
+    /**
+     * Is the caller the TREASURER of [houseId]?
+     *
+     * Money operations deliberately keep keying off `houses.treasurerId`, which
+     * is the authoritative role and is what the existing Transfer Treasurer
+     * flow writes. The index is used for MEMBERSHIP (reads, claim creation);
+     * the house document is used for MONEY. Keeping them separate means a
+     * transfer takes effect for money immediately, with no window where the
+     * incoming Treasurer cannot act.
+     */
     function isHouseTreasurer(houseId) {
       return request.auth != null &&
         get(/databases/$(database)/documents/houses/$(houseId))
@@ -16,47 +58,73 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Houses: authenticated members can read; creator/treasurer can write.
-    // The update rule compares the EXISTING doc's treasurerId (resource.data),
-    // so only the current treasurer can edit the house or transfer the role —
-    // a member cannot make themselves treasurer by setting treasurerId to their
-    // own uid.
+    // Houses.
+    //
+    // read — only a member may read a house, which closes both house
+    //   enumeration and the invite-code leak (the code is the join secret).
+    //   The Treasurer is additionally allowed by `treasurerId`, which is not a
+    //   loophole but the Create House path: the creator writes the house before
+    //   their membership row exists, and would otherwise be locked out of the
+    //   house they just made until the index sync ran.
+    //
+    // create — the caller must name THEMSELVES as Treasurer. Previously any
+    //   authenticated user could create a house naming someone else, handing
+    //   that person Treasurer powers over a house they never made.
+    //
+    // update — only the current Treasurer. Compares the EXISTING document's
+    //   treasurerId, so nobody can promote themselves by writing their own uid.
     match /houses/{houseId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow read: if isMember(houseId) ||
+        (request.auth != null && resource.data.treasurerId == request.auth.uid);
+      allow create: if request.auth != null &&
+        request.resource.data.treasurerId == request.auth.uid;
       allow update: if request.auth != null &&
         resource.data.treasurerId == request.auth.uid;
       allow delete: if false;
+
+      // The authorization index. Readable by members of the house and by the
+      // subject themselves (so a user can see their own state), and writable
+      // ONLY by the Admin SDK — Cloud Functions bypass rules entirely, so
+      // `write: if false` here does not hinder them.
+      match /members/{userId} {
+        allow read: if isMember(houseId) || request.auth.uid == userId;
+        allow write: if false;
+      }
     }
 
-    // House members: all authenticated read.
+    // Historical membership records.
     //
-    // create — a user may only write their OWN membership record:
-    //   * create-house writes the creator as Treasurer. That is the only path
-    //     allowed to self-assign the Treasurer role, and it requires the caller
-    //     to already be the house's treasurerId, so a joiner cannot write
-    //     themselves a Treasurer record. Role is display state (every money
-    //     rule keys off houses.treasurerId), but forging it would misreport the
-    //     member list and any role-driven UI.
-    //   * join writes the joiner as Member.
-    // Both real callers pass the signed-in uid (create_house_page /
-    // join_house_page), so requiring userId == auth.uid changes no workflow.
+    // read — a member of the house may read its roster, INCLUDING inactive
+    //   rows: historical member-name resolution depends on those. A user may
+    //   also read their own rows (which is how `findHouseByUserId` discovers
+    //   which house to load at sign-in, and how a removed member can still see
+    //   their own history of membership).
+    //
+    // create — Treasurer rows only, and only for a house the caller is already
+    //   treasurerId of. That is exactly the Create House path. MEMBER rows are
+    //   now created by the joinHouse callable with admin credentials, so a
+    //   client can no longer write itself a membership — which is what made
+    //   the old membership gap exploitable.
     //
     // update — split by actor:
-    //   * A member may only soft-delete their OWN membership (leave). The app
-    //     writes exactly {'isActive': false}; `affectedKeys().hasOnly` pins the
-    //     write to that single field so the record cannot be used to escalate —
-    //     without it a member could rewrite their own `role` to 'Treasurer'.
-    //   * The house treasurer keeps full update rights, which the role transfer
-    //     (rewrites `role` on two records) and member removal rely on.
+    //   * A member may only soft-delete their OWN row (Leave House). Pinning to
+    //     `hasOnly(['isActive'])` and `isActive == false` stops the record
+    //     being used to escalate; without it a member could rewrite their role.
+    //   * The house Treasurer keeps full update rights, which Transfer Treasurer
+    //     (rewrites `role` on two rows) and Remove Member rely on.
+    //
+    // cloud functions react to these writes and mirror the result into the
+    // authorization index — that is why none of those workflows needed changing.
     match /house_members/{memberId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (
+        isMember(resource.data.houseId) ||
+        resource.data.userId == request.auth.uid
+      );
       allow create: if request.auth != null &&
         request.resource.data.userId == request.auth.uid &&
-        (request.resource.data.role == 'Member' ||
-          (request.resource.data.role == 'Treasurer' &&
-            get(/databases/$(database)/documents/houses/$(request.resource.data.houseId))
-              .data.treasurerId == request.auth.uid));
+        request.resource.data.role == 'Treasurer' &&
+        get(/databases/$(database)/documents/houses/$(request.resource.data.houseId))
+          .data.treasurerId == request.auth.uid;
       allow update: if request.auth != null && (
         (resource.data.userId == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys()
@@ -68,55 +136,46 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Expenses: all authenticated read.
-    // - Members may create expenses and may edit/delete ONLY their own pending
-    //   expenses (title/amount/etc. while it's still awaiting review).
-    // - The house treasurer may advance the workflow
-    //   (approve / reject / mark paid).
+    // Expenses.
+    // - Active members read and create; only the Treasurer advances the
+    //   workflow (approve / reject / mark paid).
+    // - Members may edit/delete ONLY their own pending expense.
     match /expenses/{expenseId} {
-      allow read: if request.auth != null;
-      // A claim must be filed under the submitter's own uid and must start its
-      // life as 'pending' — a client cannot open an expense already marked
-      // approved/paid, which would bypass the Treasurer's review entirely.
-      //
-      // NOTE: this does NOT yet verify that the caller is a member of
-      // `houseId`. Membership is not expressible in rules with the current
-      // data model — house_members documents have random UUID ids, and rules
-      // can only `get()` a document by path, never query a collection. Closing
-      // that needs a membership record addressable by path (see the Phase 2
-      // report); until then this rule bounds the damage to a misfiled pending
-      // claim in a house the caller cannot read, cannot approve, and cannot
-      // move money from.
-      allow create: if request.auth != null &&
+      // Membership-scoped, so no member can read another house's claims.
+      allow read: if isMember(resource.data.houseId);
+      // A claim must be filed by an ACTIVE MEMBER of the target house, under
+      // their own uid, and start as 'pending' — a client can neither file in a
+      // house it does not belong to, nor file under someone else's name, nor
+      // open a claim already approved/paid and bypass review.
+      allow create: if isMember(request.resource.data.houseId) &&
         request.resource.data.purchasedBy == request.auth.uid &&
         request.resource.data.status == 'pending';
       allow update: if request.auth != null && (
         (resource.data.purchasedBy == request.auth.uid &&
          resource.data.status == 'pending') ||
-        get(/databases/$(database)/documents/houses/$(resource.data.houseId))
-          .data.treasurerId == request.auth.uid
+        isHouseTreasurer(resource.data.houseId)
       );
       allow delete: if request.auth != null &&
         resource.data.purchasedBy == request.auth.uid &&
         resource.data.status == 'pending';
     }
 
-    // Transactions: authenticated read; ONLY the house Treasurer creates.
+    // Transactions: member read; ONLY the house Treasurer creates.
     // Deposits, direct payments and reimbursements move the house balance,
     // which is computed from this collection, so letting any signed-in user
     // append a transaction would let a member forge deposits/direct payments.
     // Append-only — no updates or deletes.
     match /transactions/{transactionId} {
-      allow read: if request.auth != null;
+      allow read: if isMember(resource.data.houseId);
       allow create: if isHouseTreasurer(request.resource.data.houseId);
       allow update: if false;
       allow delete: if false;
     }
 
-    // Categories: all authenticated read; the house treasurer writes.
+    // Categories: member read; the house treasurer writes.
     // (The doc id is `<houseId>_<categoryId>` and stores `houseId`.)
     match /categories/{categoryId} {
-      allow read: if request.auth != null;
+      allow read: if isMember(resource.data.houseId);
       allow create: if request.auth != null &&
         get(/databases/$(database)/documents/houses/$(request.resource.data.houseId))
           .data.treasurerId == request.auth.uid;
@@ -124,41 +183,31 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Notifications: any authenticated user may CREATE one, but may only
-    // read / mark-read / delete their OWN.
+    // Notifications.
     //
-    // create is deliberately NOT restricted to `userId == auth.uid`: the app
-    // writes notifications on the acting client for OTHER users (Expense
-    // Submitted → Treasurer, Approved/Rejected/Reimbursed → submitter,
-    // Remind → Treasurer). Requiring `userId == auth.uid` here silently denied
-    // every cross-user notification — the write failed, `createNotification`
-    // swallowed the error, and the submitter never saw "Reimbursement
-    // Completed" after the Treasurer marked an expense paid.
+    // read / update / delete are scoped to the recipient, so one user can never
+    // read another's notifications. That was already true and is unchanged.
+    //
+    // create remains deliberately OPEN — an ACCEPTED RISK, reviewed in the
+    // Phase 2 security pass and re-confirmed here. It is not an oversight:
+    //   * The app has no server-side creator. The acting client writes
+    //     notifications on behalf of OTHER users (Expense Submitted →
+    //     Treasurer, Approved/Rejected/Reimbursed → submitter, Remind →
+    //     Treasurer). Requiring `userId == auth.uid` here silently denied every
+    //     cross-user notification — the write failed, createNotification
+    //     swallowed the error, and the submitter never saw "Reimbursement
+    //     Completed".
+    //   * The notification document carries `type` and `relatedId` but NO
+    //     `houseId`, so no house-scoped condition is expressible.
+    // Residual: a spam/forged-notification vector between authenticated users.
+    // It moves no money and grants no permission. Closing it properly means
+    // generating notifications server-side (the functions/ project already
+    // listens on this collection) or adding `houseId` and gating on membership
+    // — both are design changes, deliberately out of scope for this phase.
     //
     // IMPORTANT: `resource` is null on create, so check the INCOMING data
     // (`request.resource.data.userId`) — the old `resource.data.userId` check
     // crashed every create.
-    //
-    // ── ACCEPTED RISK (reviewed in the Phase 2 security pass) ──
-    // `create` being open means any authenticated user can write a
-    // notification to any other user. This is deliberately NOT tightened:
-    //   * Notifications are non-financial and non-destructive — they carry no
-    //     money movement and grant no permission. The only rule that reads
-    //     them scopes read/update/delete to `userId == auth.uid`.
-    //   * The app has no server-side creator. lib/features/notifications/
-    //     data/datasources/notification_remote_datasource.dart writes every
-    //     notification from the ACTING client on behalf of OTHER users
-    //     (submitted → Treasurer, approved/rejected/reimbursed → submitter,
-    //     remind → Treasurer). Requiring `userId == auth.uid` here silently
-    //     denied all of those once already, which is why the rule reads the
-    //     way it does.
-    //   * The notification document carries `type` and `relatedId` but NO
-    //     `houseId`, so no house-scoped condition is even expressible today.
-    // The residual is a spam/forged-notification vector between authenticated
-    // users. The proper fix is to move creation into a Cloud Function (the
-    // functions/ project already listens on this collection) or to add
-    // `houseId` to the document and gate on it — both are design changes, not
-    // rule tweaks, so neither is applied here.
     match /notifications/{notificationId} {
       allow read: if request.auth != null &&
         resource.data.userId == request.auth.uid;
@@ -169,35 +218,30 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid;
     }
 
-    // App settings: house members read.
+    // App settings: signed-in read. Carries no house or personal data.
     match /app_settings/{settingId} {
       allow read: if request.auth != null;
       allow write: if false;
     }
 
-    // Bills: authenticated read.
+    // Bills: member read.
     //
     // Creating, editing and deleting a bill are Treasurer actions in the UI
     // (upcoming_bills_section gates them on `isTreasurer`), so they are gated
-    // on houses.treasurerId here too. Before this they were open to every
-    // authenticated user, who could rewrite or delete any house's bills by id.
+    // on houses.treasurerId here too.
     //
     // update stays reachable for a plain Member on ONE field: the reminder
-    // toggle is an explicitly Member-facing control ("The Member-facing bill
-    // controls are the reminder toggle and Remind Treasurer"), and toggling it
-    // writes exactly {'reminderEnabled': bool}. Pinning the write to that key
-    // keeps the member workflow working while reducing what anyone else can do
-    // to a bill from "rewrite or delete it" to "flip its reminder flag".
-    //
-    // The residual (a non-member of the house can still flip that flag) cannot
-    // be closed until membership is expressible in rules — see the note on
-    // expenses create above. It touches no money and destroys no data.
+    // toggle is an explicitly Member-facing control, and toggling it writes
+    // exactly {'reminderEnabled': bool}. The write is now pinned to that key
+    // AND to active membership of that house, so a non-member can no longer
+    // flip it (the residual reported in the previous phase).
     match /bills/{billId} {
-      allow read: if request.auth != null;
+      allow read: if isMember(resource.data.houseId);
       allow create: if isHouseTreasurer(request.resource.data.houseId);
       allow update: if isHouseTreasurer(resource.data.houseId) ||
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['reminderEnabled']);
+        (isMember(resource.data.houseId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['reminderEnabled']));
       allow delete: if isHouseTreasurer(resource.data.houseId);
     }
   }

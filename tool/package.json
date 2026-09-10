@@ -2,10 +2,11 @@
   "name": "rental-ledger-tools",
   "private": true,
   "version": "1.0.0",
-  "description": "Read-only operational tools for Rental Ledger (admin credentials required).",
+  "description": "Operational tools for Rental Ledger (admin credentials required). reconcile is read-only; backfill writes only the membership index, and only with --apply.",
   "scripts": {
     "reconcile": "node reconcile_balance.js",
-    "test": "firebase emulators:exec --only firestore --project rental-ledger-reconcile \"node --test reconcile_balance.test.js\""
+    "backfill": "node backfill_membership_index.js",
+    "test": "firebase emulators:exec --only firestore --project rental-ledger-reconcile \"node --test --test-concurrency=1 reconcile_balance.test.js backfill_membership_index.test.js\""
   },
   "dependencies": {
     "firebase-admin": "^12.0.0"

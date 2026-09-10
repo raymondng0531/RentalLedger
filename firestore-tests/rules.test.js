@@ -14,6 +14,7 @@
  * Every test names the app path it protects, so a failure points at the
  * workflow it would break.
  */
+const assert = require('node:assert');
 const { readFileSync } = require('node:fs');
 const path = require('node:path');
 const { test, before, after, beforeEach, describe } = require('node:test');
@@ -28,6 +29,8 @@ const {
   setDoc,
   updateDoc,
   deleteDoc,
+  collection,
+  getDocs,
 } = require('firebase/firestore');
 
 const PROJECT_ID = 'rental-ledger-rules';
@@ -507,5 +510,97 @@ describe('unauthenticated access', () => {
 
   test('an anonymous client CANNOT read a house', async () => {
     await assertFails(getDoc(doc(anon(), 'houses', H1)));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// MEASURED SECURITY POSTURE — the evidence base for the membership
+// design decision.
+//
+// Every assertion in this block records what the rules allow TODAY for a
+// signed-in user who belongs to NO house (OUTSIDER). These are NOT desired
+// outcomes. They are asserted as successes on purpose, so the exposure is
+// measured rather than assumed, and so each one becomes the acceptance test
+// for the fix: when a path-addressable membership record exists, these flip
+// to assertFails.
+//
+// Read together they show WHY a membership check on `expenses create` alone
+// would be security theatre: the outsider can already read every house's id
+// and invite code and can forge an active membership record for any house.
+// The fix has to close that loop, not just add a condition to one rule.
+describe('MEASURED POSTURE — what a house-less signed-in user can do', () => {
+  const OUTSIDER = 'uid-outsider';
+
+  test('an outsider CAN list EVERY house_members record (no filter)', async () => {
+    // `allow read` grants list as well as get, and no rule requires the query
+    // to be scoped — so one unfiltered query returns every house's roster
+    // (names, emails, photo URLs) and, with it, every houseId in the system.
+    const snap = await getDocs(collection(as(OUTSIDER), 'house_members'));
+    assert.ok(
+      snap.size >= 3,
+      `expected the full roster to be readable, saw ${snap.size} docs`,
+    );
+    assert.ok(snap.docs.every((d) => typeof d.data().houseId === 'string'));
+  });
+
+  test('an outsider CAN read another house document, invite code included', async () => {
+    // The invite code is the join secret, and it is readable by anyone signed
+    // in who knows (or learned, above) the houseId.
+    const snap = await getDoc(doc(as(OUTSIDER), 'houses', H2));
+    assert.strictEqual(snap.data().inviteCode, 'ZZ99YY');
+  });
+
+  test('an outsider CAN read another house\'s expenses', async () => {
+    await assertSucceeds(getDoc(doc(as(OUTSIDER), 'expenses', 'exp-1')));
+  });
+
+  test('an outsider CAN list the transactions collection', async () => {
+    // Financial history is readable collection-wide, not just by document.
+    const snap = await getDocs(collection(as(OUTSIDER), 'transactions'));
+    assert.ok(Array.isArray(snap.docs));
+  });
+
+  test('an outsider CAN forge an ACTIVE membership in a house never joined', async () => {
+    // THE CRUX. Membership create only checks userId == auth.uid and a role,
+    // so a house-less user can write themselves an active Member record for
+    // any houseId — including one they just harvested from the roster leak
+    // above. This is why a membership *check* alone closes nothing: the
+    // attacker can satisfy it. Closing the gap requires membership to be
+    // asserted by something the client cannot write.
+    await assertSucceeds(
+      setDoc(doc(as(OUTSIDER), 'house_members', 'm-forged'), {
+        houseId: H2,
+        userId: OUTSIDER,
+        role: 'Member',
+        isActive: true,
+      }),
+    );
+  });
+
+  test('an outsider CAN flip the reminder flag on another house\'s bill', async () => {
+    // Confirms the reported bills residual — the member-facing reminder
+    // toggle is pinned to one field, but pinned for EVERYONE, not just
+    // members. No money moves and no data is destroyed.
+    await assertSucceeds(
+      updateDoc(doc(as(OUTSIDER), 'bills', 'bill-1'), {
+        reminderEnabled: true,
+      }),
+    );
+  });
+
+  test('an outsider CANNOT append a transaction (money boundary holds)', async () => {
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'transactions', 'tx-forged'), {
+        houseId: H2,
+        type: 'Deposit',
+        amount: 9999,
+      }),
+    );
+  });
+
+  test('an outsider CANNOT approve another house\'s expense (money boundary holds)', async () => {
+    await assertFails(
+      updateDoc(doc(as(OUTSIDER), 'expenses', 'exp-1'), { status: 'approved' }),
+    );
   });
 });

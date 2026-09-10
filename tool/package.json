@@ -1,0 +1,13 @@
+{
+  "name": "rental-ledger-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Read-only operational tools for Rental Ledger (admin credentials required).",
+  "scripts": {
+    "reconcile": "node reconcile_balance.js",
+    "test": "firebase emulators:exec --only firestore --project rental-ledger-reconcile \"node --test reconcile_balance.test.js\""
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

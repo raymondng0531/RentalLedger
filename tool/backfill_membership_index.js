@@ -58,7 +58,11 @@
 // The derivation rule is SHARED with the live Cloud Function trigger
 // (functions/index.js), not reimplemented here. If the two disagreed, a
 // member's authorization would depend on which writer ran last.
-const { summarizeMembership } = require('../functions/membership_index');
+const {
+  summarizeMembership,
+  ROLE_TREASURER,
+  ROLE_MEMBER,
+} = require('../functions/membership_index');
 
 const DEFAULT_PROJECT = 'rental-ledger-app';
 
@@ -85,11 +89,36 @@ async function backfillMembershipIndex(db, { apply = false } = {}) {
   const anomalies = [];
   let rowsWithoutKeys = 0;
   let rowsWithImplicitActive = 0;
+  let rowsWithUnexpectedRole = 0;
 
   for (const doc of membersSnap.docs) {
     const data = doc.data() || {};
     const houseId = typeof data.houseId === 'string' ? data.houseId : '';
     const userId = typeof data.userId === 'string' ? data.userId : '';
+
+    // A role the app never writes — a typo, a casing difference, a stray
+    // space, or a value from some future/foreign writer.
+    //
+    // summarizeMembership fails CLOSED on these (it derives 'Member', never
+    // 'Treasurer'), which is the right security answer but a SILENT one: the
+    // index would record 'Member' where the historical row says something
+    // else, and nothing would tell you. Reported here, derived there — the
+    // derivation is deliberately NOT changed.
+    //
+    // A MISSING role is not reported: the app's own model defaults it to
+    // 'Member' (`house_member_model.dart`), so it is a legitimate legacy shape
+    // exactly like a missing isActive, not a data defect. Flagging it would
+    // bury the real signal under legacy rows.
+    if (data.role !== undefined && data.role !== ROLE_TREASURER && data.role !== ROLE_MEMBER) {
+      rowsWithUnexpectedRole++;
+      anomalies.push({
+        kind: 'unexpected-role',
+        memberId: doc.id,
+        houseId: houseId || null,
+        userId: userId || null,
+        role: data.role,
+      });
+    }
 
     if (!houseId || !userId) {
       // The Cloud Function also skips these. They cannot produce a path.
@@ -196,6 +225,7 @@ async function backfillMembershipIndex(db, { apply = false } = {}) {
       treasurerEntries: entries.filter((e) => e.role === 'Treasurer').length,
       rowsWithoutKeys,
       rowsWithImplicitActive,
+      rowsWithUnexpectedRole,
       written,
       anomalies: anomalies.length,
     },
@@ -227,6 +257,15 @@ function renderTable(report, { limit = 40 } = {}) {
     lines.push(
       `  NOTE: ${summary.rowsWithImplicitActive} row(s) have no isActive field. ` +
         'The app\ntreats those as active, and so does this backfill.',
+    );
+    lines.push('');
+  }
+
+  if (summary.rowsWithUnexpectedRole > 0) {
+    lines.push(
+      `  NOTE: ${summary.rowsWithUnexpectedRole} row(s) carry a role that is neither\n` +
+        '  Treasurer nor Member. Those rows derive as Member — never Treasurer —\n' +
+        '  so the failure is closed, but the role is NOT preserved in the index.',
     );
     lines.push('');
   }

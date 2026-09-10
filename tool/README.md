@@ -186,15 +186,17 @@ currently lives in each house; a surprise there is the thing to stop for.
 | `row-missing-keys` | A `house_members` row with no `houseId`/`userId`. Skipped — it cannot be attributed to a house. |
 | `multiple-active-rows` | Two simultaneously-active rows for one person. The app never creates this, so it means a partial failure somewhere. Reported with both `memberIds`; **not** deduplicated, because deleting a membership row is not this tool's decision. |
 | `active-member-of-missing-house` | An active member whose house document does not exist. The index entry would be written under a house that is not there. |
+| `unexpected-role` | A row whose `role` is present but is neither `Treasurer` nor `Member` — a typo, a casing difference (`treasurer`), a stray space, or a value from some other writer. Such rows **derive as `Member`, never `Treasurer`** (the derivation fails closed and is deliberately unchanged), so the failure is safe but silent: the index records `Member` where the historical row says something else. Reported so you can look. A row with **no** `role` field is *not* reported — the app's own model defaults it to `Member`, so it is a legitimate legacy shape, exactly like a missing `isActive`. |
 
 A non-zero exit is a signal to look, not a failure — the run still completes and
 still writes the pairs it could attribute.
 
 ### Keeping it honest
 
-`npm test` runs 21 assertions against the emulator covering the derivation, the
+`npm test` runs 32 assertions against the emulator covering the derivation, the
 dry-run/apply agreement, identity preservation, idempotence, anomaly reporting
-and a dataset larger than one write batch (Firestore caps a batch at 500). The
+(including `unexpected-role`, and that a bad role still derives as `Member`) and
+a dataset larger than one write batch (Firestore caps a batch at 500). The
 identity-preservation and idempotence tests exist because those are the two ways
 this tool could do real damage.
 

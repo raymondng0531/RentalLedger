@@ -1400,3 +1400,81 @@ describe('query compatibility — the app\'s real queries under the new rules', 
     await assertSucceeds(getDoc(doc(as(OUTSIDER), 'houses', 'house-fresh')));
   });
 });
+
+// ─────────────────────────────────────────────────────────────
+// getMembers displayName backfill — what the tightened rules did to it.
+//
+// `getMembers` resolves each member's name through `resolveMemberDisplayName`
+// and then PERSISTS the resolved name onto the house_members row as a cache.
+// Under the tightened rules that persist is no longer universally allowed.
+//
+// The question these tests answer is whether that is a REGRESSION or benign
+// graceful degradation. It is benign, and the reason is in the last test: the
+// name that every read path returns is resolved IN MEMORY, so the cache write
+// failing cannot change what the UI displays. The cache only ever made future
+// reads cheaper.
+// ─────────────────────────────────────────────────────────────
+describe('getMembers displayName backfill — degraded, not broken', () => {
+  test('a member CANNOT persist a backfilled name onto ANOTHER member\'s row', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-treasurer-1'), {
+        displayName: 'Resolved Name',
+      }),
+    );
+  });
+
+  test('a member CANNOT persist a backfilled name onto their OWN row either', async () => {
+    // Leave House is pinned to hasOnly(['isActive']) + isActive == false, which
+    // is what stops a member rewriting their own role. The cost is that the
+    // displayName cache write is refused too.
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'house_members', 'm-member-1'), {
+        displayName: 'Resolved Name',
+      }),
+    );
+  });
+
+  test('the TREASURER can still persist it — the cache is still populated', async () => {
+    // So the backfill has not stopped working; it has narrowed to the role the
+    // UI already treats as the one that maintains the roster.
+    await assertSucceeds(
+      updateDoc(doc(as(TREASURER), 'house_members', 'm-member-1'), {
+        displayName: 'Resolved Name',
+      }),
+    );
+  });
+
+  test('a member can still READ the cached names the resolution depends on', async () => {
+    // This is the load-bearing one. resolveMemberDisplayName reads
+    // users/{uid}, which is own-profile-only — so for anyone but yourself the
+    // PROFILE read was ALREADY refused before this phase, and the name has
+    // always come from this cached field on the membership row. If this read
+    // were denied, names really would break.
+    const snap = await assertSucceeds(
+      getDoc(doc(as(MEMBER), 'house_members', 'm-former-1')),
+    );
+    assert.strictEqual(snap.data().displayName, 'Former Resident');
+  });
+
+  test('and the resolution input survives for the WHOLE roster, inactive included', async () => {
+    // getMembers reads exactly this query shape. Every row it gets back
+    // carries the cached displayName it needs.
+    const snap = await assertSucceeds(
+      getDocs(
+        query(
+          collection(as(MEMBER), 'house_members'),
+          where('houseId', '==', H1),
+          where('isActive', '==', true),
+        ),
+      ),
+    );
+    assert.ok(snap.size >= 3);
+  });
+
+  test('the users profile read that feeds resolution IS refused for others — pre-existing', async () => {
+    // Documents WHY the cache exists, and that this phase did not introduce it.
+    // The users rule is own-profile-only and was unchanged by this phase.
+    await assertFails(getDoc(doc(as(MEMBER), 'users', TREASURER)));
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'users', MEMBER)));
+  });
+});

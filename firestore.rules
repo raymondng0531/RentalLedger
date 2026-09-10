@@ -107,9 +107,27 @@ service cloud.firestore {
     //   the old membership gap exploitable.
     //
     // update — split by actor:
+    //   * A member may keep their OWN, still-ACTIVE row's display name and
+    //     photo in step with their profile. This is the avatar/name
+    //     synchronization (`updateMemberDisplayInfo`) the app runs at sign-in
+    //     and on profile save — it previously worked for the Treasurer and was
+    //     denied for everyone else.
+    //     `hasOnly(['displayName', 'photoUrl'])` is the whole security
+    //     argument: role, isActive, houseId, userId, memberId, joinedAt and
+    //     email all sit outside the set, so this path cannot promote, cannot
+    //     reactivate, cannot re-key a row and cannot smuggle in extra fields.
+    //     `resource.data.isActive == true` tests the row AS IT EXISTS, so an
+    //     inactive row — the historical record of a membership that ended — is
+    //     out of reach entirely, and its display name stays what it was.
+    //     `size() > 0` requires the write to actually change one of those two
+    //     fields, so "set isActive to what it already is" is not an update a
+    //     member can perform at all.
     //   * A member may only soft-delete their OWN row (Leave House). Pinning to
     //     `hasOnly(['isActive'])` and `isActive == false` stops the record
     //     being used to escalate; without it a member could rewrite their role.
+    //     Being a separate branch, leaving cannot be combined with a profile
+    //     change: the two key-sets are disjoint and neither branch admits the
+    //     union.
     //   * The house Treasurer keeps full update rights, which Transfer Treasurer
     //     (rewrites `role` on two rows) and Remove Member rely on.
     //
@@ -126,6 +144,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/houses/$(request.resource.data.houseId))
           .data.treasurerId == request.auth.uid;
       allow update: if request.auth != null && (
+        (resource.data.userId == request.auth.uid &&
+          resource.data.isActive == true &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['displayName', 'photoUrl']) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .size() > 0) ||
         (resource.data.userId == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['isActive']) &&

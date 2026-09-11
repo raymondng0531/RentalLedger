@@ -35,6 +35,8 @@ const {
   where,
   orderBy,
   limit,
+  serverTimestamp,
+  deleteField,
 } = require('firebase/firestore');
 
 const PROJECT_ID = 'rental-ledger-rules';
@@ -701,6 +703,171 @@ describe('expenses', () => {
     await assertSucceeds(
       updateDoc(doc(as(TREASURER), 'expenses', 'exp-1'), { status: 'approved' }),
     );
+  });
+
+  // ── A member's edit is FIELD-SCOPED ──
+  // The edit form exposes title, amount, description, category and receipt.
+  // Every other field on the document belongs to the Treasurer workflow, so a
+  // raw SDK write must not reach it — otherwise a member could self-approve,
+  // self-reject or self-mark-paid their own claim and rewrite its money trail.
+
+  test('the owner CAN edit every field the edit form exposes', async () => {
+    // The exact shape the app writes on save (see updateExpense in
+    // expense_remote_datasource.dart): the five editable fields, paymentSource
+    // carried through UNCHANGED, and a server timestamp. This is the
+    // regression guard for the legitimate member edit.
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        title: 'Groceries (corrected)',
+        amount: 55.25,
+        description: 'Corrected after re-reading the receipt',
+        categoryId: 'cat-1',
+        receiptUrl: 'https://example.com/receipt.jpg',
+        paymentSource: 'personal',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('the owner CAN clear the description and the receipt', async () => {
+    // The datasource writes FieldValue.delete() for a cleared nullable field.
+    // A REMOVED key must count as affected and still be permitted, or clearing
+    // a description would silently start failing. Set them first, since the
+    // fixture omits both.
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        description: 'Has a receipt',
+        receiptUrl: 'https://example.com/receipt.jpg',
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        description: deleteField(),
+        receiptUrl: deleteField(),
+      }),
+    );
+  });
+
+  test('a member CANNOT change paymentSource on their own pending claim', async () => {
+    // "Payment source is locked" — the claim must not be re-pointed from
+    // personal money at the Central Account (or back) after it was filed.
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        paymentSource: 'central',
+      }),
+    );
+  });
+
+  test('a member CANNOT self-approve their own pending claim', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), { status: 'approved' }),
+    );
+  });
+
+  test('a member CANNOT self-reject their own pending claim', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        status: 'rejected',
+        rejectReason: 'Nothing to see here',
+      }),
+    );
+  });
+
+  test('a member CANNOT self-mark-paid their own pending claim', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        status: 'paid',
+        paidAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('a member CANNOT write the approval trail', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        approvedBy: MEMBER,
+        approvedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('a member CANNOT write the reimbursement trail', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        reimbursedBy: MEMBER,
+        paidAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('a member CANNOT reassign their claim to another uid', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        purchasedBy: TREASURER,
+      }),
+    );
+  });
+
+  test('a member CANNOT move their claim into another house', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), { houseId: H2 }),
+    );
+  });
+
+  test('a member CANNOT smuggle a protected field alongside a real edit', async () => {
+    // The realistic attack shape: a plausible amount change bundled with a
+    // status change, so the write looks like an ordinary edit.
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), {
+        amount: 50,
+        status: 'paid',
+      }),
+    );
+  });
+
+  test('a member CANNOT attach a transaction reference to their claim', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), { transactionId: 'tx-1' }),
+    );
+  });
+
+  test('a member CANNOT edit a claim that is no longer pending', async () => {
+    // Even the legitimately-editable fields are locked once the Treasurer acts.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'expenses', 'exp-1'), {
+        status: 'approved',
+      });
+    });
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'expenses', 'exp-1'), { amount: 1 }),
+    );
+  });
+
+  test('the treasurer KEEPS full authority over every expense field', async () => {
+    // The member allowlist must not narrow the trusted role: the Treasurer
+    // still advances the workflow and may rewrite any field.
+    await assertSucceeds(
+      updateDoc(doc(as(TREASURER), 'expenses', 'exp-1'), {
+        status: 'paid',
+        approvedBy: TREASURER,
+        reimbursedBy: TREASURER,
+        paidAt: serverTimestamp(),
+        paymentSource: 'central',
+      }),
+    );
+  });
+
+  test('the owner CAN still delete their own pending claim', async () => {
+    await assertSucceeds(deleteDoc(doc(as(MEMBER), 'expenses', 'exp-1')));
+  });
+
+  test('a member CANNOT delete a claim that is no longer pending', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'expenses', 'exp-1'), {
+        status: 'approved',
+      });
+    });
+    await assertFails(deleteDoc(doc(as(MEMBER), 'expenses', 'exp-1')));
   });
 
   test('CLOSED: a non-member CANNOT file a claim in another house', async () => {

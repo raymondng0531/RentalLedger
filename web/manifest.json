@@ -1,12 +1,11 @@
 {
-    "name": "rental_ledger",
-    "short_name": "rental_ledger",
+    "name": "Rental Ledger",
+    "short_name": "Rental Ledger",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#FFFFFF",
+    "theme_color": "#00897B",
+    "description": "Central House Account management for shared households — track expense claims, reimbursements and deposits.",
     "prefer_related_applications": false,
     "icons": [
         {

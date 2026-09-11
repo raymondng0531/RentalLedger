@@ -9,8 +9,7 @@ Summary of the standing rules (full detail in the direction doc):
 - **Stack stays:** Flutter · Dart · Material 3 · Riverpod · GoRouter · Firebase (Auth / Firestore / Storage / Messaging) · Isar. Feature-First Clean Architecture (Presentation → Domain → Data → Firebase/Local).
 - **Source of truth for existing features:** `docs/01_PROJECT_CONTEXT.md` … `docs/11_V1_REVIEW.md`.
 - **Roadmap:**
-  - V1.0: finish remaining items (PDF export, Bills History, report filters/analytics, member management UI) → **Web/PWA as the PRIMARY distribution platform** (extend this Flutter app — never fork a separate web app; don't sacrifice mobile features) → release.
-  - V1.1: quality of life + user preferences + **dashboard customization** + **bottom-navigation customization** (Home and the `+` action stay fixed).
-  - V1.2: offline experience (Isar stays — do not remove it for Web, don't build full offline early).
-  - V2.0: OCR, AI categorization, Excel export, calendar, scheduled notifications, AI insights.
-- **§21 upgrade in progress:** editing already-created expenses is a **required** product upgrade. Inspect the current expense lifecycle first, report the safest edit rules per status, and get explicit approval **before** changing any code or business rules. Do not weaken Treasurer/member permissions or the approval/reimbursement workflow; preserve audit/transaction integrity.
+  - **Web/PWA is the PRIMARY ACTIVE DEVELOPMENT TARGET.** The existing Android/iOS app is FROZEN for personal use — do not make mobile-only changes unless explicitly requested; do not remove mobile support/features. Continue this ONE Flutter app (never fork a separate web app); preserve mobile behavior when touching shared code.
+  - Current priorities: Flutter Web/PWA compatibility → responsive UI (phone / tablet / desktop) → Firebase Web → browser testing → PWA functionality → web hosting → production Web deployment → custom domain.
+  - V1.1 (QoL + dashboard/bottom-nav customization), V1.2 (offline; Isar stays), V2.0 (OCR, AI, Excel, calendar, scheduled notifications, AI insights) — only when explicitly requested. The old mobile V1 release roadmap is paused unless explicitly requested.
+- **§21 (expense editing) — implemented:** a member may edit their own **pending** expense (title, amount, description, category, receipt — take/choose/replace/remove). Payment source is locked; rejected/approved/paid expenses stay locked. Do not weaken Treasurer/member permissions or the approval/reimbursement workflow; preserve audit/transaction integrity.

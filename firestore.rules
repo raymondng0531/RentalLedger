@@ -174,9 +174,28 @@ service cloud.firestore {
       allow create: if isMember(request.resource.data.houseId) &&
         request.resource.data.purchasedBy == request.auth.uid &&
         request.resource.data.status == 'pending';
+      // Update is TWO different powers in one rule:
+      // - the Treasurer advances the workflow (approve / reject / reimburse /
+      //   mark paid), so their branch stays deliberately unconstrained;
+      // - the purchaser may correct their OWN claim while it is still pending,
+      //   and ONLY within the fields the edit form exposes (title, amount,
+      //   description, category, receipt). Every workflow field — status,
+      //   purchasedBy, houseId, approvedBy/approvedAt, reimbursedBy, paidAt,
+      //   rejectReason, createdAt and any transaction reference — is outside
+      //   the allowlist, so a raw SDK write cannot self-approve, self-reject,
+      //   self-mark-paid or rewrite the money trail.
+      // paymentSource is carried through UNCHANGED by the edit (the datasource
+      // always writes it), so it is permitted-but-pinned: re-pointing a claim
+      // between personal money and the Central Account stays Treasurer-only.
       allow update: if request.auth != null && (
         (resource.data.purchasedBy == request.auth.uid &&
-         resource.data.status == 'pending') ||
+         resource.data.status == 'pending' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+           'title', 'description', 'categoryId', 'amount', 'receiptUrl',
+           'paymentSource', 'updatedAt'
+         ]) &&
+         request.resource.data.get('paymentSource', null) ==
+           resource.data.get('paymentSource', null)) ||
         isHouseTreasurer(resource.data.houseId)
       );
       allow delete: if request.auth != null &&

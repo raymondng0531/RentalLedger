@@ -18,6 +18,17 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+
+  <!--
+    Use the real device viewport instead of the browser's virtual ~980px
+    viewport on mobile (iPhone/iPad Safari, Android Chrome). Without this the
+    Flutter canvas renders at the virtual width and is scaled down — too small
+    to read or tap. Kept to width/initial-scale on purpose: `viewport-fit=cover`
+    would extend the layout into the iOS notch/status-bar area and change the
+    app's appearance without explicit safe-area handling.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <meta name="description" content="Rental Ledger - household finance management.">
 
   <!-- Google Sign-In web client ID -->
@@ -27,7 +38,7 @@
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="rental_ledger">
+  <meta name="apple-mobile-web-app-title" content="Rental Ledger">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->

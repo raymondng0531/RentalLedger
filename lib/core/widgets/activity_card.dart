@@ -16,11 +16,12 @@ class ActivityCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
-    required this.amount,
+    this.amount = 0,
     required this.amountSign,
     required this.amountColor,
     required this.icon,
     required this.iconColor,
+    this.amountLabel,
     this.chips = const [],
     this.onTap,
   });
@@ -29,11 +30,31 @@ class ActivityCard extends StatelessWidget {
   final String subtitle;
 
   /// Signed amount (positive = money in, negative = money out).
+  ///
+  /// Not required, and ignored when [amountLabel] is supplied — a row that has
+  /// no money amount to show passes [amountLabel] instead of a placeholder
+  /// number.
   final double amount;
 
   /// Display sign prefix: '+' | '-' | '' (status milestones are neutral).
   final String amountSign;
-  final Color amountColor;
+
+  /// The amount's colour. `null` keeps the theme's own text colour — the
+  /// default an unstyled amount gets, which is what a bill row wants when its
+  /// amount is a plain magnitude rather than money in or out.
+  final Color? amountColor;
+
+  /// Replaces the amount column's TEXT, for a row whose amount is not a
+  /// number the app can state.
+  ///
+  /// Bill History uses it for amountless reminder bills: the established
+  /// treatment across the app is the word "Reminder" (see the Dashboard's
+  /// Upcoming Bills) rather than a fabricated "RM 0.00", because "no amount
+  /// set" and "RM 0.00" are different facts. [amount] and [amountSign] are
+  /// then unused, and the caller supplies the matching [amountColor].
+  ///
+  /// Defaults to null — every existing caller renders exactly as before.
+  final String? amountLabel;
 
   final IconData icon;
   final Color iconColor;
@@ -103,7 +124,8 @@ class ActivityCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   // Stronger amount, matching the Dashboard summary cards.
                   Text(
-                    '$amountSign${CurrencyUtils.format(amount.abs())}',
+                    amountLabel ??
+                        '$amountSign${CurrencyUtils.format(amount.abs())}',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: amountColor,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
@@ -49,6 +51,14 @@ class UpcomingBillsSection extends ConsumerWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+              // Always offered: this section shows unpaid bills only, so the
+              // route to every bill — settled ones included — must not depend
+              // on there being anything left to show here.
+              TextButton(
+                onPressed: () => context.push(RouteNames.billHistory),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                child: const Text('See all'),
               ),
               // Only the Treasurer can add bills.
               if (isTreasurer)

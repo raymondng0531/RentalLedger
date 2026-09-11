@@ -14,13 +14,15 @@ import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/implicit_animated_list.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
-import '../../../../core/widgets/spring_sheet.dart';
 import '../../../../features/expenses/domain/entities/category_entity.dart';
 import '../../../../features/expenses/presentation/providers/expense_provider.dart';
 import '../../../../features/members/domain/entities/house_member_entity.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
 import '../providers/history_provider.dart';
+import '../utils/filter_periods.dart';
 import '../utils/history_grouping.dart';
+import '../widgets/filter_widgets.dart';
+import '../widgets/history_month_header.dart';
 
 /// History screen — full transaction history with search and a filter
 /// bottom sheet (Touch 'n Go eWallet style).
@@ -47,25 +49,9 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   DateTimeRange? _customRange;
 
   // ── Period presets shown in the filter sheet ──
-  static const _periodPresets = [
-    'today',
-    'yesterday',
-    '7d',
-    '30d',
-    '90d',
-    'month',
-    'lastmonth',
-  ];
-
-  static const _periodLabels = [
-    'Today',
-    'Yesterday',
-    'Last 7 Days',
-    'Last 30 Days',
-    'Last 90 Days',
-    'This Month',
-    'Last Month',
-  ];
+  // The vocabulary and its date arithmetic now live in FilterPeriods, shared
+  // with Bill History so the two screens cannot disagree about what
+  // "Last 7 Days" means. History's own behaviour is unchanged.
 
   // ── Type options shown in the filter sheet ──
   static const _typeFilters = [
@@ -106,46 +92,10 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 
   /// Computes the active date range based on the selected preset.
-  (DateTime, DateTime)? get _activeRange {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    switch (_datePreset) {
-      case 'today':
-        return (today, today.add(const Duration(days: 1)));
-      case 'yesterday':
-        return (today.subtract(const Duration(days: 1)), today);
-      case '7d':
-        return (
-          today.subtract(const Duration(days: 6)),
-          today.add(const Duration(days: 1)),
-        );
-      case '30d':
-        return (
-          today.subtract(const Duration(days: 29)),
-          today.add(const Duration(days: 1)),
-        );
-      case '90d':
-        return (
-          today.subtract(const Duration(days: 89)),
-          today.add(const Duration(days: 1)),
-        );
-      case 'month':
-        return (
-          DateTime(now.year, now.month, 1),
-          DateTime(now.year, now.month + 1, 1),
-        );
-      case 'lastmonth':
-        return (
-          DateTime(now.year, now.month - 1, 1),
-          DateTime(now.year, now.month, 1),
-        );
-      default:
-        return _customRange != null
-            ? (_customRange!.start, _customRange!.end)
-            : null;
-    }
-  }
+  /// Delegates to the shared FilterPeriods vocabulary so History and Bill
+  /// History resolve periods identically.
+  (DateTime, DateTime)? get _activeRange =>
+      FilterPeriods.resolve(preset: _datePreset, range: _customRange);
 
   List<HistoryEvent> _applyFilters(List<HistoryEvent> events) {
     var filtered = events;
@@ -185,11 +135,8 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     // ── Filter by date range ──
     final range = _activeRange;
     if (range != null) {
-      final (start, end) = range;
       filtered =
-          filtered
-              .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
-              .toList();
+          filtered.where((e) => FilterPeriods.contains(range, e.date)).toList();
     }
 
     return filtered;
@@ -218,48 +165,59 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 
   /// Opens the filter bottom sheet. Applies the chosen filters on "Apply".
+  ///
+  /// The sheet itself is shared (see filter_widgets.dart); History supplies
+  /// its own sections in its own order — Type, Period, Category, Status — so
+  /// what the user sees here is unchanged.
   Future<void> _openFilterSheet(List<CategoryEntity> categories) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(AppConstants.radiusBottomSheet),
-          topRight: Radius.circular(AppConstants.radiusBottomSheet),
-        ),
-      ),
-      builder: (ctx) => SpringSheet(
-        child: FractionallySizedBox(
-          heightFactor: 0.9,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: _FilterSheet(
-                types: _selectedTypes,
-                category: _categoryFilter,
-                status: _statusFilter,
-                preset: _datePreset,
-                range: _customRange,
-                categories: categories,
-                onApply: (types, category, status, preset, range) {
-                  Navigator.pop(ctx);
-                  setState(() {
-                    _selectedTypes
-                      ..clear()
-                      ..addAll(types);
-                    _categoryFilter = category;
-                    _statusFilter = status;
-                    _datePreset = preset;
-                    _customRange = range;
-                  });
-                },
-              ),
-            ),
+    await showFilterSheet(
+      context,
+      sections: [
+        FilterOptionsSection(
+          label: 'Type',
+          group: FilterOptionGroup(
+            multiSelect: true,
+            selected: _selectedTypes,
+            options: [
+              for (var i = 0; i < _typeFilters.length; i++)
+                FilterOption(
+                  value: _typeFilters[i],
+                  label: _typeLabels[i],
+                  icon: _typeIcons[i],
+                ),
+            ],
           ),
         ),
-      ),
+        FilterPeriodSection(preset: _datePreset, range: _customRange),
+        FilterCategorySection(
+          category: _categoryFilter,
+          categories: categories,
+        ),
+        FilterOptionsSection(
+          label: 'Status',
+          group: FilterOptionGroup(
+            selected: {if (_statusFilter != null) _statusFilter!},
+            options: [
+              for (var i = 0; i < _statusFilters.length; i++)
+                FilterOption(
+                  value: _statusFilters[i],
+                  label: _statusLabels[i],
+                ),
+            ],
+          ),
+        ),
+      ],
+      onApply: (result) {
+        setState(() {
+          _selectedTypes
+            ..clear()
+            ..addAll(result.select('Type'));
+          _categoryFilter = result.category;
+          _statusFilter = result.single('Status');
+          _datePreset = result.preset;
+          _customRange = result.range;
+        });
+      },
     );
   }
 
@@ -337,7 +295,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: _FilterButton(
+                    child: FilterButton(
                       activeCount: _activeFilterCount,
                       onTap: () => _openFilterSheet(categories),
                     ),
@@ -362,35 +320,35 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   runSpacing: 6,
                   children: [
                     for (final type in _selectedTypes.toList())
-                      _SummaryChip(
+                      SummaryChip(
                         label: _typeLabelFor(type),
                         onDeleted:
                             () => setState(() => _selectedTypes.remove(type)),
                       ),
                     if (_categoryFilter != null)
-                      _SummaryChip(
+                      SummaryChip(
                         label: 'Category: $_categoryFilter',
                         onDeleted: () => setState(() => _categoryFilter = null),
                       ),
                     if (_statusFilter != null)
-                      _SummaryChip(
+                      SummaryChip(
                         label: 'Status: ${_statusLabelFor(_statusFilter!)}',
                         onDeleted: () => setState(() => _statusFilter = null),
                       ),
                     if (_datePreset != null && _customRange == null)
-                      _SummaryChip(
+                      SummaryChip(
                         label: _periodLabelFor(_datePreset!),
                         onDeleted: () => setState(() => _datePreset = null),
                       ),
                     if (_customRange != null)
-                      _SummaryChip(
+                      SummaryChip(
                         label:
                             '${DateFormatUtils.formatDateShort(_customRange!.start)} – '
                             '${DateFormatUtils.formatDateShort(_customRange!.end)}',
                         onDeleted: () => setState(() => _customRange = null),
                       ),
                     if (_searchQuery.isNotEmpty)
-                      _SummaryChip(
+                      SummaryChip(
                         label: '"$_searchQuery"',
                         onDeleted: () {
                           _searchController.clear();
@@ -461,7 +419,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemBuilder: (context, row) {
         return switch (row) {
-          MonthHeaderRow(section: final section) => _MonthHeader(
+          MonthHeaderRow(section: final section) => HistoryMonthHeader(
             label: section.label,
           ),
           HistoryEventRow(event: final event) => _HistoryTile(
@@ -533,564 +491,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     return index >= 0 ? _statusLabels[index] : status;
   }
 
-  String _periodLabelFor(String preset) {
-    if (preset == 'custom') {
-      return 'Custom Range';
-    }
-    final index = _periodPresets.indexOf(preset);
-    return index >= 0 ? _periodLabels[index] : preset;
-  }
-}
-
-/// The filter button that opens the filter bottom sheet.
-class _FilterButton extends StatelessWidget {
-  const _FilterButton({required this.activeCount, required this.onTap});
-  final int activeCount;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasActive = activeCount > 0;
-    return Material(
-      color:
-          hasActive
-              ? AppTheme.primaryGreen.withAlpha(12)
-              : AppTheme.backgroundLight,
-      borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            children: [
-              Icon(
-                Icons.filter_list_rounded,
-                size: 18,
-                color:
-                    hasActive ? AppTheme.primaryGreen : AppTheme.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Filters',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color:
-                      hasActive ? AppTheme.primaryGreen : AppTheme.textPrimary,
-                ),
-              ),
-              if (hasActive) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '$activeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A small removable chip summarising an active filter.
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.label, required this.onDeleted});
-  final String label;
-  final VoidCallback onDeleted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      label: Text(label, style: const TextStyle(fontSize: 11)),
-      deleteIcon: const Icon(Icons.close, size: 14),
-      onDeleted: onDeleted,
-      visualDensity: VisualDensity.compact,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      side: BorderSide(color: AppTheme.primaryGreen.withAlpha(60)),
-    );
-  }
-}
-
-/// The filter bottom sheet content. Edits are local drafts committed on
-/// Apply; Reset clears every filter.
-class _FilterSheet extends StatefulWidget {
-  const _FilterSheet({
-    required this.types,
-    required this.category,
-    required this.status,
-    required this.preset,
-    required this.range,
-    required this.categories,
-    required this.onApply,
-  });
-
-  final Set<String> types;
-  final String? category;
-  final String? status;
-  final String? preset;
-  final DateTimeRange? range;
-  final List<CategoryEntity> categories;
-
-  final void Function(
-    Set<String> types,
-    String? category,
-    String? status,
-    String? preset,
-    DateTimeRange? range,
-  )
-  onApply;
-
-  @override
-  State<_FilterSheet> createState() => _FilterSheetState();
-}
-
-class _FilterSheetState extends State<_FilterSheet> {
-  late final Set<String> _types = {...widget.types};
-  late String? _category = widget.category;
-  late String? _status = widget.status;
-  late String? _preset = widget.preset;
-  late DateTimeRange? _range = widget.range;
-
-  void _reset() {
-    setState(() {
-      _types.clear();
-      _category = null;
-      _status = null;
-      _preset = null;
-      _range = null;
-    });
-  }
-
-  Future<void> _pickCustomRange() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(now.year - 3),
-      lastDate: now.add(const Duration(days: 1)),
-      initialDateRange: _range,
-    );
-    if (picked != null) {
-      setState(() {
-        _range = picked;
-        _preset = 'custom';
-      });
-    }
-  }
-
-  Widget _option({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    IconData? icon,
-  }) {
-    return _SelectableOption(
-      label: label,
-      selected: selected,
-      icon: icon,
-      onTap: onTap,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── Drag handle ──
-        Container(
-          width: 40,
-          height: 4,
-          margin: const EdgeInsets.only(top: 10, bottom: 4),
-          decoration: BoxDecoration(
-            color: AppTheme.textHint.withAlpha(120),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-
-        // ── Title + Reset ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 12, 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Filters',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              TextButton(onPressed: _reset, child: const Text('Reset')),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-
-        // ── Scrollable filter sections ──
-        Flexible(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Type ──
-                _FilterSection(
-                  label: 'Type',
-                  child: _OptionGrid(
-                    children: [
-                      _option(
-                        label: 'All',
-                        selected: _types.isEmpty,
-                        onTap: () => setState(_types.clear),
-                      ),
-                      for (
-                        var i = 0;
-                        i < _HistoryPageState._typeFilters.length;
-                        i++
-                      )
-                        _option(
-                          label: _HistoryPageState._typeLabels[i],
-                          icon: _HistoryPageState._typeIcons[i],
-                          selected: _types.contains(
-                            _HistoryPageState._typeFilters[i],
-                          ),
-                          onTap:
-                              () => setState(() {
-                                final t = _HistoryPageState._typeFilters[i];
-                                if (_types.contains(t)) {
-                                  _types.remove(t);
-                                } else {
-                                  _types.add(t);
-                                }
-                              }),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // ── Period ──
-                _FilterSection(
-                  label: 'Period',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _OptionGrid(
-                        children: [
-                          _option(
-                            label: 'All',
-                            selected: _preset == null && _range == null,
-                            onTap:
-                                () => setState(() {
-                                  _preset = null;
-                                  _range = null;
-                                }),
-                          ),
-                          for (
-                            var i = 0;
-                            i < _HistoryPageState._periodPresets.length;
-                            i++
-                          )
-                            _option(
-                              label: _HistoryPageState._periodLabels[i],
-                              selected:
-                                  _preset ==
-                                  _HistoryPageState._periodPresets[i],
-                              onTap:
-                                  () => setState(() {
-                                    _preset =
-                                        _HistoryPageState._periodPresets[i];
-                                    _range = null;
-                                  }),
-                            ),
-                          _option(
-                            label: 'Custom Range',
-                            selected: _preset == 'custom',
-                            onTap: _pickCustomRange,
-                          ),
-                        ],
-                      ),
-                      if (_range != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10, left: 2),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.date_range_rounded,
-                                size: 15,
-                                color: AppTheme.primaryGreen,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${DateFormatUtils.formatDateShort(_range!.start)} – '
-                                '${DateFormatUtils.formatDateShort(_range!.end)}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.primaryGreen,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // ── Category ──
-                _FilterSection(
-                  label: 'Category',
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: DropdownButtonFormField<String?>(
-                      value: _category,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        hintText: 'All Categories',
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('All Categories'),
-                        ),
-                        ...widget.categories.map(
-                          (c) => DropdownMenuItem(
-                            value: c.categoryId,
-                            child: Text(
-                              c.name,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _category = v),
-                    ),
-                  ),
-                ),
-
-                // ── Status ──
-                _FilterSection(
-                  label: 'Status',
-                  child: _OptionGrid(
-                    children: [
-                      _option(
-                        label: 'All',
-                        selected: _status == null,
-                        onTap: () => setState(() => _status = null),
-                      ),
-                      for (
-                        var i = 0;
-                        i < _HistoryPageState._statusFilters.length;
-                        i++
-                      )
-                        _option(
-                          label: _HistoryPageState._statusLabels[i],
-                          selected:
-                              _status == _HistoryPageState._statusFilters[i],
-                          onTap:
-                              () => setState(() {
-                                _status = _HistoryPageState._statusFilters[i];
-                              }),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // ── Apply ──
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton(
-                onPressed:
-                    () => widget.onApply(
-                      _types,
-                      _category,
-                      _status,
-                      _preset,
-                      _range,
-                    ),
-                child: const Text('Apply'),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FilterSection extends StatelessWidget {
-  const _FilterSection({required this.label, required this.child});
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textSecondary,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-/// A responsive grid of selectable option tiles (2 columns on phones,
-/// 3 on wider sheets).
-class _OptionGrid extends StatelessWidget {
-  const _OptionGrid({required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 480 ? 3 : 2;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: 2.9,
-          children: children,
-        );
-      },
-    );
-  }
-}
-
-/// A clean, tappable option tile with a border, a check when selected, and a
-/// green tint — the Touch 'n Go eWallet style instead of a wall of chips.
-class _SelectableOption extends StatelessWidget {
-  const _SelectableOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.icon,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? AppTheme.primaryGreen.withAlpha(12) : Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? AppTheme.primaryGreen : AppTheme.dividerColor,
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 16,
-                  color:
-                      selected ? AppTheme.primaryGreen : AppTheme.textSecondary,
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color:
-                        selected ? AppTheme.primaryGreen : AppTheme.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (selected)
-                const Icon(
-                  Icons.check_circle_rounded,
-                  size: 18,
-                  color: AppTheme.primaryGreen,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A calendar-month section header, e-wallet style ("AUGUST 2026").
-class _MonthHeader extends StatelessWidget {
-  const _MonthHeader({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: AppTheme.textSecondary,
-          letterSpacing: 0.6,
-        ),
-      ),
-    );
-  }
+  String _periodLabelFor(String preset) => FilterPeriods.labelFor(preset);
 }
 
 /// One finance-style activity card.

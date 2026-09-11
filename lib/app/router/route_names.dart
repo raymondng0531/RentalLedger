@@ -24,6 +24,7 @@ class RouteNames {
   static const String depositDetails = '/deposit-details';
   static const String directPaymentDetails = '/direct-payment-details';
   static const String billDetails = '/bill-details/:billId';
+  static const String billHistory = '/bill-history';
   static const String members = '/members';
   static const String notifications = '/notifications';
   static const String settings = '/settings';

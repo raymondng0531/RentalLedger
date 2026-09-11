@@ -25,6 +25,7 @@ import '../../features/expenses/presentation/pages/direct_payment_page.dart';
 import '../../features/expenses/presentation/pages/expense_details_page.dart';
 import '../../features/expenses/presentation/pages/expense_list_page.dart';
 import '../../features/expenses/presentation/pages/transaction_details_page.dart';
+import '../../features/history/presentation/pages/bill_history_page.dart';
 import '../../features/history/presentation/pages/history_page.dart';
 import '../../features/history/presentation/providers/history_provider.dart';
 import '../../features/notifications/presentation/pages/notification_page.dart';
@@ -370,6 +371,16 @@ class AppRouter {
             return _slideUpTransition(BillDetailsPage(billId: billId));
           },
         ),
+        // Bill History — a pushed sub-page (like the detail routes above), so
+        // the AppBar's back button returns to whichever surface opened it
+        // (Dashboard's Upcoming Bills, the drawer, or a deep link).
+        GoRoute(
+          path: RouteNames.billHistory,
+          name: RouteNames.billHistory,
+          parentNavigatorKey: _rootNavigatorKey,
+          pageBuilder:
+              (context, state) => _slideUpTransition(const BillHistoryPage()),
+        ),
       ],
 
       // ── Error page ──
@@ -693,6 +704,16 @@ class _AppShellState extends ConsumerState<_AppShell>
               onTap: () {
                 Navigator.pop(context);
                 context.go(RouteNames.history);
+              },
+            ),
+            _DrawerItem(
+              icon: Icons.event_note_outlined,
+              label: 'Bill History',
+              // Sub-page — push (like Members/Notifications) so Back returns
+              // to where the drawer was opened from.
+              onTap: () {
+                Navigator.pop(context);
+                context.push(RouteNames.billHistory);
               },
             ),
             _DrawerItem(

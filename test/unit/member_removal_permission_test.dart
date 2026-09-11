@@ -86,6 +86,10 @@ HouseMemberEntity _otherMember() => HouseMemberEntity(
 class _RecordingHouseRepository implements HouseRepository {
   final ValueNotifier<HouseEntity?> _notifier = ValueNotifier<HouseEntity?>(null);
 
+  /// Removal happens well after startup, so the house state this test works
+  /// with is already resolved.
+  final ValueNotifier<bool> _resolvedNotifier = ValueNotifier<bool>(true);
+
   /// memberId → member record currently held for the house.
   final List<HouseMemberEntity> members = [];
 
@@ -94,6 +98,12 @@ class _RecordingHouseRepository implements HouseRepository {
 
   @override
   ValueNotifier<HouseEntity?> get currentHouseNotifier => _notifier;
+
+  @override
+  ValueNotifier<bool> get houseResolvedNotifier => _resolvedNotifier;
+
+  @override
+  bool get isHouseResolved => true;
 
   @override
   HouseEntity? get currentHouse => null;

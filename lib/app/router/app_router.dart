@@ -41,8 +41,11 @@ import 'auth_guard.dart';
 
 /// Riverpod provider that creates and manages the GoRouter instance.
 ///
-/// Watches both auth and house state so the router rebuilds
-/// and re-evaluates redirects whenever either changes.
+/// Watches auth and house state so the router rebuilds and re-evaluates
+/// redirects whenever any of it changes. The house-resolution notifier is part
+/// of that set: the guard holds an authenticated user on the splash while their
+/// house lookup is unfinished, so the moment resolution completes must reach
+/// the router or the hold would never end.
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authRepo = ref.watch(authRepositoryProvider);
   final houseRepo = ref.watch(houseRepositoryProvider);
@@ -53,12 +56,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _CombinedListenable([
     authRepo.currentUserNotifier,
     houseRepo.currentHouseNotifier,
+    houseRepo.houseResolvedNotifier,
   ]);
   ref.onDispose(() => notifier.dispose());
 
   return AppRouter._create(
     authRepo.currentUserNotifier,
     houseRepo.currentHouseNotifier,
+    houseRepo.houseResolvedNotifier,
   );
 });
 
@@ -175,6 +180,7 @@ class AppRouter {
   static GoRouter _create(
     ValueNotifier<UserEntity?> authNotifier,
     ValueNotifier<HouseEntity?> houseNotifier,
+    ValueNotifier<bool> houseResolvedNotifier,
   ) {
     final initialLocation =
         AppRouter._deepLinkInitialLocation() ?? RouteNames.splash;
@@ -184,7 +190,11 @@ class AppRouter {
       debugLogDiagnostics: true,
       observers: [_FabClosingObserver()],
 
-      refreshListenable: _CombinedListenable([authNotifier, houseNotifier]),
+      refreshListenable: _CombinedListenable([
+        authNotifier,
+        houseNotifier,
+        houseResolvedNotifier,
+      ]),
 
       redirect: (context, state) {
         return _authGuard.handleRedirect(
@@ -192,6 +202,7 @@ class AppRouter {
           state,
           currentUser: authNotifier.value,
           hasHouse: houseNotifier.value != null,
+          isHouseResolved: houseResolvedNotifier.value,
         );
       },
 

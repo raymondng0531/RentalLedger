@@ -1,7 +1,9 @@
 # Rental Ledger — Current Project Direction & AI Instructions
 
-Version: 1.0
+Version: 2.0
 Purpose: This document tells Claude Code the current direction of Rental Ledger and the rules it MUST follow when modifying the project.
+
+**v2.0 change:** Web/PWA is now the PRIMARY ACTIVE DEVELOPMENT TARGET. The existing Android/iOS Flutter application is FROZEN for personal use. Rental Ledger remains ONE shared Flutter/Dart project — never fork a separate web application. Git/deploy actions require explicit instruction.
 
 ---
 
@@ -83,6 +85,7 @@ The existing Feature-First Clean Architecture must be preserved.
 
 General architecture:
 
+```
 Presentation
 ↓
 Domain
@@ -90,6 +93,7 @@ Domain
 Data
 ↓
 Firebase / Local Database
+```
 
 Do not replace Flutter/Dart with another framework or language unless I explicitly request it.
 
@@ -99,10 +103,14 @@ Do not replace Flutter/Dart with another framework or language unless I explicit
 
 The project is already substantially developed.
 
+The existing Android/iOS Flutter application is now considered **stable enough for personal use** and is effectively **FROZEN** (see §8).
+
+The **Web/PWA build is now the PRIMARY ACTIVE DEVELOPMENT TARGET** (see §7).
+
 The latest V1 review reports:
 
 - Flutter analyzer: 0 errors / 0 warnings
-- 75 tests passing
+- 75+ tests passing
 - Windows debug build succeeds
 - No critical bugs remain
 
@@ -112,9 +120,9 @@ When working on the project, inspect the existing implementation first and exten
 
 ---
 
-# 6. V1.0 — FEATURES TO FINISH
+# 6. V1.0 — FEATURES TO FINISH (LEGACY MOBILE ROADMAP — PAUSED)
 
-These are the current V1.0 items to complete:
+The following is the **old mobile V1.0 release roadmap**. It is **NO LONGER the active development priority** and must **not** be continued automatically. Only work on these items when I explicitly request them.
 
 - PDF Export
 - Bills History Page
@@ -136,18 +144,15 @@ Do not remove or replace existing V1.0 functionality.
 
 ---
 
-# 7. NEW PLATFORM DIRECTION — WEB / PWA
+# 7. DEVELOPMENT PRIORITY — WEB/PWA IS THE PRIMARY ACTIVE TARGET
 
-I have decided that Rental Ledger should support **Web/PWA as the primary distribution platform**.
+Web/PWA is now the **PRIMARY ACTIVE DEVELOPMENT TARGET** for Rental Ledger.
 
-The reason is to allow users to access Rental Ledger without requiring an iOS App Store installation.
+The existing Flutter mobile application is now considered **stable enough for personal use** and is effectively **FROZEN** (see §8).
 
-Target usage:
+The goal is **NOT** to abandon or delete the mobile application.
 
-- iPhone → Safari
-- Android → Chrome
-- Windows → Chrome / Edge
-- Mac → Safari / Chrome
+The goal is to **continue using the existing Flutter/Dart codebase** while making Web/PWA the main active development target.
 
 This does NOT mean rewriting Rental Ledger into another framework.
 
@@ -165,34 +170,137 @@ Do not create a separate web application unless I explicitly ask for one.
 
 ---
 
-# 8. WEB / PWA REQUIREMENTS
+# 8. MOBILE APPLICATION — FROZEN
 
-The Web/PWA work should include:
+The existing Android/iOS Flutter application is primarily for **personal use**.
 
-- Flutter Web support
+Claude Code MUST NOT make additional mobile-specific feature changes unless I explicitly request them.
+
+Do NOT:
+
+- Add new mobile-only features unless explicitly requested.
+- Continue the old mobile V1 release roadmap unless explicitly requested.
+- Perform mobile-only UI redesigns unless explicitly requested.
+- Perform unnecessary mobile optimizations.
+- Rewrite existing mobile functionality simply because another implementation seems better.
+- Remove existing Android/iOS support.
+- Remove existing mobile configuration or platform code.
+- Delete existing mobile features.
+
+The existing mobile application must remain functional.
+
+---
+
+# 9. DO NOT CREATE A SEPARATE WEB APPLICATION
+
+Do NOT create a separate React, Next.js, Vue, Angular, or other Web application.
+
+Continue using the existing Flutter/Dart application.
+
+Preferred architecture:
+
+```
+Flutter / Dart
+       ↓
+Shared Application Code
+       ↓
+ ┌───────────────┬───────────────┐
+ ↓               ↓
+Mobile           Web/PWA
+FROZEN           ACTIVE
+```
+
+Use shared Flutter/Dart code whenever possible.
+
+Only use platform-specific implementations when technically necessary.
+
+---
+
+# 10. SHARED CODE RULE
+
+Because Flutter uses shared code for multiple platforms, a change to shared code may affect Android, iOS, and Web.
+
+When modifying shared code:
+
+1. Prioritize the requested Web requirement.
+2. Preserve existing mobile behavior.
+3. Do not create duplicate implementations unnecessarily.
+4. Do not break mobile compatibility simply to make Web work.
+5. If Web requires platform-specific code, isolate it appropriately.
+6. Test the affected Web functionality.
+7. Do not perform unrelated mobile changes.
+
+The goal is:
+
+**WEB-FIRST DEVELOPMENT + MOBILE PRESERVATION.**
+
+---
+
+# 11. FEATURE DEVELOPMENT RULE
+
+When I request a new feature:
+
+- IF the feature already works on Mobile but does not work on Web:
+  → Make it Web-compatible while preserving the existing Mobile behavior.
+- IF the feature already works on both Mobile and Web:
+  → Do not change it unnecessarily.
+- IF the feature is completely new:
+  → Implement it with Web/PWA as the primary target while preserving existing Mobile functionality.
+- IF implementing the Web feature requires a breaking Mobile change:
+  → STOP and tell me before making the change.
+
+Do not assume that breaking Mobile compatibility is acceptable.
+
+---
+
+# 12. WEB / PWA REQUIREMENTS
+
+All new development should prioritize Flutter Web/PWA.
+
+Primary Web targets:
+
+- iPhone Safari
+- Android Chrome
+- Windows Chrome
+- Windows Edge
+- macOS Safari
+- macOS Chrome
+- Desktop browsers
+- Mobile browsers
+- Tablet browsers
+
+Web development priorities include:
+
+- Flutter Web compatibility
 - Responsive UI
-- Mobile browser layout
-- Tablet layout
-- Desktop layout
-- iPhone Safari testing
-- Android Chrome testing
-- Windows Chrome/Edge testing
-- macOS Safari/Chrome testing
+- Mobile browser layouts
+- Tablet layouts
+- Desktop layouts
+- Safari compatibility
+- Chrome compatibility
+- Edge compatibility
+- Firebase Web compatibility
+- Web receipt upload
+- Web PDF functionality
+- Web notifications / FCM where supported
+- PWA functionality
+- Service worker configuration where required
+- HTTPS
+- Production Web hosting
+- Custom domain
+
+Additional Web work should include (from the original direction):
+
 - Firebase Web configuration
 - Firebase Authentication Web
 - Firestore Web
 - Firebase Storage Web
 - Cloud Functions integration
-- Web receipt upload
 - Mobile camera/photo upload where supported
 - Web PDF export
-- Web notification / FCM support
-- Service worker configuration where required
 - PWA manifest
 - Add-to-home-screen support
 - HTTPS hosting
-- Custom domain
-- Production Web deployment
 
 Important:
 
@@ -202,7 +310,7 @@ If Web compatibility requires a change to an existing feature, identify the issu
 
 ---
 
-# 9. ISAR / OFFLINE
+# 13. ISAR / OFFLINE
 
 Isar is currently intended for:
 
@@ -221,7 +329,7 @@ Do not implement the full offline system early unless I explicitly ask for it.
 
 ---
 
-# 10. V1.1 — QUALITY OF LIFE
+# 14. V1.1 — QUALITY OF LIFE (ONLY WHEN REQUESTED)
 
 Current V1.1 features:
 
@@ -233,9 +341,11 @@ Current V1.1 features:
 - More Report Customization
 - Additional Animations
 
+V1.1 features are **not** an active priority. Implement them only when I explicitly request them or when we reach that development stage.
+
 ---
 
-# 11. NEW V1.1 PERSONALIZATION FEATURES
+# 15. NEW V1.1 PERSONALIZATION FEATURES
 
 I have decided that users should be able to personalize the dashboard and bottom navigation.
 
@@ -268,9 +378,11 @@ Keep these predictable/core actions fixed:
 
 Do not redesign the entire navigation system unless explicitly requested.
 
+Implement these features only when I explicitly request them.
+
 ---
 
-# 12. USER PREFERENCES
+# 16. USER PREFERENCES
 
 The personalization features should work together with:
 
@@ -282,7 +394,7 @@ Do not change the existing settings behavior unless required by the requested pe
 
 ---
 
-# 13. V1.2 — OFFLINE EXPERIENCE
+# 17. V1.2 — OFFLINE EXPERIENCE (ONLY WHEN REQUESTED)
 
 Planned V1.2 features:
 
@@ -296,7 +408,7 @@ Do not implement these early unless explicitly requested.
 
 ---
 
-# 14. V2.0 — ADVANCED FEATURES
+# 18. V2.0 — ADVANCED FEATURES (ONLY WHEN REQUESTED)
 
 Current planned V2.0 features:
 
@@ -313,7 +425,7 @@ Do not implement them unless explicitly requested.
 
 ---
 
-# 15. IMPORTANT — FEATURE PRESERVATION
+# 19. IMPORTANT — FEATURE PRESERVATION
 
 When implementing any task, Claude Code MUST first inspect the existing project.
 
@@ -337,7 +449,7 @@ After implementation:
 
 ---
 
-# 16. DO NOT MAKE UNREQUESTED "IMPROVEMENTS"
+# 20. DO NOT MAKE UNREQUESTED "IMPROVEMENTS"
 
 Examples of changes Claude Code MUST NOT make without permission:
 
@@ -368,7 +480,7 @@ Do not implement it automatically.
 
 ---
 
-# 17. WHEN I ASK FOR A FEATURE
+# 21. WHEN I ASK FOR A FEATURE
 
 Follow this process:
 
@@ -387,7 +499,7 @@ Tell me:
 
 ### Step 3 — Implement
 
-Implement ONLY the requested feature.
+Implement ONLY the requested feature, prioritizing Web/PWA and preserving existing mobile behavior (see §10 Shared Code Rule and §11 Feature Development Rule).
 
 ### Step 4 — Test
 
@@ -396,6 +508,7 @@ Run:
 - flutter analyze
 - Relevant tests
 - Existing tests when practical
+- Test the affected Web functionality
 
 ### Step 5 — Report
 
@@ -405,11 +518,11 @@ Tell me:
 - What was not changed
 - Test results
 - Any remaining issues
-- Git commit recommendation
+- Git commit recommendation (do NOT commit or push without instruction — see §23)
 
 ---
 
-# 18. SOURCE OF TRUTH
+# 22. SOURCE OF TRUTH
 
 The project's existing documentation remains the source of truth for existing features and business rules.
 
@@ -437,87 +550,142 @@ If there is a conflict:
 
 ---
 
-# 19. CURRENT HIGH-LEVEL ROADMAP
+# 23. GITHUB / GIT RULE
 
-## V1.0
+GitHub is currently used as source-code backup and version history.
 
-Finish existing features → Web/PWA production support → Release
+DO NOT automatically:
 
-## V1.1
+- Commit
+- Push
+- Create branches
+- Merge branches
+- Deploy production
+- Change Git configuration
 
-Quality of life → User preferences → Dashboard customization → Bottom navigation customization
+unless I explicitly ask you to do so.
 
-## V1.2
+After completing a development task:
 
-Offline experience
+1. Run appropriate tests.
+2. Run flutter analyze where appropriate.
+3. Show me what changed.
+4. Show Git status/diff when useful.
+5. Wait for my instruction before committing.
+6. Wait for my instruction before pushing.
+7. Wait for my instruction before deploying.
 
-## V2.0
-
-OCR → AI → Excel → Calendar → Scheduled notifications → AI insights
+I decide when a Web milestone is stable enough to commit and push.
 
 ---
 
-# 20. FINAL INSTRUCTION TO CLAUDE CODE
+# 24. CURRENT HIGH-LEVEL ROADMAP
+
+The old mobile release roadmap is **NO LONGER the active development priority**.
+
+The current priority is:
+
+1. Flutter Web/PWA
+2. Web compatibility
+3. Responsive UI
+4. Firebase Web compatibility
+5. Browser testing
+6. PWA functionality
+7. Web hosting
+8. Production Web deployment
+9. Custom domain
+
+V1.1, V1.2, and V2.0 features should only be implemented when I explicitly request them or when we reach that development stage.
+
+Do not continue the old mobile roadmap automatically.
+
+---
+
+# 25. IMPORTANT PLATFORM PRINCIPLE
+
+Rental Ledger remains **ONE Flutter/Dart project**.
+
+We are NOT maintaining two separate applications.
+
+We are maintaining:
+
+```
+ONE CODEBASE
+    ↓
+Flutter/Dart
+    ↓
+ ┌───────────────────────┐
+ │                       │
+Mobile                 Web/PWA
+FROZEN                 ACTIVE
+Personal use           Primary product
+```
+
+Shared functionality should remain shared.
+
+---
+
+# 26. FINAL INSTRUCTION TO CLAUDE CODE
 
 **Rental Ledger is an existing working project. Do not treat it as a blank project.**
 
 **Do not change existing features unless Raymond explicitly asks for the change.**
 
-When asked to build something:
+From this point forward:
 
-> Add the requested feature while preserving everything that already works.
+**WEB FIRST.**
+**MOBILE PRESERVED.**
+**NO UNREQUESTED FEATURE CHANGES.**
+**NO AUTOMATIC GIT COMMIT.**
+**NO AUTOMATIC GIT PUSH.**
+**NO AUTOMATIC DEPLOYMENT.**
 
-When you see something that could be improved:
+When I ask you to develop something:
 
-> Recommend it first. Do not change it automatically.
-
-When a change could affect existing behavior:
-
-> Explain the impact before implementation.
+1. Read the existing project and documentation first.
+2. Understand the current implementation.
+3. Prioritize Web/PWA.
+4. Preserve existing Mobile behavior.
+5. Modify only what I requested or what is strictly required.
+6. Do not make unrelated improvements.
+7. Test the change.
+8. Show me the result.
+9. Wait for my approval before committing or pushing.
 
 The priority is:
 
 **Preserve existing functionality → Implement the requested change → Test → Report.**
 
-
 ---
 
-# 21. NEW UPGRADE REQUEST — MODIFY EXISTING EXPENSES
+# 27. NEW UPGRADE REQUEST — MODIFY EXISTING EXPENSES (IMPLEMENTED)
+
+Status: **IMPLEMENTED** — pending-expense editing upgrade only.
 
 A user specifically reported that they **cannot modify an expense after it has already been added**.
 
-This is a requested upgrade and should be investigated as a real product requirement.
+## Implemented behavior
 
-## Requested behavior
+A member may edit their own **pending** expense before the Treasurer reviews it:
 
-Users should be able to modify an expense that they have already added, subject to the appropriate business/security rules.
+- Title
+- Amount
+- Description
+- Category
+- Receipt (take photo / choose photo / replace / remove)
 
-Before implementing:
+Payment source is locked. Rejected, Approved, and Paid expenses remain unchanged and locked for members (per the approved scope).
 
-1. Inspect the current expense lifecycle and existing edit functionality.
-2. Determine which expense statuses currently allow editing.
-3. Do NOT remove or weaken existing Treasurer/member permissions.
-4. Do NOT change the existing expense approval/reimbursement workflow unnecessarily.
-5. Determine the safest rules for editing an already-created expense.
-6. Preserve the existing audit/transaction integrity.
+## Constraints that were preserved
 
-## Important
-
-The request came from a user feedback conversation where the issue was described as:
-
-> "but i cant modify what i already add"
-
-The clarification confirmed that the issue refers to **expenses that have already been added**.
-
-Therefore, treat **editing existing expenses** as an upgrade requirement, but do not assume that every expense status should become editable.
-
-For example, an expense that has already been approved, reimbursed/paid, or has created an immutable financial transaction may require different handling from a pending expense.
-
-**Do not automatically change the business rules. First inspect the existing implementation and report the safest approach.**
+1. Treasurer/member permissions were NOT weakened.
+2. The expense approval/reimbursement workflow was NOT changed.
+3. Only the submitter can edit their own pending expense (UI + repository guard + Firestore rules).
+4. Audit/transaction integrity preserved — edits never touch status/approval fields.
 
 ---
 
-# 22. AI RULE FOR NEW UPGRADE REQUESTS
+# 28. AI RULE FOR NEW UPGRADE REQUESTS
 
 When a new upgrade request is added to this document:
 

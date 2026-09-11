@@ -49,6 +49,9 @@ windows/Runner.xcuserstate
 # GoogleService-Info.plist and firebase_options.dart contain only PUBLIC
 # client API keys (the security boundary is Firebase Rules + auth), and the
 # app cannot build or connect without them.
+# The CLI's local deploy cache, on the other hand, is machine state — never
+# commit it.
+.firebase/
 
 # Assets
 # `assets/images/` and `assets/icons/` are tracked via `.gitkeep` because

@@ -100,7 +100,13 @@ final _notifications = <NotificationEntity>[
 // (ProfileData derives from currentUserProvider, so overriding that provider
 // feeds both the profile header and the profile form.)
 
+// MemberListPage is role-aware: it reads the current user to decide whether
+// the viewer (as house Treasurer) sees the per-member Remove action. Override
+// the user so the page never touches Firebase auth in the harness. _user is
+// user1, a regular member of _house (treasurer is user2), so no remove buttons
+// render — the layout exercised matches the pre-feature member view.
 final _memberListOverrides = <Override>[
+  currentUserProvider.overrideWith((ref) => _user),
   currentHouseProvider.overrideWith((ref) => _house),
   membersStreamProvider.overrideWith((ref) => Stream.value([_aliceMember, _treasurer])),
 ];

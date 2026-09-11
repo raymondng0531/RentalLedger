@@ -18,6 +18,26 @@ abstract class HouseRepository {
   /// Whether the currently authenticated user has joined a house.
   bool get hasHouse;
 
+  /// Whether this session's house lookup has finished — the third state the
+  /// router needs, which [currentHouse] alone cannot express.
+  ///
+  /// `null` means BOTH "not looked up yet" and "looked up, and this user has no
+  /// house". Deciding onboarding on `null` alone is what showed Create House to
+  /// a returning member before their Dashboard, so the router reads this
+  /// instead: `false` → the answer is still unknown and no onboarding decision
+  /// may be made; `true` → resolution finished, and [currentHouse] is the
+  /// answer (a house, or definitively none).
+  ///
+  /// Starts `false` — nothing is resolved on a cold start, which is what closes
+  /// the window between session restore and the lookup starting. Flips to `true`
+  /// exactly once per resolution, on every way out of it: a house, a definitive
+  /// no-house result, or retry exhaustion. Returns to `false` whenever the
+  /// session's house is cleared, so the next session resolves for itself.
+  ValueNotifier<bool> get houseResolvedNotifier;
+
+  /// Synchronous snapshot of [houseResolvedNotifier].
+  bool get isHouseResolved;
+
   /// Loads the user's house after auth is ready.
   /// Must be called after authentication to sync the notifier.
   Future<void> loadUserHouse(String userId);

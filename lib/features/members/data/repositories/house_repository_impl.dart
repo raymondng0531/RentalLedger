@@ -8,18 +8,42 @@ import '../datasources/house_remote_datasource.dart';
 
 /// Implementation of [HouseRepository] backed by Firestore.
 class HouseRepositoryImpl implements HouseRepository {
-  HouseRepositoryImpl({required HouseRemoteDataSource remoteDataSource})
-      : _remote = remoteDataSource {
+  HouseRepositoryImpl({
+    required HouseRemoteDataSource remoteDataSource,
+    Duration attemptTimeout = _defaultAttemptTimeout,
+  })  : _remote = remoteDataSource,
+        _attemptTimeout = attemptTimeout {
     // Check for an existing house on init.
     // The actual check happens when the user ID is known.
   }
 
   final HouseRemoteDataSource _remote;
+
+  /// How long one lookup attempt may take — see [_defaultAttemptTimeout].
+  /// A parameter so the bound itself is testable without waiting it out.
+  final Duration _attemptTimeout;
   final ValueNotifier<HouseEntity?> _currentHouseNotifier =
       ValueNotifier<HouseEntity?>(null);
 
+  /// Starts `false`: on a cold start the lookup has not run yet, and the router
+  /// must treat "not looked up" as unknown rather than as "no house".
+  final ValueNotifier<bool> _houseResolvedNotifier =
+      ValueNotifier<bool>(false);
+
+  /// Bumped by every session change (a new lookup, or a clear). A lookup whose
+  /// session has since moved on must not write its result into the new one —
+  /// otherwise a late answer for the previous user could land as the current
+  /// user's house, or mark the new session resolved before it has been.
+  int _resolutionGeneration = 0;
+
   @override
   ValueNotifier<HouseEntity?> get currentHouseNotifier => _currentHouseNotifier;
+
+  @override
+  ValueNotifier<bool> get houseResolvedNotifier => _houseResolvedNotifier;
+
+  @override
+  bool get isHouseResolved => _houseResolvedNotifier.value;
 
   @override
   HouseEntity? get currentHouse => _currentHouseNotifier.value;
@@ -37,37 +61,71 @@ class HouseRepositoryImpl implements HouseRepository {
   static const int _maxHouseLoadAttempts = 4;
   static const Duration _houseLoadRetryDelay = Duration(milliseconds: 600);
 
+  /// Ceiling on a single attempt. A read that never answers would leave this
+  /// loop — and so the resolution state — pending forever, which would hold the
+  /// user on the splash with no way forward. Timing out routes it into the
+  /// existing retry/exhaustion path instead, so every attempt ends in a
+  /// definitive answer.
+  static const Duration _defaultAttemptTimeout = Duration(seconds: 10);
+
   /// Must be called after auth is ready — loads the user's house.
   ///
   /// Retries transient read failures (see Issue 1): without this, a single
   /// swallowed error leaves [currentHouseNotifier] null forever, so the router
   /// holds a house-owning user on the Create House screen until a full reload.
+  ///
+  /// Every exit marks the resolution finished ([houseResolvedNotifier]), so the
+  /// router can never be left believing a lookup is still in flight. Note that
+  /// resolution is NOT reset to `false` at the start: a redundant re-load for
+  /// the same session (e.g. an auth token refresh re-emitting) must not put the
+  /// user back into the unknown state.
   Future<void> loadUserHouse(String userId) async {
+    final generation = ++_resolutionGeneration;
+
     for (var attempt = 1; attempt <= _maxHouseLoadAttempts; attempt++) {
       try {
-        final house = await _remote.findHouseByUserId(userId);
+        final house = await _remote
+            .findHouseByUserId(userId)
+            .timeout(_attemptTimeout);
+        // The session moved on while this was in flight — its answer belongs to
+        // the previous user, not this one.
+        if (generation != _resolutionGeneration) return;
         // null is definitive ("no active membership") — no further retry.
         _currentHouseNotifier.value = house;
+        _houseResolvedNotifier.value = true;
         return;
       } catch (e) {
         debugPrint(
           '[HouseRepository] loadUserHouse attempt $attempt/$_maxHouseLoadAttempts '
           'failed: $e',
         );
+        if (generation != _resolutionGeneration) return;
         if (attempt == _maxHouseLoadAttempts) {
-          // Give up for now rather than spin forever; the notifier stays null
-          // so the guard still shows the onboarding screen on a real failure.
+          // Give up for now rather than spin forever; the house stays null so
+          // the guard still shows the onboarding screen on a real failure. The
+          // resolution is finished either way — "no house we could find" is a
+          // definitive answer, not an unresolved one.
           _currentHouseNotifier.value = null;
+          _houseResolvedNotifier.value = true;
           return;
         }
         await Future<void>.delayed(_houseLoadRetryDelay);
+        // Re-checked at the top of the next attempt, but bail out here too so a
+        // clear during the pause cannot start one more read for a dead session.
+        if (generation != _resolutionGeneration) return;
       }
     }
   }
 
   @override
   Future<void> clearCurrentHouse() async {
+    // Invalidate any lookup still in flight for the session being ended.
+    _resolutionGeneration++;
     _currentHouseNotifier.value = null;
+    // Back to "unknown". The next session must resolve for itself before the
+    // router may decide where its user belongs; keeping the previous answer
+    // here would hand the new session the old one's redirect decision.
+    _houseResolvedNotifier.value = false;
   }
 
   @override
@@ -221,5 +279,6 @@ class HouseRepositoryImpl implements HouseRepository {
   /// Cleans up.
   void dispose() {
     _currentHouseNotifier.dispose();
+    _houseResolvedNotifier.dispose();
   }
 }

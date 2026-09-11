@@ -329,8 +329,18 @@ class RemoveMemberNotifier extends AutoDisposeAsyncNotifier<void> {
 class _NoOpHouseRepository implements HouseRepository {
   final _notifier = ValueNotifier<HouseEntity?>(null);
 
+  /// Nothing to resolve without Firebase — starting `true` keeps the router
+  /// from holding anyone on the splash waiting for a lookup that cannot run.
+  final _resolvedNotifier = ValueNotifier<bool>(true);
+
   @override
   ValueNotifier<HouseEntity?> get currentHouseNotifier => _notifier;
+
+  @override
+  ValueNotifier<bool> get houseResolvedNotifier => _resolvedNotifier;
+
+  @override
+  bool get isHouseResolved => true;
 
   @override
   HouseEntity? get currentHouse => null;

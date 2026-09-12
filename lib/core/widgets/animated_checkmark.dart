@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
+import '../../app/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 
 /// An animated checkmark that draws itself with a stroke animation.
@@ -14,12 +14,17 @@ class AnimatedCheckmark extends StatefulWidget {
   const AnimatedCheckmark({
     super.key,
     this.size = 80,
-    this.color = AppTheme.successGreen,
+    this.color,
     this.strokeWidth = 3.5,
   });
 
   final double size;
-  final Color color;
+
+  /// Overrides the tick colour. Defaults to the theme's `success` — null
+  /// rather than a const default because the colour is theme-dependent and a
+  /// default parameter value must be a compile-time constant.
+  final Color? color;
+
   final double strokeWidth;
 
   @override
@@ -53,6 +58,7 @@ class _AnimatedCheckmarkState extends State<AnimatedCheckmark>
 
   @override
   Widget build(BuildContext context) {
+    final color = widget.color ?? context.colors.success;
     return AnimatedBuilder(
       animation: _drawAnimation,
       builder: (context, child) {
@@ -60,7 +66,7 @@ class _AnimatedCheckmarkState extends State<AnimatedCheckmark>
           size: Size(widget.size, widget.size),
           painter: _CheckmarkPainter(
             progress: _drawAnimation.value,
-            color: widget.color,
+            color: color,
             strokeWidth: widget.strokeWidth,
           ),
         );

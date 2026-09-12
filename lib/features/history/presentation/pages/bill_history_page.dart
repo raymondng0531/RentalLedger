@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/date_utils.dart';
@@ -461,8 +461,9 @@ class _BillHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final payment = entry.latestPayment;
-    final (IconData icon, Color color) = _visual(entry.status);
+    final (IconData icon, Color color) = _visual(entry.status, colors: colors);
     final categoryName =
         entry.categoryId == null ? null : categoryMap[entry.categoryId];
 
@@ -486,32 +487,35 @@ class _BillHistoryTile extends StatelessWidget {
       amount: entry.amount ?? 0,
       amountLabel: entry.hasAmount ? null : 'Reminder',
       amountSign: '',
-      amountColor: entry.hasAmount ? null : AppTheme.textSecondary,
+      amountColor: entry.hasAmount ? null : colors.textSecondary,
       icon: icon,
       iconColor: color,
-      chips: _buildChips(context, payment, categoryName),
+      chips: _buildChips(payment, categoryName, colors),
       onTap: onTap,
     );
   }
 
   /// Status / category / payment chips — only the ones that apply.
   List<Widget> _buildChips(
-    BuildContext context,
     BillHistoryPayment? payment,
     String? categoryName,
+    AppColors colors,
   ) {
     final chips = <Widget>[
-      ActivityChip(label: entry.status.label, color: _visual(entry.status).$2),
+      ActivityChip(
+        label: entry.status.label,
+        color: _visual(entry.status, colors: colors).$2,
+      ),
     ];
 
     if (categoryName != null) {
-      chips.add(ActivityChip(label: categoryName, color: AppTheme.textSecondary));
+      chips.add(ActivityChip(label: categoryName, color: colors.textSecondary));
     }
 
     final method = payment?.paymentMethod;
     if (method != null && method.trim().isNotEmpty) {
       // Same colour History gives a payment-method chip.
-      chips.add(ActivityChip(label: method, color: AppTheme.statusApproved));
+      chips.add(ActivityChip(label: method, color: colors.statusApproved));
     }
 
     final period = payment?.periodLabel;
@@ -519,7 +523,7 @@ class _BillHistoryTile extends StatelessWidget {
       // "Covers <month>" — the label the transaction detail page uses for this
       // same field, so the vocabulary matches.
       chips.add(
-        ActivityChip(label: 'Covers $period', color: AppTheme.textSecondary),
+        ActivityChip(label: 'Covers $period', color: colors.textSecondary),
       );
     }
 
@@ -530,7 +534,7 @@ class _BillHistoryTile extends StatelessWidget {
       chips.add(
         ActivityChip(
           label: '${entry.payments.length} payments',
-          color: AppTheme.textSecondary,
+          color: colors.textSecondary,
         ),
       );
     }
@@ -554,6 +558,9 @@ class _ReceiptChip extends StatelessWidget {
 
   final String receiptUrl;
 
+  /// The `Colors.white54` error glyph below is deliberately NOT themed:
+  /// [ReceiptViewer] paints its own fixed black ground in every mode, so white
+  /// is the correct ink there and `context.colors` does not apply.
   void _open(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -587,9 +594,9 @@ class _ReceiptChip extends StatelessWidget {
     return InkWell(
       onTap: () => _open(context),
       borderRadius: BorderRadius.circular(7),
-      child: const ActivityChip(
+      child: ActivityChip(
         label: 'Receipt',
-        color: AppTheme.statusApproved,
+        color: context.colors.statusApproved,
       ),
     );
   }
@@ -600,13 +607,16 @@ class _ReceiptChip extends StatelessWidget {
 /// The icon is the bill icon History already uses for bill tiles; the colours
 /// are the app's existing status palette (paid = green, overdue = red,
 /// not-yet-due = amber).
-(IconData, Color) _visual(BillHistoryStatus status) {
+///
+/// Takes the resolved [AppColors] rather than reading them itself: it is a
+/// top-level function with no `BuildContext`.
+(IconData, Color) _visual(BillHistoryStatus status, {required AppColors colors}) {
   switch (status) {
     case BillHistoryStatus.paid:
-      return (Icons.receipt_long_outlined, AppTheme.successGreen);
+      return (Icons.receipt_long_outlined, colors.success);
     case BillHistoryStatus.overdue:
-      return (Icons.receipt_long_outlined, AppTheme.errorRed);
+      return (Icons.receipt_long_outlined, colors.error);
     case BillHistoryStatus.upcoming:
-      return (Icons.receipt_long_outlined, AppTheme.statusPending);
+      return (Icons.receipt_long_outlined, colors.statusPending);
   }
 }

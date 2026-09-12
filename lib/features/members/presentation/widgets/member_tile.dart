@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/widgets/animated_pressable.dart';
 import '../../domain/entities/house_member_entity.dart';
@@ -33,6 +33,7 @@ class MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     // Guard against empty (non-null) names/emails — indexing ''[0] throws.
     final initialText = (member.displayName != null &&
             member.displayName!.isNotEmpty)
@@ -52,9 +53,13 @@ class MemberTile extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           leading: CircleAvatar(
             radius: 24,
+            // A non-Treasurer's avatar is the "no particular role" case, so it
+            // takes `statusNeutral` — the palette's existing neutral, which is
+            // the very `Colors.grey` swatch V1.0 used here (same value, same
+            // material swatch) and a desaturated slate in dark mode.
             backgroundColor: member.isTreasurer
-                ? AppTheme.primaryGreen.withAlpha(30)
-                : Colors.grey.withAlpha(30),
+                ? colors.primary.withAlpha(30)
+                : colors.statusNeutral.withAlpha(30),
             foregroundImage: (member.photoUrl?.isNotEmpty == true)
                 ? NetworkImage(member.photoUrl!) as ImageProvider
                 : null,
@@ -66,8 +71,8 @@ class MemberTile extends StatelessWidget {
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: member.isTreasurer
-                          ? AppTheme.primaryGreen
-                          : Colors.grey,
+                          ? colors.primary
+                          : colors.statusNeutral,
                     ),
                   ),
           ),
@@ -90,15 +95,15 @@ class MemberTile extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withAlpha(20),
+                    color: colors.primary.withAlpha(20),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Treasurer',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryGreen,
+                      color: colors.primary,
                     ),
                   ),
                 ),
@@ -114,14 +119,14 @@ class MemberTile extends StatelessWidget {
                   Text(
                     member.email!,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: colors.textSecondary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 Text(
                   'Joined ${DateFormatUtils.formatDateShort(member.joinedAt)}',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: colors.textSecondary,
                     fontSize: 11,
                   ),
                 ),
@@ -140,16 +145,16 @@ class MemberTile extends StatelessWidget {
                     if (onMakeTreasurer != null)
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.admin_panel_settings_outlined,
-                            color: AppTheme.primaryGreen, size: 20),
+                        icon: Icon(Icons.admin_panel_settings_outlined,
+                            color: colors.primary, size: 20),
                         onPressed: onMakeTreasurer,
                         tooltip: 'Make treasurer',
                       ),
                     if (onRemove != null)
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.remove_circle_outline,
-                            color: AppTheme.errorRed, size: 20),
+                        icon: Icon(Icons.remove_circle_outline,
+                            color: colors.error, size: 20),
                         onPressed: onRemove,
                         tooltip: 'Remove member',
                       ),

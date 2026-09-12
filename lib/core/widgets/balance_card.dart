@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import 'animated_balance.dart';
 
@@ -7,7 +8,7 @@ import 'animated_balance.dart';
 ///
 /// Used on the Dashboard and Central Account screens.
 /// Designed to match the Figma mockup — green card with
-/// large white balance text.
+/// large `onPrimary` balance text.
 class BalanceCard extends StatelessWidget {
   const BalanceCard({
     super.key,
@@ -29,6 +30,10 @@ class BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Everything inside this card sits on the primary fill, so its foreground
+    // is `onPrimary` rather than a literal white — identical in light mode
+    // (#FFFFFF), dark ink in dark mode where the primary is lightened.
+    final onPrimary = context.colors.onPrimary;
 
     return Card(
       margin: const EdgeInsets.symmetric(
@@ -44,19 +49,19 @@ class BalanceCard extends StatelessWidget {
             Text(
               label,
               style: theme.textTheme.labelLarge?.copyWith(
-                color: Colors.white.withAlpha(200),
+                color: onPrimary.withAlpha(200),
               ),
             ),
             const SizedBox(height: 8),
 
             // ── Animated balance ──
             if (isLoading)
-              _ShimmerLoader()
+              _ShimmerLoader(color: onPrimary)
             else
               AnimatedBalance(
                 balance: balance,
                 style: theme.textTheme.headlineLarge?.copyWith(
-                  color: Colors.white,
+                  color: onPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 32,
                 ),
@@ -71,8 +76,9 @@ class BalanceCard extends StatelessWidget {
                   icon: Icon(actionIcon ?? Icons.add),
                   label: Text(actionLabel!),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white38),
+                    foregroundColor: onPrimary,
+                    // Matches the old `Colors.white38` (0x62FFFFFF).
+                    side: BorderSide(color: onPrimary.withAlpha(98)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppConstants.radiusLg),
                     ),
@@ -89,13 +95,18 @@ class BalanceCard extends StatelessWidget {
 
 /// Simple shimmer placeholder for loading state.
 class _ShimmerLoader extends StatelessWidget {
+  const _ShimmerLoader({required this.color});
+
+  /// The card's foreground colour — the placeholder block is a wash of it.
+  final Color color;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 36,
       width: 180,
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(60),
+        color: color.withAlpha(60),
         borderRadius: BorderRadius.circular(8),
       ),
     );

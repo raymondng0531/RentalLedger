@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/widgets/activity_card.dart';
@@ -95,6 +96,7 @@ class RecentActivitySection extends StatelessWidget {
   /// same card language as the History timeline.
   ActivityCard _activityCard(BuildContext context, ActivityItem item) {
     final type = item.type;
+    final colors = context.colors;
 
     // Titles must describe the action, not the backend event name.
     var title = item.title;
@@ -122,8 +124,10 @@ class RecentActivitySection extends StatelessWidget {
       item.categoryId,
       item.status,
       isBill,
+      colors: colors,
     );
-    final (String sign, Color amountColor) = activityAmount(type);
+    final (String sign, Color amountColor) =
+        activityAmount(type, colors: colors);
 
     return ActivityCard(
       title: title,
@@ -140,6 +144,7 @@ class RecentActivitySection extends StatelessWidget {
         item.categoryId,
         item.paymentSource,
         categoryMap,
+        colors: colors,
       ),
     );
   }

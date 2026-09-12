@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/widgets/activity_card.dart';
 
@@ -8,6 +8,11 @@ import '../../../../core/widgets/activity_card.dart';
 /// (Pending Items and Recent Activity). Both sections show the same card
 /// language — status chips, status colors, per-type icons and amount signs —
 /// so these live in ONE place instead of being forked per widget.
+///
+/// These are plain functions with no `BuildContext`, so each takes the active
+/// palette explicitly (`colors: context.colors`) rather than reading it from
+/// the ambient theme. That keeps them pure and testable while still letting
+/// every chip, icon and amount follow the theme.
 
 /// Status chips for an activity item. The dashboard's Pending Items rows and
 /// Recent Activity cards both describe an expense's journey (submitted →
@@ -18,48 +23,49 @@ List<ActivityChip> activityChips(
   String? status,
   String? categoryId,
   String? paymentSource,
-  Map<String, String> categoryMap,
-) {
+  Map<String, String> categoryMap, {
+  required AppColors colors,
+}) {
   switch (type) {
     case 'deposit':
-      return const [
-        ActivityChip(label: 'Deposit', color: AppTheme.successGreen),
+      return [
+        ActivityChip(label: 'Deposit', color: colors.success),
         ActivityChip(
           label: 'Central Account',
-          color: AppTheme.statusApproved,
+          color: colors.statusApproved,
         ),
       ];
     case 'reimbursement':
       // A reimbursement IS a paid expense — the title explains the rest.
-      return const [
-        ActivityChip(label: 'Paid', color: AppTheme.successGreen),
+      return [
+        ActivityChip(label: 'Paid', color: colors.success),
       ];
     case 'payment':
       final isBill = title.startsWith('Bill: ');
       return isBill
-          ? const [ActivityChip(label: 'Paid', color: AppTheme.successGreen)]
-          : const [
-            ActivityChip(
-              label: 'Direct Payment',
-              color: AppTheme.statusDirectPayment,
-            ),
-          ];
+          ? [ActivityChip(label: 'Paid', color: colors.success)]
+          : [
+              ActivityChip(
+                label: 'Direct Payment',
+                color: colors.statusDirectPayment,
+              ),
+            ];
     case 'expense':
       return [
         ActivityChip(
           label: activityStatusLabel(status),
-          color: activityStatusColor(status),
+          color: activityStatusColor(status, colors: colors),
         ),
         if (paymentSource != null)
           ActivityChip(
             label:
                 paymentSource == 'personal' ? 'Personal' : 'Central Account',
-            color: AppTheme.statusApproved,
+            color: colors.statusApproved,
           ),
         if (categoryId != null && categoryMap[categoryId] != null)
           ActivityChip(
             label: categoryMap[categoryId]!,
-            color: AppTheme.textSecondary,
+            color: colors.textSecondary,
           ),
       ];
     default:
@@ -68,16 +74,16 @@ List<ActivityChip> activityChips(
 }
 
 /// Color for an expense's current status (paid/approved/rejected/pending).
-Color activityStatusColor(String? status) {
+Color activityStatusColor(String? status, {required AppColors colors}) {
   switch (status) {
     case 'paid':
-      return AppTheme.successGreen;
+      return colors.success;
     case 'approved':
-      return AppTheme.statusApproved;
+      return colors.statusApproved;
     case 'rejected':
-      return AppTheme.errorRed;
+      return colors.error;
     default:
-      return AppTheme.statusPending;
+      return colors.statusPending;
   }
 }
 
@@ -117,34 +123,38 @@ String activityFallbackTitle(String type) {
   String type,
   String? categoryId,
   String? status,
-  bool isBill,
-) {
+  bool isBill, {
+  required AppColors colors,
+}) {
   switch (type) {
     case 'deposit':
-      return (Icons.savings_outlined, AppTheme.successGreen);
+      return (Icons.savings_outlined, colors.success);
     case 'payment':
       return isBill
-          ? (Icons.receipt_long_rounded, AppTheme.successGreen)
-          : (Icons.credit_card_rounded, AppTheme.statusDirectPayment);
+          ? (Icons.receipt_long_rounded, colors.success)
+          : (Icons.credit_card_rounded, colors.statusDirectPayment);
     case 'reimbursement':
-      return (Icons.payments_outlined, AppTheme.successGreen);
+      return (Icons.payments_outlined, colors.success);
     case 'expense':
-      return (categoryIcon(categoryId), activityStatusColor(status));
+      return (
+        categoryIcon(categoryId),
+        activityStatusColor(status, colors: colors),
+      );
     default:
-      return (Icons.swap_horiz_rounded, AppTheme.textSecondary);
+      return (Icons.swap_horiz_rounded, colors.textSecondary);
   }
 }
 
 /// Amount sign + color for an activity item, by its type (deposits come in,
 /// payments/reimbursements go out).
-(String, Color) activityAmount(String type) {
+(String, Color) activityAmount(String type, {required AppColors colors}) {
   switch (type) {
     case 'deposit':
-      return ('+', AppTheme.successGreen);
+      return ('+', colors.success);
     case 'reimbursement':
     case 'payment':
-      return ('-', AppTheme.errorRed);
+      return ('-', colors.error);
     default:
-      return ('', AppTheme.textSecondary);
+      return ('', colors.textSecondary);
   }
 }

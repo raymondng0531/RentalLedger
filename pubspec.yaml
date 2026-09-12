@@ -29,6 +29,10 @@ dependencies:
 
   # Utilities
   intl: ^0.20.2
+  # Local, device-scoped preferences (appearance, and later language). On Web
+  # this is browser localStorage — no Firestore, no rules, no backend. Kept
+  # separate from Isar, which is still a placeholder for V1.2 offline support.
+  shared_preferences: ^2.3.0
   uuid: ^4.5.1
   image_picker: ^1.1.2
   # XFile is used directly by the data layer to read picked image bytes on web.

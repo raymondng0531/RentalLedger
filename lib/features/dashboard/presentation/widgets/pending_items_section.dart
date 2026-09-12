@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/utils/category_icons.dart';
@@ -32,6 +32,7 @@ class PendingItemsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     final items = this.items.take(5).toList();
 
     return Column(
@@ -70,14 +71,14 @@ class PendingItemsSection extends StatelessWidget {
         if (items.isEmpty)
           // Compact empty state — the section stays small when nothing is
           // waiting on the Treasurer.
-          const Card(
-            margin: EdgeInsets.symmetric(
+          Card(
+            margin: const EdgeInsets.symmetric(
               horizontal: AppConstants.pagePadding,
             ),
             child: ListTile(
-              leading: Icon(Icons.task_alt_rounded, color: AppTheme.textHint),
-              title: Text('No pending items'),
-              subtitle: Text(
+              leading: Icon(Icons.task_alt_rounded, color: colors.textHint),
+              title: const Text('No pending items'),
+              subtitle: const Text(
                 'Submitted and approved expenses will appear here.',
               ),
             ),
@@ -95,6 +96,7 @@ class PendingItemsSection extends StatelessWidget {
     List<ActivityItem> items,
   ) {
     final theme = Theme.of(context);
+    final colors = context.colors;
 
     return [
       for (final item in items)
@@ -121,13 +123,14 @@ class PendingItemsSection extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: _statusColor(item.status).withAlpha(25),
+                      color: _statusColor(item.status, colors: colors)
+                          .withAlpha(25),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       categoryIcon(item.categoryId),
                       size: 20,
-                      color: _statusColor(item.status),
+                      color: _statusColor(item.status, colors: colors),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -161,7 +164,7 @@ class PendingItemsSection extends StatelessWidget {
                         Text(
                           _waitingLabel(item.status),
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: _statusColor(item.status),
+                            color: _statusColor(item.status, colors: colors),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -176,17 +179,14 @@ class PendingItemsSection extends StatelessWidget {
                             item.categoryId,
                             item.paymentSource,
                             categoryMap,
+                            colors: context.colors,
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: 18,
-                    color: AppTheme.textHint,
-                  ),
+                  Icon(Icons.chevron_right, size: 18, color: colors.textHint),
                 ],
               ),
             ),
@@ -203,11 +203,17 @@ class PendingItemsSection extends StatelessWidget {
     return 'Waiting for Treasurer approval';
   }
 
-  /// Status color for an open claim: approved teal, otherwise pending amber.
-  Color _statusColor(String? status) {
+  /// Status color for an open claim: approved blue, otherwise pending amber.
+  ///
+  /// Kept local rather than delegating to `activityStatusColor` from
+  /// `activity_visuals.dart`: this section only ever renders *open* claims, so
+  /// its rule is "approved, or still waiting on the Treasurer" — a two-state
+  /// rule, not the shared helper's four-state one. The two agree for every
+  /// status this section can receive.
+  Color _statusColor(String? status, {required AppColors colors}) {
     if (status == FirestoreConstants.statusApproved) {
-      return AppTheme.statusApproved;
+      return colors.statusApproved;
     }
-    return AppTheme.statusPending;
+    return colors.statusPending;
   }
 }

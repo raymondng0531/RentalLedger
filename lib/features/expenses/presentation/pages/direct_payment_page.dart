@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
@@ -84,9 +84,10 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
     final state = ref.watch(directPaymentProvider);
     final isLoading = state.isLoading;
     final categoriesAsync = ref.watch(categoriesProvider);
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -94,7 +95,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
           tooltip: 'Back',
         ),
         title: const Text('Direct Payment'),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
@@ -111,13 +112,13 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: AppTheme.statusDirectPayment.withAlpha(20),
+                        color: colors.statusDirectPayment.withAlpha(20),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.payment_outlined,
                         size: 36,
-                        color: AppTheme.statusDirectPayment,
+                        color: colors.statusDirectPayment,
                       ),
                     ),
                   ),
@@ -126,7 +127,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                   Text(
                     'Pay directly from the Central Account.',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.textSecondary,
+                          color: colors.textSecondary,
                         ),
                   ),
                   const SizedBox(height: 24),
@@ -229,12 +230,13 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                           ? null
                           : _handlePayment,
                       child: isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                // Ink on the FilledButton's fill.
+                                color: colors.onPrimary,
                               ),
                             )
                           : const Text('Record Payment'),
@@ -245,7 +247,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                     Text(
                       'Attach a receipt or proof above to record the payment.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: colors.textSecondary,
                           ),
                     ),
                 ],

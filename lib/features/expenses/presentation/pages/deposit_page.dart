@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
@@ -103,6 +103,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
     final isLoading = state.isLoading;
     final membersAsync = ref.watch(membersStreamProvider);
     final currentUser = ref.watch(currentUserProvider);
+    final colors = context.colors;
 
     final members = membersAsync.value ?? const <HouseMemberEntity>[];
     final memberUids = {for (final m in members) m.userId};
@@ -120,7 +121,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
         : null;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -128,7 +129,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
           tooltip: 'Back',
         ),
         title: const Text('Record Deposit'),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
@@ -146,13 +147,13 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: AppTheme.successGreen.withAlpha(20),
+                        color: colors.success.withAlpha(20),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_downward_rounded,
                         size: 36,
-                        color: AppTheme.successGreen,
+                        color: colors.success,
                       ),
                     ),
                   ),
@@ -161,7 +162,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   Text(
                     'Add money to the Central Account.',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.textSecondary,
+                          color: colors.textSecondary,
                         ),
                   ),
                   const SizedBox(height: 24),
@@ -280,12 +281,13 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                           ? null
                           : _handleDeposit,
                       child: isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                // Ink on the FilledButton's fill.
+                                color: colors.onPrimary,
                               ),
                             )
                           : const Text('Record Deposit'),
@@ -296,7 +298,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                     Text(
                       'Attach a receipt or proof above to record the deposit.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: colors.textSecondary,
                           ),
                     ),
                 ],

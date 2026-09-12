@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
+import 'app_colors.dart';
 
 /// Rental Ledger Material Design 3 theme.
 ///
@@ -63,6 +64,13 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: backgroundLight,
+
+      // ── Semantic colour tokens ──
+      // Registering the palette does not change any colour this theme already
+      // paints — existing `AppTheme.*` call sites are untouched. It exposes the
+      // same values through `context.colors` for widgets migrated in later
+      // phases.
+      extensions: const [AppColors.light],
 
       // ── AppBar (liquid glass — translucent frosted) ──
       appBarTheme: const AppBarTheme(
@@ -237,6 +245,236 @@ class AppTheme {
       ),
 
       // ── Snackbar ──
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+        ),
+      ),
+    );
+  }
+
+  /// Dark theme configuration.
+  ///
+  /// Structurally a mirror of [lightTheme] — same shapes, radii, spacing, and
+  /// component choices — with every colour resolved from [AppColors.dark].
+  /// Only the palette differs; the two themes must never diverge in geometry,
+  /// or switching modes would shift layout.
+  ///
+  /// Depth comes from a three-step neutral ramp rather than from borders, and
+  /// glass stays subtle: a low-alpha white lift instead of the light theme's
+  /// near-opaque white fill.
+  static ThemeData get darkTheme {
+    // Named `colors` (not `dark`) so the body below reads the same shape as
+    // lightTheme's — the palette is the only thing that differs.
+    const colors = AppColors.dark;
+
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: colors.primary,
+      brightness: Brightness.dark,
+      primary: colors.primary,
+      // Dark ink on the lightened teal — see the Q1b decision.
+      onPrimary: colors.onPrimary,
+      // The palette has no separate secondary token; dark reuses the primary
+      // teal, which is already the light theme's `secondary` value.
+      secondary: colors.primary,
+      surface: colors.surface,
+      error: colors.error,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: colors.background,
+
+      // ── Semantic colour tokens ──
+      extensions: const [AppColors.dark],
+
+      // ── AppBar (liquid glass — frosted, background-tinted) ──
+      appBarTheme: AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        backgroundColor: colors.glassBarFill,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: colors.textPrimary,
+        titleTextStyle: TextStyle(
+          color: colors.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+
+      // ── Cards ──
+      cardTheme: CardTheme(
+        elevation: 1,
+        shadowColor: colors.shadow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusXl),
+        ),
+        color: colors.surface,
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppConstants.pagePadding,
+          vertical: AppConstants.spacingSm,
+        ),
+      ),
+
+      // ── Buttons ──
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colors.primary,
+          foregroundColor: colors.onPrimary,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.spacingXl,
+            vertical: AppConstants.spacingLg,
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          minimumSize: const Size(double.infinity, AppConstants.minTouchTarget),
+        ),
+      ),
+
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colors.primary,
+          side: BorderSide(color: colors.primary),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.spacingXl,
+            vertical: AppConstants.spacingLg,
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          minimumSize: const Size(double.infinity, AppConstants.minTouchTarget),
+        ),
+      ),
+
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: colors.primary,
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+
+      // ── Input fields ──
+      // Filled with the elevated surface, so a field reads as a raised well on
+      // a card rather than disappearing into it.
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: colors.surfaceElevated,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.spacingLg,
+          vertical: AppConstants.spacingLg,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          borderSide: BorderSide(color: colors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          borderSide: BorderSide(color: colors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          borderSide: BorderSide(color: colors.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          borderSide: BorderSide(color: colors.error, width: 2),
+        ),
+        hintStyle: TextStyle(color: colors.textHint, fontSize: 14),
+        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 14),
+      ),
+
+      // ── Bottom navigation ──
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: colors.glassBarFill,
+        selectedItemColor: colors.primary,
+        unselectedItemColor: colors.textHint,
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+        selectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(fontSize: 12),
+      ),
+
+      // ── Floating action button ──
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colors.primary,
+        foregroundColor: colors.onPrimary,
+        elevation: 4,
+        shape: const CircleBorder(),
+      ),
+
+      // ── Bottom sheet ──
+      // Explicitly elevated: at the surface colour a sheet would barely
+      // separate from the scaffold behind it.
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colors.surfaceElevated,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(AppConstants.radiusBottomSheet),
+            topRight: Radius.circular(AppConstants.radiusBottomSheet),
+          ),
+        ),
+      ),
+
+      // ── Divider ──
+      dividerTheme: DividerThemeData(
+        color: colors.divider,
+        thickness: 1,
+        space: 1,
+      ),
+
+      // ── Chip / filter chip ──
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusSm * 2),
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.spacingMd,
+          vertical: AppConstants.spacingXs,
+        ),
+        // No Material-3 default outline; each widget sets its own border — a
+        // divider-grey hairline when unselected, teal when selected.
+        side: BorderSide.none,
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        // Selected chips: solid teal with dark ink, no checkmark tick.
+        showCheckmark: false,
+        selectedColor: colors.primary,
+        checkmarkColor: colors.onPrimary,
+        labelStyle: TextStyle(color: colors.textPrimary),
+        secondaryLabelStyle: TextStyle(
+          color: colors.onPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+
+      // ── Snackbar ──
+      // Left to Material 3's `inverseSurface` defaults, matching the light
+      // theme: a snackbar is meant to stand apart from the app, so in dark mode
+      // it inverts to a light surface.
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(

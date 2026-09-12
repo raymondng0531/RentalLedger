@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/app_logo.dart';
@@ -61,7 +61,11 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
     final isLoading = state.isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // Same clean-sheet treatment as Create House: `surface` is the shipped
+      // white (#FFFFFFFF) in light mode, so light is byte-identical, and the
+      // raised-surface tone in dark mode. See CreateHousePage for why this is
+      // not `background`.
+      backgroundColor: context.colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -69,7 +73,7 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
           tooltip: 'Back',
         ),
         title: const Text('Join House'),
-        backgroundColor: Colors.white,
+        backgroundColor: context.colors.surface,
       ),
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
@@ -123,7 +127,7 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
                         padding: const EdgeInsets.only(left: 8),
                         child: Icon(
                           Icons.vpn_key_outlined,
-                          color: AppTheme.primaryGreen,
+                          color: context.colors.primary,
                         ),
                       ),
                     ),
@@ -143,12 +147,13 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
                   FilledButton(
                     onPressed: isLoading ? null : _handleJoin,
                     child: isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              // Ink on the FilledButton's `primary` fill.
+                              color: context.colors.onPrimary,
                             ),
                           )
                         : const Text('Join House'),

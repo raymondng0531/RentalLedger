@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/category_icons.dart';
@@ -515,6 +515,7 @@ class _HistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     // The title is always the real entity name — never a backend event label.
     final title =
         (event.title?.isNotEmpty ?? false)
@@ -531,10 +532,12 @@ class _HistoryTile extends StatelessWidget {
     final (IconData icon, Color color) = _tileVisual(
       event.type,
       event.categoryId,
+      colors: colors,
     );
     final (String sign, Color amountColor) = _amountStyle(
       event.type,
       event.amount,
+      colors: colors,
     );
 
     final dateLine =
@@ -552,24 +555,22 @@ class _HistoryTile extends StatelessWidget {
       amountColor: amountColor,
       icon: icon,
       iconColor: color,
-      chips: _buildChips(categoryName),
+      chips: _buildChips(categoryName, colors),
       onTap: onTap,
     );
   }
 
   /// Builds the status / payment-method / category chips (only relevant ones).
-  List<ActivityChip> _buildChips(String? categoryName) {
+  List<ActivityChip> _buildChips(String? categoryName, AppColors colors) {
     final chips = <ActivityChip>[];
-    final (statusLabel, statusColor) = _statusChip(event.type);
+    final (statusLabel, statusColor) = _statusChip(event.type, colors: colors);
     chips.add(ActivityChip(label: statusLabel, color: statusColor));
     final method = _paymentMethodLabel(event.paymentSource);
     if (method != null) {
-      chips.add(ActivityChip(label: method, color: AppTheme.statusApproved));
+      chips.add(ActivityChip(label: method, color: colors.statusApproved));
     }
     if (categoryName != null) {
-      chips.add(
-        ActivityChip(label: categoryName, color: AppTheme.textSecondary),
-      );
+      chips.add(ActivityChip(label: categoryName, color: colors.textSecondary));
     }
     return chips;
   }
@@ -624,51 +625,59 @@ String _eventLabel(HistoryEventType type) {
 }
 
 /// Leading icon: category-driven for expenses, type-driven otherwise.
-(IconData, Color) _tileVisual(HistoryEventType type, String? categoryId) {
+///
+/// Takes the resolved [AppColors] rather than reading them itself: it is a
+/// top-level function with no `BuildContext`, and the tile's own build is the
+/// one place that knows which theme is active.
+(IconData, Color) _tileVisual(
+  HistoryEventType type,
+  String? categoryId, {
+  required AppColors colors,
+}) {
   switch (type) {
     case HistoryEventType.deposit:
-      return (Icons.savings_outlined, AppTheme.successGreen);
+      return (Icons.savings_outlined, colors.success);
     case HistoryEventType.directPayment:
-      return (Icons.credit_card_rounded, AppTheme.statusDirectPayment);
+      return (Icons.credit_card_rounded, colors.statusDirectPayment);
     case HistoryEventType.adjustment:
-      return (Icons.swap_horiz_rounded, AppTheme.textSecondary);
+      return (Icons.swap_horiz_rounded, colors.textSecondary);
     case HistoryEventType.billCreated:
-      return (Icons.receipt_long_outlined, AppTheme.statusPending);
+      return (Icons.receipt_long_outlined, colors.statusPending);
     case HistoryEventType.billPaid:
-      return (Icons.receipt_long_outlined, AppTheme.successGreen);
+      return (Icons.receipt_long_outlined, colors.success);
     // Expense milestones: use the category icon when known.
     case HistoryEventType.expenseSubmitted:
-      return (categoryIcon(categoryId), AppTheme.statusPending);
+      return (categoryIcon(categoryId), colors.statusPending);
     case HistoryEventType.expenseApproved:
-      return (categoryIcon(categoryId), AppTheme.statusApproved);
+      return (categoryIcon(categoryId), colors.statusApproved);
     case HistoryEventType.expensePaid:
-      return (categoryIcon(categoryId), AppTheme.successGreen);
+      return (categoryIcon(categoryId), colors.success);
     case HistoryEventType.expenseRejected:
-      return (categoryIcon(categoryId), AppTheme.errorRed);
+      return (categoryIcon(categoryId), colors.error);
   }
 }
 
 /// Status / type chip label + colour.
-(String, Color) _statusChip(HistoryEventType type) {
+(String, Color) _statusChip(HistoryEventType type, {required AppColors colors}) {
   switch (type) {
     case HistoryEventType.expenseSubmitted:
-      return ('Submitted', AppTheme.statusPending);
+      return ('Submitted', colors.statusPending);
     case HistoryEventType.expenseApproved:
-      return ('Approved', AppTheme.statusApproved);
+      return ('Approved', colors.statusApproved);
     case HistoryEventType.expensePaid:
-      return ('Paid', AppTheme.successGreen);
+      return ('Paid', colors.success);
     case HistoryEventType.expenseRejected:
-      return ('Rejected', AppTheme.errorRed);
+      return ('Rejected', colors.error);
     case HistoryEventType.deposit:
-      return ('Deposit', AppTheme.successGreen);
+      return ('Deposit', colors.success);
     case HistoryEventType.directPayment:
-      return ('Direct Payment', AppTheme.statusDirectPayment);
+      return ('Direct Payment', colors.statusDirectPayment);
     case HistoryEventType.adjustment:
-      return ('Adjustment', AppTheme.textSecondary);
+      return ('Adjustment', colors.textSecondary);
     case HistoryEventType.billCreated:
-      return ('Upcoming Bill', AppTheme.statusPending);
+      return ('Upcoming Bill', colors.statusPending);
     case HistoryEventType.billPaid:
-      return ('Bill Paid', AppTheme.successGreen);
+      return ('Bill Paid', colors.success);
   }
 }
 
@@ -685,22 +694,24 @@ String? _paymentMethodLabel(String? source) {
 }
 
 /// Returns the sign + colour for the amount column.
-(String, Color) _amountStyle(HistoryEventType type, double amount) {
+(String, Color) _amountStyle(
+  HistoryEventType type,
+  double amount, {
+  required AppColors colors,
+}) {
   switch (type) {
     case HistoryEventType.deposit:
-      return ('+', AppTheme.successGreen);
+      return ('+', colors.success);
     case HistoryEventType.adjustment:
       // Adjustment can go either way, depending on the signed amount.
-      return amount >= 0
-          ? ('+', AppTheme.successGreen)
-          : ('-', AppTheme.errorRed);
+      return amount >= 0 ? ('+', colors.success) : ('-', colors.error);
     case HistoryEventType.directPayment:
     case HistoryEventType.billPaid:
     case HistoryEventType.expensePaid:
-      return ('-', AppTheme.errorRed);
+      return ('-', colors.error);
     default:
       // Status milestones (Submitted / Approved / Rejected, Bill Created):
       // neutral, no sign — the money hasn't moved yet.
-      return ('', AppTheme.textSecondary);
+      return ('', colors.textSecondary);
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
+import '../../app/theme/app_colors.dart';
 
 /// Reusable loading indicator with optional message.
 ///
@@ -18,15 +18,16 @@ class LoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(
+        SizedBox(
           width: 40,
           height: 40,
           child: CircularProgressIndicator(
             strokeWidth: 3,
-            color: AppTheme.primaryGreen,
+            color: colors.primary,
           ),
         ),
         if (message != null) ...[
@@ -34,7 +35,7 @@ class LoadingIndicator extends StatelessWidget {
           Text(
             message!,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondary,
+                  color: colors.textSecondary,
                 ),
             textAlign: TextAlign.center,
           ),
@@ -73,7 +74,7 @@ class SkeletonCard extends StatelessWidget {
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: Colors.grey.withAlpha(30),
+        color: context.colors.placeholderTint.withAlpha(30),
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Center(

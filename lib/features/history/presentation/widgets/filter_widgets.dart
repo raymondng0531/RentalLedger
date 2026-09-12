@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/widgets/spring_sheet.dart';
@@ -232,6 +232,7 @@ class _FilterSheetState extends State<FilterSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -242,7 +243,8 @@ class _FilterSheetState extends State<FilterSheet> {
           height: 4,
           margin: const EdgeInsets.only(top: 10, bottom: 4),
           decoration: BoxDecoration(
-            color: AppTheme.textHint.withAlpha(120),
+            // Alpha over the sheet's own surface, so it follows the sheet.
+            color: colors.textHint.withAlpha(120),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -341,6 +343,7 @@ class _FilterSheetState extends State<FilterSheet> {
   }
 
   Widget _buildPeriod(ThemeData theme) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -377,17 +380,17 @@ class _FilterSheetState extends State<FilterSheet> {
             padding: const EdgeInsets.only(top: 10, left: 2),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.date_range_rounded,
                   size: 15,
-                  color: AppTheme.primaryGreen,
+                  color: colors.primary,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   '${DateFormatUtils.formatDateShort(_range!.start)} – '
                   '${DateFormatUtils.formatDateShort(_range!.end)}',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.primaryGreen,
+                    color: colors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -425,6 +428,13 @@ class _FilterSheetState extends State<FilterSheet> {
 
 /// Wraps the sheet in the app's modal presentation — same shape, radius and
 /// width cap everywhere it is opened from.
+///
+/// The sheet's surface comes entirely from here: [SpringSheet] animates
+/// position and opacity only and paints no background of its own, so this
+/// `backgroundColor` is the whole of it. It is therefore read from the palette
+/// rather than hardcoded — an explicit white would override the dark
+/// `bottomSheetTheme` and render a white sheet in dark mode. Light mode is
+/// unchanged: `surfaceElevated` is `#FFFFFFFF`, exactly the shipped value.
 Future<void> showFilterSheet(
   BuildContext context, {
   required List<FilterSectionSpec> sections,
@@ -434,7 +444,7 @@ Future<void> showFilterSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: Colors.white,
+    backgroundColor: context.colors.surfaceElevated,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(AppConstants.radiusBottomSheet),
@@ -474,12 +484,15 @@ class FilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final hasActive = activeCount > 0;
     return Material(
+      // Resting fill is the app's quiet grey — in dark mode the muted surface,
+      // because the page tone itself would leave the control invisible.
       color:
           hasActive
-              ? AppTheme.primaryGreen.withAlpha(12)
-              : AppTheme.backgroundLight,
+              ? colors.primary.withAlpha(12)
+              : colors.surfaceMuted,
       borderRadius: BorderRadius.circular(AppConstants.radiusMd),
       child: InkWell(
         onTap: onTap,
@@ -491,8 +504,7 @@ class FilterButton extends StatelessWidget {
               Icon(
                 Icons.filter_list_rounded,
                 size: 18,
-                color:
-                    hasActive ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                color: hasActive ? colors.primary : colors.textSecondary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -500,8 +512,7 @@ class FilterButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color:
-                      hasActive ? AppTheme.primaryGreen : AppTheme.textPrimary,
+                  color: hasActive ? colors.primary : colors.textPrimary,
                 ),
               ),
               if (hasActive) ...[
@@ -512,13 +523,16 @@ class FilterButton extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen,
+                    color: colors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '$activeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      // Ink on the teal fill follows the on-primary role:
+                      // white in light mode, deep teal in dark, where white on
+                      // the lightened brand teal measures about 1.9:1.
+                      color: colors.onPrimary,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -552,7 +566,7 @@ class SummaryChip extends StatelessWidget {
       onDeleted: onDeleted,
       visualDensity: VisualDensity.compact,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      side: BorderSide(color: AppTheme.primaryGreen.withAlpha(60)),
+      side: BorderSide(color: context.colors.primary.withAlpha(60)),
     );
   }
 }
@@ -575,7 +589,7 @@ class FilterSection extends StatelessWidget {
             label.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w800,
-              color: AppTheme.textSecondary,
+              color: context.colors.textSecondary,
               letterSpacing: 0.8,
             ),
           ),
@@ -631,8 +645,11 @@ class FilterSelectableOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Material(
-      color: selected ? AppTheme.primaryGreen.withAlpha(12) : Colors.white,
+      // The sheet's own surface when unselected, so the tile reads as a
+      // recessed well rather than a raised card on the elevated sheet.
+      color: selected ? colors.primary.withAlpha(12) : colors.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -642,7 +659,7 @@ class FilterSelectableOption extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppTheme.primaryGreen : AppTheme.dividerColor,
+              color: selected ? colors.primary : colors.divider,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -652,8 +669,7 @@ class FilterSelectableOption extends StatelessWidget {
                 Icon(
                   icon,
                   size: 16,
-                  color:
-                      selected ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                  color: selected ? colors.primary : colors.textSecondary,
                 ),
                 const SizedBox(width: 8),
               ],
@@ -663,18 +679,17 @@ class FilterSelectableOption extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color:
-                        selected ? AppTheme.primaryGreen : AppTheme.textPrimary,
+                    color: selected ? colors.primary : colors.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (selected)
-                const Icon(
+                Icon(
                   Icons.check_circle_rounded,
                   size: 18,
-                  color: AppTheme.primaryGreen,
+                  color: colors.primary,
                 ),
             ],
           ),

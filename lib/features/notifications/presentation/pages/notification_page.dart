@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
@@ -155,7 +155,7 @@ class NotificationPage extends ConsumerWidget {
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
+              color: context.colors.textSecondary,
             ),
       ),
     );
@@ -174,8 +174,18 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final iconData = notificationIconFor(notification.type);
-    final bgColor = notification.isRead ? Colors.transparent : AppTheme.primaryGreen.withAlpha(8);
+    final colors = context.colors;
+    final iconData = notificationIconFor(notification.type, colors: colors);
+    // The unread wash is a primary tint at a fixed 8/255 — the shipped V1.0
+    // recipe, kept verbatim because alpha compositing already scales with the
+    // ground it lands on: it measures 1.039:1 against the light scaffold and
+    // 1.040:1 against the dark one, i.e. dark mode is not a regression. The
+    // load-bearing unread signals are the dot and the bold title, and BOTH
+    // strengthen in dark mode (dot 3.96:1 light → 7.70:1 dark). `transparent`
+    // for a read row is the "paint no fill" sentinel, not a colour.
+    final bgColor = notification.isRead
+        ? Colors.transparent
+        : colors.primary.withAlpha(8);
 
     return Material(
       color: bgColor,
@@ -212,8 +222,8 @@ class _NotificationTile extends StatelessWidget {
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.primaryGreen,
+                            decoration: BoxDecoration(
+                              color: colors.primary,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -234,7 +244,7 @@ class _NotificationTile extends StatelessWidget {
                     Text(
                       notification.body,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -243,7 +253,7 @@ class _NotificationTile extends StatelessWidget {
                       ' · '
                       '${DateFormatUtils.formatDateTime(notification.createdAt)}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textHint,
+                        color: colors.textHint,
                         fontSize: 11,
                       ),
                     ),

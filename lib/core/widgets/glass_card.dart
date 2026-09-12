@@ -2,10 +2,16 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_colors.dart';
+
 /// A frosted "liquid glass" surface — like iOS glass.
 ///
-/// Applies a backdrop blur + translucent white fill with a subtle border.
-/// Use for cards, sheets, and floating panels.
+/// Applies a backdrop blur + translucent fill with a subtle border. Use for
+/// cards, sheets, and floating panels.
+///
+/// The fill, border, and shadow all come from [AppColors], so the surface
+/// follows the active theme: a near-opaque white in light mode, a low-alpha
+/// white lift in dark mode — a 75%-white card would blow out a dark surface.
 class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
@@ -23,6 +29,10 @@ class GlassCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
+
+  /// Strength of the glass fill, as a multiple of the palette's own glass tint
+  /// ([AppColors.glassReferenceStrength]). At the default the fill is exactly
+  /// the theme's `glassFill`.
   final double opacity;
 
   /// Whether to blur whatever is painted behind the card.
@@ -42,14 +52,21 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final radius = BorderRadius.circular(borderRadius);
+    // Scale `opacity` against the strength the palette's tint is defined at, so
+    // the default (0.75) reproduces that tint exactly in either theme.
+    final fillAlpha =
+        opacity / AppColors.glassReferenceStrength * colors.glassFill.a;
     final surface = Container(
       padding: padding ?? const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha((opacity * 255).round()),
+        color: colors.glassFill.withValues(
+          alpha: fillAlpha.clamp(0.0, 1.0).toDouble(),
+        ),
         borderRadius: radius,
         border: Border.all(
-          color: Colors.white.withAlpha(120),
+          color: colors.glassBorder,
           width: 0.8,
         ),
       ),
@@ -64,36 +81,28 @@ class GlassCard extends StatelessWidget {
             )
           : surface,
     );
+    final shadow = BoxDecoration(
+      borderRadius: radius,
+      boxShadow: [
+        BoxShadow(
+          color: colors.glassShadow,
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
 
     if (onTap == null) {
       return Container(
         margin: margin,
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(10),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
+        decoration: shadow,
         child: glass,
       );
     }
 
     return Container(
       margin: margin,
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: shadow,
       child: GestureDetector(
         onTap: onTap,
         child: glass,

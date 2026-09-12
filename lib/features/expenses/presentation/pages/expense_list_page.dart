@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/widgets/animated_entrance.dart';
@@ -34,6 +34,7 @@ class _ExpenseListPageState extends ConsumerState<ExpenseListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final expensesAsync = ref.watch(expenseListProvider(_statusFilter));
     final categoriesAsync = ref.watch(categoriesProvider);
     // All records (active + inactive former members): an expense card still
@@ -67,17 +68,21 @@ class _ExpenseListPageState extends ConsumerState<ExpenseListPage> {
                   tabAlignment: TabAlignment.start,
                   indicatorSize: TabBarIndicatorSize.tab,
                   indicator: BoxDecoration(
-                    color: AppTheme.primaryGreen,
+                    color: colors.primary,
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                   ),
                   indicatorPadding: const EdgeInsets.symmetric(
                     horizontal: 4,
                     vertical: 6,
                   ),
+                  // Not a palette colour: "draw no rule under the tabs" — the
+                  // explicit Divider below owns that line in both modes.
                   dividerColor: Colors.transparent,
-                  labelColor: Colors.white,
+                  // Ink on the sliding teal pill. `onPrimary` is white in light
+                  // mode and deep teal in dark, where the pill's teal lightens.
+                  labelColor: colors.onPrimary,
                   labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-                  unselectedLabelColor: AppTheme.textPrimary,
+                  unselectedLabelColor: colors.textPrimary,
                   onTap: (i) => setState(() => _statusFilter = _statuses[i]),
                   tabs: [for (final label in _labels) Tab(text: label)],
                 ),

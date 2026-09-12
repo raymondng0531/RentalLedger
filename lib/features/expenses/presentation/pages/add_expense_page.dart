@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
@@ -104,6 +104,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   /// Opens a full-screen receipt viewer with zoom + pan.
+  ///
+  /// The `Colors.white54` error glyphs below are deliberately NOT themed:
+  /// [ReceiptViewer] draws its own fixed black ground in every mode, so white
+  /// is the correct ink there and `context.colors` does not apply.
   void _showReceiptFullscreen() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -190,9 +194,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final categoriesAsync = ref.watch(categoriesProvider);
     final state = ref.watch(createExpenseProvider);
     final isLoading = state.isLoading;
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -200,7 +205,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           tooltip: 'Back',
         ),
         title: const Text('Add Expense'),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
@@ -323,6 +328,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   const SizedBox(height: 12),
 
                   // ── Info text ──
+                  //
+                  // Left on literal `Colors.blue` by decision. The palette has
+                  // no *informational* accent token — the only blue in it is
+                  // `statusApproved`, a status role, and borrowing it here would
+                  // tie this banner's colour to the approval palette. The colour
+                  // is legible in both modes as it stands (#2196F3 on the dark
+                  // surface measures about 5.4:1), so nothing is hidden; only
+                  // the 5%-alpha wash behind it reads as subtler in dark mode.
+                  // Adding a real `info` token is a palette change, not an
+                  // Expenses migration, so it is reported as a recommendation.
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -354,12 +369,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       child: FilledButton.icon(
                         onPressed: isLoading ? null : _handleSubmit,
                         icon: isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  // Ink on the FilledButton's fill.
+                                  color: colors.onPrimary,
                                 ),
                               )
                             : const Icon(Icons.check_circle_outline_rounded),
@@ -390,6 +406,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   Widget _buildReceiptSection() {
+    // `build`'s local is out of scope in a sibling method; `State.context`
+    // resolves the same registered palette.
+    final colors = context.colors;
     if (_receiptFile != null) {
       // ── Receipt thumbnail + actions ──
       return Column(
@@ -417,14 +436,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _confirmRemoveReceipt,
-                  icon: const Icon(Icons.close, size: 18, color: AppTheme.errorRed),
+                  icon: Icon(Icons.close, size: 18, color: colors.error),
                   label: Text(
                     'Remove',
-                    style: TextStyle(color: AppTheme.errorRed),
+                    style: TextStyle(color: colors.error),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.errorRed,
-                    side: const BorderSide(color: AppTheme.errorRed),
+                    foregroundColor: colors.error,
+                    side: BorderSide(color: colors.error),
                   ),
                 ),
               ),
@@ -477,21 +496,26 @@ class _PaymentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return ChoiceChip(
       label: Text(label),
       selected: selected,
       showCheckmark: false,
-      // Matches the CategoryPicker: solid teal when selected, clean white
+      // Matches the CategoryPicker: solid teal when selected, quiet surface
       // with a subtle divider border when not.
-      selectedColor: AppTheme.primaryGreen,
-      backgroundColor: Colors.white,
+      selectedColor: colors.primary,
+      backgroundColor: colors.surface,
+      // Not a palette colour: Material's "paint no surface tint over my own
+      // fill" switch, transparent in both modes.
       surfaceTintColor: Colors.transparent,
       side: BorderSide(
-        color: selected ? AppTheme.primaryGreen : AppTheme.dividerColor,
+        color: selected ? colors.primary : colors.divider,
         width: selected ? 1.5 : 1.0,
       ),
       labelStyle: TextStyle(
-        color: selected ? Colors.white : AppTheme.textPrimary,
+        // Ink on the teal fill follows the on-primary role: white in light
+        // mode, deep teal in dark, where the brand teal is lightened.
+        color: selected ? colors.onPrimary : colors.textPrimary,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
       ),
       onSelected: (_) => onTap(),

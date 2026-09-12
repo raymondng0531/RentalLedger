@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
@@ -205,7 +205,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 children: [
                   CircleAvatar(
                     radius: 48,
-                    backgroundColor: AppTheme.primaryGreen.withAlpha(25),
+                    backgroundColor: context.colors.primary.withAlpha(25),
                     // Web-safe preview: on web `_pickedPhoto.path` is a blob URL
                     // the browser can decode via NetworkImage (no filesystem),
                     // matching the receipt-preview pattern; on native the local
@@ -221,7 +221,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         : Text(
                             avatarInitial(profile?.displayName),
                             style: theme.textTheme.headlineMedium?.copyWith(
-                              color: AppTheme.primaryGreen,
+                              color: context.colors.primary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -229,6 +229,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   // While saving, a compact loading ring sits on the avatar so
                   // a slow photo upload gives localized feedback near the image
                   // — it never dims or washes out the rest of the page.
+                  //
+                  // The scrim and its ring are deliberately literal. This is a
+                  // fixed overlay on top of a photo, not content on a themed
+                  // surface: the scrim must darken whatever image is under it
+                  // (in either mode) and the ring must stay legible against
+                  // that scrim, which only a light ink on a black veil
+                  // guarantees. `onAccent`/`surface` tokens would make the ring
+                  // vanish into a dark avatar in dark mode.
                   if (_saving)
                     Container(
                       width: 96,
@@ -351,12 +359,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             FilledButton.icon(
               onPressed: _saving ? null : _save,
               icon: _saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        // Ink on the FilledButton's `primary` fill.
+                        color: context.colors.onPrimary,
                       ),
                     )
                   : const Icon(Icons.check_rounded),
@@ -369,13 +378,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             Card(
               margin: EdgeInsets.zero,
               child: ListTile(
-                leading: const Icon(
+                leading: Icon(
                   Icons.logout_rounded,
-                  color: AppTheme.errorRed,
+                  color: context.colors.error,
                 ),
                 title: const Text('Sign Out'),
-                titleTextStyle: const TextStyle(
-                  color: AppTheme.errorRed,
+                titleTextStyle: TextStyle(
+                  color: context.colors.error,
                   fontWeight: FontWeight.w500,
                 ),
                 onTap: _confirmSignOut,

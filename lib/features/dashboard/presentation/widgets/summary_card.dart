@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/widgets/glass_card.dart';
@@ -32,6 +32,11 @@ class SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
+    // Callers pass a semantic accent (money in → success, money out → error,
+    // pending → pending). The teal is only the fallback for a card that names
+    // no accent of its own.
+    final accent = iconBackground ?? colors.primary;
 
     return GlassCard(
       padding: const EdgeInsets.all(AppConstants.spacingMd),
@@ -51,14 +56,10 @@ class SummaryCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: (iconBackground ?? AppTheme.primaryGreen).withAlpha(25),
+                color: accent.withAlpha(25),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                size: 18,
-                color: iconBackground ?? AppTheme.primaryGreen,
-              ),
+              child: Icon(icon, size: 18, color: accent),
             ),
             const SizedBox(height: 12),
 
@@ -68,7 +69,11 @@ class SummaryCard extends StatelessWidget {
                 height: 20,
                 width: 60,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withAlpha(30),
+                  // Was `Colors.grey.withAlpha(30)`. The palette's placeholder
+                  // tint is that exact grey (#9E9E9E) in light mode, so the
+                  // shipped block is unchanged; dark mode lifts it so the
+                  // placeholder still reads against the card.
+                  color: colors.placeholderTint.withAlpha(30),
                   borderRadius: BorderRadius.circular(4),
                 ),
               )
@@ -90,7 +95,7 @@ class SummaryCard extends StatelessWidget {
             Text(
               label,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
+                color: colors.textSecondary,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

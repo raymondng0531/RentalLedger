@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/utils/category_icons.dart';
@@ -40,6 +40,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final expenseAsync = ref.watch(expenseDetailProvider(expenseId));
 
     return expenseAsync.when(
@@ -47,7 +48,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
       // leaves the user stuck with no way back.
       loading:
           () => Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: colors.surface,
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -55,13 +56,13 @@ class ExpenseDetailsPage extends ConsumerWidget {
                 tooltip: 'Back',
               ),
               title: const Text('Expense Details'),
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surface,
             ),
             body: const Shimmer(child: SkeletonDetailBody()),
           ),
       error:
           (error, _) => Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: colors.surface,
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -69,7 +70,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
                 tooltip: 'Back',
               ),
               title: const Text('Expense Details'),
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surface,
             ),
             body: ErrorDisplay(
               message: 'Could not load expense.',
@@ -79,7 +80,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
       data: (expense) {
         if (expense == null) {
           return Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: colors.surface,
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -87,7 +88,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
                 tooltip: 'Back',
               ),
               title: const Text('Expense Details'),
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surface,
             ),
             body: const ErrorDisplay(message: 'Expense not found.'),
           );
@@ -116,6 +117,10 @@ class _ExpenseDetailContent extends StatelessWidget {
   /// bucket CORS already authorizes the deployed origin, so a canvas
   /// `Image.network` loads the same download URL. (Thumbnails below still use
   /// [ReceiptImage] — unchanged.)
+  ///
+  /// The `Colors.white54` failure glyphs below are deliberately NOT themed:
+  /// [ReceiptViewer] draws its own fixed black ground in every mode, so white
+  /// is the correct ink there and `context.colors` does not apply.
   void _showReceiptFullscreen(BuildContext context, String url) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -171,6 +176,7 @@ class _ExpenseDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
 
     // Resolve the raw category id to its name/colour/icon for display.
     final categoriesAsync = ref.watch(categoriesProvider);
@@ -183,6 +189,11 @@ class _ExpenseDetailContent extends StatelessWidget {
           ),
     );
     final categoryName = category?.name ?? expense.categoryId;
+    // Stored Firestore category colour, painted verbatim in both modes. The
+    // 0xFF00897B literal is the V1.0 fallback for a category that carries no
+    // colour of its own and is part of the stored-colour contract, not a theme
+    // value — rewriting either would desync this header from the same
+    // category's dot in the picker and its slice in Reports.
     final categoryColor = Color(category?.color ?? 0xFF00897B);
 
     // Always resolve the purchaser's display name — never show a UID.
@@ -207,7 +218,7 @@ class _ExpenseDetailContent extends StatelessWidget {
         expense.isDeletable && expense.purchasedBy == currentUser?.uid;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -215,7 +226,7 @@ class _ExpenseDetailContent extends StatelessWidget {
           tooltip: 'Back',
         ),
         title: const Text('Expense Details'),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         actions: [
           if (canEdit)
             IconButton(
@@ -228,7 +239,7 @@ class _ExpenseDetailContent extends StatelessWidget {
               icon: const Icon(Icons.delete_outline),
               onPressed: () => _confirmDelete(context, expense),
               tooltip: 'Delete',
-              color: AppTheme.errorRed,
+              color: colors.error,
             ),
         ],
       ),
@@ -243,7 +254,7 @@ class _ExpenseDetailContent extends StatelessWidget {
               Card(
                 margin: EdgeInsets.zero,
                 elevation: 0,
-                color: AppTheme.backgroundLight,
+                color: colors.surfaceMuted,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -290,14 +301,14 @@ class _ExpenseDetailContent extends StatelessWidget {
                         balance: expense.amount,
                         style: theme.textTheme.displaySmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         'Purchased by $purchaserName',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
+                          color: colors.textSecondary,
                         ),
                       ),
                     ],
@@ -328,24 +339,26 @@ class _ExpenseDetailContent extends StatelessWidget {
                         _showReceiptFullscreen(context, expense.receiptUrl!),
                     loadingBuilder: (_) => Container(
                       height: 200,
-                      color: Colors.grey.withAlpha(20),
+                      // Placeholder panel behind a receipt that has not painted
+                      // yet — a tinted block, not a themed surface.
+                      color: colors.placeholderTint.withAlpha(20),
                       child: const Center(child: CircularProgressIndicator()),
                     ),
                     errorBuilder: (_) => Container(
                       height: 200,
-                      color: Colors.grey.withAlpha(20),
-                      child: const Center(
+                      color: colors.placeholderTint.withAlpha(20),
+                      child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
                               Icons.image_not_supported_outlined,
-                              color: Colors.grey,
+                              color: colors.textHint,
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               'Receipt unavailable',
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(color: colors.textHint),
                             ),
                           ],
                         ),
@@ -404,25 +417,25 @@ class _ExpenseDetailContent extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.errorRed.withAlpha(12),
+                    color: colors.error.withAlpha(12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.errorRed.withAlpha(50)),
+                    border: Border.all(color: colors.error.withAlpha(50)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.error_outline_rounded,
                             size: 18,
-                            color: AppTheme.errorRed,
+                            color: colors.error,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'Rejected',
                             style: theme.textTheme.titleSmall?.copyWith(
-                              color: AppTheme.errorRed,
+                              color: colors.error,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -432,7 +445,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                       Text(
                         'Reason: ${expense.rejectReason}',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textPrimary,
+                          color: colors.textPrimary,
                           height: 1.4,
                         ),
                       ),
@@ -455,7 +468,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                 Text(
                   expense.description!,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
@@ -515,8 +528,8 @@ class _ExpenseDetailContent extends StatelessWidget {
                     icon: const Icon(Icons.close_rounded),
                     label: const Text('Reject'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.errorRed,
-                      side: const BorderSide(color: AppTheme.errorRed),
+                      foregroundColor: context.colors.error,
+                      side: BorderSide(color: context.colors.error),
                     ),
                   ),
                 ),
@@ -684,7 +697,7 @@ class _ExpenseDetailContent extends StatelessWidget {
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.errorRed,
+              backgroundColor: context.colors.error,
             ),
             child: const Text('Delete'),
           ),
@@ -772,7 +785,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                 },
                 child: const Text('Reject'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.errorRed,
+                  backgroundColor: context.colors.error,
                 ),
               ),
             ],
@@ -788,6 +801,7 @@ class _ExpenseDetailContent extends StatelessWidget {
   }
 
   Widget _buildInfoSection(BuildContext context, List<_InfoRow> rows) {
+    final colors = context.colors;
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -803,13 +817,13 @@ class _ExpenseDetailContent extends StatelessWidget {
                           Icon(
                             row.icon,
                             size: 18,
-                            color: AppTheme.textSecondary,
+                            color: colors.textSecondary,
                           ),
                           const SizedBox(width: 12),
                           Text(
                             row.label,
                             style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppTheme.textSecondary),
+                                ?.copyWith(color: colors.textSecondary),
                           ),
                           const Spacer(),
                           Text(
@@ -829,6 +843,7 @@ class _ExpenseDetailContent extends StatelessWidget {
 
   Widget _buildTimeline(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     // Always show the complete workflow. The Paid step is hidden only
     // when the expense was rejected.
     final steps = <_TimelineStep>[
@@ -882,10 +897,10 @@ class _ExpenseDetailContent extends StatelessWidget {
           steps.map((step) {
             final color =
                 step.isError
-                    ? AppTheme.errorRed
+                    ? colors.error
                     : step.isComplete
-                    ? AppTheme.successGreen
-                    : AppTheme.textHint;
+                    ? colors.success
+                    : colors.textHint;
 
             return IntrinsicHeight(
               child: Row(
@@ -929,13 +944,13 @@ class _ExpenseDetailContent extends StatelessWidget {
                               color:
                                   step.isComplete || step.isError
                                       ? color
-                                      : AppTheme.textHint,
+                                      : colors.textHint,
                             ),
                           ),
                           Text(
                             step.subtitle,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondary,
+                              color: colors.textSecondary,
                             ),
                           ),
                         ],
@@ -1042,6 +1057,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
   /// local file on native) so the member can confirm before saving.
   Widget _buildNewReceiptPreview() {
     final file = _newReceiptFile!;
+    final colors = context.colors;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppConstants.radiusMd),
       child: GestureDetector(
@@ -1071,16 +1087,16 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
               ? Image.network(
                   file.path,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, __, ___) => Icon(
                       Icons.image_not_supported_outlined,
-                      color: Colors.grey),
+                      color: colors.textHint),
                 )
               : Image.file(
                   File(file.path),
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, __, ___) => Icon(
                       Icons.image_not_supported_outlined,
-                      color: Colors.grey),
+                      color: colors.textHint),
                 ),
         ),
       ),
@@ -1155,6 +1171,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
   /// deciding to replace or remove it.
   Widget _buildCurrentReceiptPreview() {
     final url = widget.expense.receiptUrl!;
+    final colors = context.colors;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppConstants.radiusMd),
       child: SizedBox(
@@ -1168,10 +1185,10 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
           onTap: _openEffectiveReceiptFullscreen,
           loadingBuilder: (_) =>
               const Center(child: CircularProgressIndicator()),
-          errorBuilder: (_) => const Center(
+          errorBuilder: (_) => Center(
             child: Icon(
               Icons.image_not_supported_outlined,
-              color: Colors.grey,
+              color: colors.textHint,
             ),
           ),
         ),
@@ -1247,31 +1264,32 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
         expense.receiptUrl != null && expense.receiptUrl!.isNotEmpty;
     final showingNew = _newReceiptFile != null;
     final theme = Theme.of(context);
+    final colors = context.colors;
 
     // Status line describing the effective outcome.
     final (IconData, Color, String) status;
     if (showingNew) {
       status = (
         Icons.check_circle_outline,
-        AppTheme.successGreen,
+        colors.success,
         'New receipt selected — will replace the current one on save.',
       );
     } else if (_removeReceipt) {
       status = (
         Icons.delete_outline,
-        AppTheme.errorRed,
+        colors.error,
         'Receipt will be removed on save.',
       );
     } else if (hasCurrent) {
       status = (
         Icons.image_outlined,
-        AppTheme.textSecondary,
+        colors.textSecondary,
         'Current receipt attached.',
       );
     } else {
       status = (
         Icons.image_not_supported_outlined,
-        AppTheme.textSecondary,
+        colors.textSecondary,
         'No receipt attached.',
       );
     }
@@ -1344,14 +1362,14 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
                     _removeReceipt = true;
                     _newReceiptFile = null;
                   }),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close,
                     size: 18,
-                    color: AppTheme.errorRed,
+                    color: colors.error,
                   ),
-                  label: const Text(
+                  label: Text(
                     'Remove receipt',
-                    style: TextStyle(color: AppTheme.errorRed),
+                    style: TextStyle(color: colors.error),
                   ),
                 ),
               ),
@@ -1432,12 +1450,13 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
           onPressed: _isSaving ? null : _save,
           child:
               _isSaving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        // Ink on the FilledButton's fill.
+                        color: context.colors.onPrimary,
                       ),
                     )
                   : const Text('Save'),

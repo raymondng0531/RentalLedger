@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
@@ -24,7 +24,7 @@ class DepositDetailsPage extends StatelessWidget {
       event: event,
       title: 'Deposit Details',
       icon: Icons.savings_outlined,
-      color: AppTheme.successGreen,
+      color: context.colors.success,
     );
   }
 }
@@ -40,7 +40,7 @@ class DirectPaymentDetailsPage extends StatelessWidget {
       event: event,
       title: 'Direct Payment Details',
       icon: Icons.credit_card_rounded,
-      color: AppTheme.statusDirectPayment,
+      color: context.colors.statusDirectPayment,
     );
   }
 }
@@ -62,6 +62,10 @@ class _TransactionDetailsView extends ConsumerWidget {
   /// Opens the stored proof full-screen (canvas `Image.network`, which the
   /// Storage CORS already authorizes — the same path the expense detail page
   /// uses for saved receipts).
+  ///
+  /// The `Colors.white54` failure glyphs below are deliberately NOT themed:
+  /// [ReceiptViewer] draws its own fixed black ground in every mode, so white
+  /// is the correct ink there and `context.colors` does not apply.
   void _openReceipt(BuildContext context, String url) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -101,6 +105,7 @@ class _TransactionDetailsView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     // All records (active + inactive former members): a transaction detail
     // still needs the performer/payer's name after they leave the house.
     final members =
@@ -127,13 +132,13 @@ class _TransactionDetailsView extends ConsumerWidget {
     final categoryName = matches.isEmpty ? null : matches.first.name;
 
     final isInflow = event.amount >= 0;
-    final amountColor = isInflow ? AppTheme.successGreen : AppTheme.errorRed;
+    final amountColor = isInflow ? colors.success : colors.error;
     final sign = isInflow ? '+' : '-';
     final dateLine =
         '${DateFormatUtils.formatDateShort(event.date)} • ${DateFormatUtils.formatTime(event.date)}';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -141,7 +146,7 @@ class _TransactionDetailsView extends ConsumerWidget {
           tooltip: 'Back',
         ),
         title: Text(title),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
         // maxWidth omitted — defaults to AppContentWidth.detail (800).
@@ -154,7 +159,7 @@ class _TransactionDetailsView extends ConsumerWidget {
               Card(
                 margin: EdgeInsets.zero,
                 elevation: 0,
-                color: AppTheme.backgroundLight,
+                color: colors.surfaceMuted,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -190,7 +195,7 @@ class _TransactionDetailsView extends ConsumerWidget {
                             Text(
                               performedBy != null ? 'by $performedBy' : '',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppTheme.textSecondary,
+                                color: colors.textSecondary,
                               ),
                             ),
                           ],
@@ -214,7 +219,7 @@ class _TransactionDetailsView extends ConsumerWidget {
               Card(
                 margin: EdgeInsets.zero,
                 elevation: 0,
-                color: AppTheme.backgroundLight,
+                color: colors.surfaceMuted,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -281,7 +286,7 @@ class _TransactionDetailsView extends ConsumerWidget {
                 Card(
                   margin: EdgeInsets.zero,
                   elevation: 0,
-                  color: AppTheme.backgroundLight,
+                  color: colors.surfaceMuted,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -350,6 +355,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     return Padding(
       // Uniform vertical rhythm so every row sits at the same spacing.
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -364,7 +370,7 @@ class _InfoRow extends StatelessWidget {
           SizedBox(
             width: 24,
             child: Center(
-              child: Icon(icon, size: 18, color: AppTheme.textSecondary),
+              child: Icon(icon, size: 18, color: colors.textSecondary),
             ),
           ),
           const SizedBox(width: 10),
@@ -372,7 +378,7 @@ class _InfoRow extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(width: 16),

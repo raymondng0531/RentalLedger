@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
@@ -19,6 +19,7 @@ class BillDetailsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final billsAsync = ref.watch(billsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final categories = categoriesAsync.value ?? const <CategoryEntity>[];
@@ -26,7 +27,7 @@ class BillDetailsPage extends ConsumerWidget {
     return billsAsync.when(
       loading:
           () => Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: colors.surface,
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -34,13 +35,13 @@ class BillDetailsPage extends ConsumerWidget {
                 tooltip: 'Back',
               ),
               title: const Text('Bill Details'),
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surface,
             ),
             body: const Shimmer(child: SkeletonDetailBody()),
           ),
       error:
           (e, _) => Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: colors.surface,
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -48,7 +49,7 @@ class BillDetailsPage extends ConsumerWidget {
                 tooltip: 'Back',
               ),
               title: const Text('Bill Details'),
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surface,
             ),
             body: ErrorDisplay(
               message: 'Could not load bill.',
@@ -60,7 +61,7 @@ class BillDetailsPage extends ConsumerWidget {
         final bill = billMap[billId];
         if (bill == null) {
           return Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: colors.surface,
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -68,7 +69,7 @@ class BillDetailsPage extends ConsumerWidget {
                 tooltip: 'Back',
               ),
               title: const Text('Bill Details'),
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surface,
             ),
             body: const ErrorDisplay(message: 'Bill not found.'),
           );
@@ -88,6 +89,7 @@ class _BillDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     final categoryName =
         categories
             .firstWhere(
@@ -100,12 +102,12 @@ class _BillDetailContent extends StatelessWidget {
             )
             .name;
     final isPaid = bill.isPaid;
-    final statusColor = isPaid ? AppTheme.successGreen : AppTheme.statusPending;
+    final statusColor = isPaid ? colors.success : colors.statusPending;
     final statusLabel = isPaid ? 'Paid' : 'Upcoming Bill';
     final amount = bill.amount;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -113,7 +115,7 @@ class _BillDetailContent extends StatelessWidget {
           tooltip: 'Back',
         ),
         title: const Text('Bill Details'),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
         // maxWidth omitted — defaults to AppContentWidth.detail (800).
@@ -126,7 +128,7 @@ class _BillDetailContent extends StatelessWidget {
               Card(
                 margin: EdgeInsets.zero,
                 elevation: 0,
-                color: AppTheme.backgroundLight,
+                color: colors.surfaceMuted,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -197,8 +199,8 @@ class _BillDetailContent extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           color:
                               amount != null
-                                  ? AppTheme.textPrimary
-                                  : AppTheme.textSecondary,
+                                  ? colors.textPrimary
+                                  : colors.textSecondary,
                         ),
                       ),
                     ],
@@ -212,7 +214,7 @@ class _BillDetailContent extends StatelessWidget {
               Card(
                 margin: EdgeInsets.zero,
                 elevation: 0,
-                color: AppTheme.backgroundLight,
+                color: colors.surfaceMuted,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -261,16 +263,17 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppTheme.textSecondary),
+          Icon(icon, size: 18, color: colors.textSecondary),
           const SizedBox(width: 12),
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
           const Spacer(),

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/app_logo.dart';
@@ -61,7 +61,12 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
     final isLoading = state.isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // This onboarding form is deliberately a clean sheet rather than the grey
+      // page tone, so it takes `surface` — which IS the shipped white
+      // (#FFFFFFFF) in light mode, and the raised-surface tone in dark mode.
+      // Mapping it to `background` instead would have changed light mode to
+      // #F5F5F5 and broken the frozen palette.
+      backgroundColor: context.colors.surface,
       appBar: AppBar(
         // Pushed from the auth flow — explicit back to return.
         leading: IconButton(
@@ -70,7 +75,8 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
           tooltip: 'Back',
         ),
         title: const Text('Create House'),
-        backgroundColor: Colors.white,
+        // Matches the body it sits on, as it did at #FFFFFF in V1.0.
+        backgroundColor: context.colors.surface,
       ),
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
@@ -125,19 +131,19 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
                   Container(
                     padding: const EdgeInsets.all(AppConstants.spacingMd),
                     decoration: BoxDecoration(
-                      color: AppTheme.backgroundLight,
+                      color: context.colors.surfaceMuted,
                       borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.info_outline,
-                            color: AppTheme.primaryGreen, size: 20),
+                            color: context.colors.primary, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'You will become the Treasurer of this house.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.textSecondary,
+                                  color: context.colors.textSecondary,
                                 ),
                           ),
                         ),
@@ -150,12 +156,15 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
                   FilledButton(
                     onPressed: isLoading ? null : _handleCreate,
                     child: isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              // Ink on the FilledButton's `primary` fill: white
+                              // in light mode (unchanged), dark ink on the
+                              // lightened dark teal.
+                              color: context.colors.onPrimary,
                             ),
                           )
                         : const Text('Create House'),

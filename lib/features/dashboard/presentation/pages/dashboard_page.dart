@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/avatar_utils.dart';
@@ -38,6 +38,7 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final house = ref.watch(currentHouseProvider);
     final dashboardAsync = ref.watch(dashboardDataProvider);
     final profile = ref.watch(profileProvider);
@@ -56,11 +57,7 @@ class DashboardPage extends ConsumerWidget {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.home_rounded,
-              size: 18,
-              color: AppTheme.primaryGreen,
-            ),
+            Icon(Icons.home_rounded, size: 18, color: colors.primary),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -75,7 +72,14 @@ class DashboardPage extends ConsumerWidget {
           IconButton(
             icon: Badge(
               isLabelVisible: unreadCount > 0,
-              backgroundColor: AppTheme.primaryGreen,
+              backgroundColor: colors.primary,
+              // Badge inherits its label ink from `colorScheme.onError` — a
+              // red-tinted role that has nothing to do with this teal badge.
+              // Light mode's `onError` is exactly #FFFFFF, so pinning the label
+              // to `onPrimary` reproduces the shipped light badge byte for byte
+              // while turning the dark badge's label from dark red into the
+              // correct deep-teal ink.
+              textColor: colors.onPrimary,
               label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
               child: const Icon(Icons.notifications_outlined),
             ),
@@ -95,7 +99,7 @@ class DashboardPage extends ConsumerWidget {
                   padding: const EdgeInsets.all(6),
                   child: CircleAvatar(
                     radius: 17,
-                    backgroundColor: AppTheme.primaryGreen.withAlpha(25),
+                    backgroundColor: colors.primary.withAlpha(25),
                     foregroundImage: (profile?.photoUrl?.isNotEmpty == true)
                         ? NetworkImage(profile!.photoUrl!) as ImageProvider
                         : null,
@@ -103,10 +107,10 @@ class DashboardPage extends ConsumerWidget {
                         ? null
                         : Text(
                             avatarInitial(profile?.displayName),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryGreen,
+                              color: colors.primary,
                             ),
                           ),
                   ),
@@ -226,6 +230,8 @@ class DashboardPage extends ConsumerWidget {
   // ───── Onboarding (no house yet) ─────
 
   Widget _buildOnboarding(BuildContext context) {
+    final colors = context.colors;
+
     return ListView(
       children: [
         const SizedBox(height: 80),
@@ -236,13 +242,13 @@ class DashboardPage extends ConsumerWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withAlpha(20),
+                  color: colors.primary.withAlpha(20),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.home_outlined,
                   size: 40,
-                  color: AppTheme.primaryGreen,
+                  color: colors.primary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -253,12 +259,12 @@ class DashboardPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
                   'Create or join a house to start tracking expenses.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: colors.textSecondary),
                 ),
               ),
               const SizedBox(height: 24),
@@ -287,6 +293,8 @@ class DashboardPage extends ConsumerWidget {
     WidgetRef ref,
     DashboardData data,
   ) {
+    final colors = context.colors;
+
     // Category names for the activity cards' category chips.
     final categories =
         ref.watch(categoriesProvider).value ?? const <CategoryEntity>[];
@@ -318,21 +326,21 @@ class DashboardPage extends ConsumerWidget {
               label: 'Money In',
               amount: data.monthly.moneyIn,
               icon: Icons.trending_up_rounded,
-              iconBackground: AppTheme.successGreen,
+              iconBackground: colors.success,
               onTap: () => context.go(RouteNames.reports),
             ),
             SummaryCard(
               label: 'Money Out',
               amount: data.monthly.moneyOut,
               icon: Icons.trending_down_rounded,
-              iconBackground: AppTheme.errorRed,
+              iconBackground: colors.error,
               onTap: () => context.go(RouteNames.reports),
             ),
             SummaryCard(
               label: 'Pending',
               amount: data.monthly.pendingReimbursements,
               icon: Icons.hourglass_bottom_rounded,
-              iconBackground: AppTheme.statusPending,
+              iconBackground: colors.statusPending,
               onTap: () => context.push(RouteNames.expenses),
             ),
           ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/theme/app_theme.dart';
+import '../../app/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/widgets/breakpoints.dart';
 import '../../core/widgets/press_scale.dart';
@@ -403,10 +403,10 @@ class AppRouter {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.error_outline,
                       size: 64,
-                      color: AppTheme.errorRed,
+                      color: context.colors.error,
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -587,6 +587,7 @@ class _AppShellState extends ConsumerState<_AppShell>
   Widget _buildHouseSwitcher(BuildContext context) {
     final housesAsync = ref.watch(userHousesProvider);
     final currentHouse = ref.watch(currentHouseProvider);
+    final colors = context.colors;
 
     return housesAsync.when(
       loading:
@@ -612,7 +613,7 @@ class _AppShellState extends ConsumerState<_AppShell>
               child: Text(
                 'MY HOUSES',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.textSecondary,
+                  color: colors.textSecondary,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
                 ),
@@ -624,8 +625,7 @@ class _AppShellState extends ConsumerState<_AppShell>
                 dense: true,
                 leading: Icon(
                   isActive ? Icons.home_rounded : Icons.home_outlined,
-                  color:
-                      isActive ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                  color: isActive ? colors.primary : colors.textSecondary,
                   size: 20,
                 ),
                 title: Text(
@@ -633,17 +633,16 @@ class _AppShellState extends ConsumerState<_AppShell>
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color:
-                        isActive ? AppTheme.primaryGreen : AppTheme.textPrimary,
+                    color: isActive ? colors.primary : colors.textPrimary,
                   ),
                 ),
                 trailing:
                     isActive
-                        ? const Icon(
-                          Icons.check_circle_rounded,
-                          color: AppTheme.primaryGreen,
-                          size: 18,
-                        )
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            color: colors.primary,
+                            size: 18,
+                          )
                         : null,
                 onTap:
                     isActive
@@ -668,6 +667,9 @@ class _AppShellState extends ConsumerState<_AppShell>
   /// Builds the navigation drawer with app-wide links.
   Widget _buildDrawer(BuildContext context) {
     final theme = Theme.of(context);
+    // The header sits on the primary fill, so its foreground is `onPrimary` —
+    // white in light mode, dark ink in dark mode.
+    final onPrimary = context.colors.onPrimary;
 
     return Drawer(
       child: SafeArea(
@@ -678,15 +680,15 @@ class _AppShellState extends ConsumerState<_AppShell>
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               color: theme.colorScheme.primary,
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.home_rounded, color: Colors.white, size: 36),
-                  SizedBox(height: 8),
+                  Icon(Icons.home_rounded, color: onPrimary, size: 36),
+                  const SizedBox(height: 8),
                   Text(
                     'Rental Ledger',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: onPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -775,7 +777,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             _DrawerItem(
               icon: Icons.logout_outlined,
               label: 'Sign Out',
-              color: AppTheme.errorRed,
+              color: context.colors.error,
               onTap: () async {
                 Navigator.pop(context);
                 await ref.read(logoutProvider.notifier).logout();
@@ -818,7 +820,10 @@ class _AppShellState extends ConsumerState<_AppShell>
   /// clipping or overflow; the whole bar is safe-area aware.
   Widget _buildBottomBar(BuildContext context) {
     return BottomAppBar(
-      color: Colors.white,
+      // `surface`, not `glassBarFill`: the latter is translucent by design and
+      // would change the shipped light bar. The opaque surface token is the
+      // exact V1.0 white in light mode and the dark card tone in dark mode.
+      color: context.colors.surface,
       elevation: 8,
       shape: widget.showFab ? const CircularNotchedRectangle() : null,
       notchMargin: 6,
@@ -879,6 +884,7 @@ class _AppShellState extends ConsumerState<_AppShell>
   /// Add Expense) above it — the same actions as before, just docked centre.
   Widget _buildFab(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     // Deposit and Direct Payment move money in/out of the Central Account, so
     // the speed-dial only offers them to the house Treasurer. Add Expense is
     // available to every member (they claim against the account; the Treasurer
@@ -893,7 +899,7 @@ class _AppShellState extends ConsumerState<_AppShell>
         child: FloatingActionButton(
           onPressed: _toggleFab,
           backgroundColor: theme.colorScheme.primary,
-          child: const Icon(Icons.add_rounded, color: Colors.white),
+          child: Icon(Icons.add_rounded, color: colors.onPrimary),
         ),
       );
     }
@@ -910,14 +916,14 @@ class _AppShellState extends ConsumerState<_AppShell>
             _SpeedDialItem(
               icon: Icons.payment_outlined,
               label: 'Direct Payment',
-              color: AppTheme.statusDirectPayment,
+              color: colors.statusDirectPayment,
               onTap: () => _navigateTo(RouteNames.directPayment),
             ),
             const SizedBox(height: 8),
             _SpeedDialItem(
               icon: Icons.arrow_downward_rounded,
               label: 'Deposit',
-              color: AppTheme.successGreen,
+              color: colors.success,
               onTap: () => _navigateTo(RouteNames.deposit),
             ),
             const SizedBox(height: 8),
@@ -932,8 +938,13 @@ class _AppShellState extends ConsumerState<_AppShell>
           PressScale(
             child: FloatingActionButton(
               onPressed: _toggleFab,
-              backgroundColor: AppTheme.textSecondary,
-              child: const Icon(Icons.close, color: Colors.white),
+              backgroundColor: colors.textSecondary,
+              // `onAccent`, not `onPrimary`: this FAB paints the *text*
+              // secondary tone rather than the brand teal. That tone is dark in
+              // light mode (white ink, unchanged) and light in dark mode, so the
+              // close glyph flips to dark ink — otherwise it would be white on
+              // #A8B0B8, about 2.1:1.
+              child: Icon(Icons.close, color: colors.onAccent),
             ),
           ),
         ],
@@ -961,7 +972,8 @@ class _BottomNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Teal primary for the active tab, muted gray for inactive ones.
-    final color = selected ? AppTheme.primaryGreen : AppTheme.textHint;
+    final colors = context.colors;
+    final color = selected ? colors.primary : colors.textHint;
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -1008,10 +1020,13 @@ class _SpeedDialItem extends StatelessWidget {
           constraints: const BoxConstraints(minWidth: 180, minHeight: 48),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.colors.surfaceElevated,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
+                // Deliberately literal: a shadow is a cast, not a themed
+                // surface, and it sits outside the semantic ramp. Dark mode's
+                // depth comes from the surface steps rather than this shadow.
                 color: Colors.black.withAlpha(20),
                 blurRadius: 8,
                 offset: const Offset(0, 2),

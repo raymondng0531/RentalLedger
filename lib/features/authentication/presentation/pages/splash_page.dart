@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/app_logo.dart';
 import '../providers/auth_provider.dart';
@@ -71,7 +72,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      // The first surface the app paints, so it must follow the theme — a
+      // hardcoded white here would flash white on every System/Dark launch.
+      backgroundColor: context.colors.surface,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

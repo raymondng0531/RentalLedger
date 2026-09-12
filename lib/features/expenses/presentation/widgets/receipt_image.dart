@@ -98,6 +98,14 @@ class ReceiptImage extends StatelessWidget {
 
   /// Renders the caller's placeholder (or a default icon), and appends the
   /// real failure text when [detail] is available.
+  ///
+  /// The `Colors.redAccent` debug ink below (and its two siblings further down)
+  /// is deliberately left literal. No `AppColors` token represents #FF5252 —
+  /// `error` is #DC3545 — so substituting one would silently change the shipped
+  /// light-mode diagnostic, breaking parity for no dark-mode gain: the colour
+  /// measures about 5.3:1 on the dark surface, so it stays readable in both
+  /// modes. It is also developer-facing text that only appears when an image
+  /// genuinely failed to load, never on a working screen.
   Widget _error(BuildContext context, String? detail) {
     final placeholder = errorBuilder?.call(context) ??
         const Center(child: Icon(Icons.image_not_supported_outlined));

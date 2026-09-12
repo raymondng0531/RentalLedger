@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
@@ -26,6 +26,7 @@ class UpcomingBillsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     final billsAsync = ref.watch(billsProvider);
     final house = ref.watch(currentHouseProvider);
     final user = ref.watch(currentUserProvider);
@@ -87,17 +88,13 @@ class UpcomingBillsSection extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 18,
-                      color: AppTheme.errorRed,
-                    ),
+                    Icon(Icons.error_outline, size: 18, color: colors.error),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Could not load bills. Pull to refresh.',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
+                          color: colors.textSecondary,
                         ),
                       ),
                     ),
@@ -117,18 +114,15 @@ class UpcomingBillsSection extends ConsumerWidget {
                     horizontal: AppConstants.pagePadding,
                   ),
                   child: ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.event_repeat_outlined,
-                      color: AppTheme.textHint,
+                      color: colors.textHint,
                     ),
                     title: const Text('No upcoming bills'),
                     subtitle: const Text(
                       'Add recurring bills to track them here.',
                     ),
-                    trailing: const Icon(
-                      Icons.add,
-                      color: AppTheme.primaryGreen,
-                    ),
+                    trailing: Icon(Icons.add, color: colors.primary),
                     onTap: () => _showAddBillDialog(context, ref),
                   ),
                 ),
@@ -149,9 +143,9 @@ class UpcomingBillsSection extends ConsumerWidget {
                   // Countdown colors: green >7d, orange 3-7d, red due/overdue.
                   final urgency = bill.urgency;
                   final dueColor = switch (urgency) {
-                    BillUrgency.red => AppTheme.errorRed,
-                    BillUrgency.orange => AppTheme.statusPending,
-                    BillUrgency.green => AppTheme.successGreen,
+                    BillUrgency.red => colors.error,
+                    BillUrgency.orange => colors.statusPending,
+                    BillUrgency.green => colors.success,
                   };
                   final isPaid = bill.isPaid;
 
@@ -207,10 +201,10 @@ class UpcomingBillsSection extends ConsumerWidget {
                                         ),
                                         if (bill.isRecurring) ...[
                                           const SizedBox(width: 6),
-                                          const Icon(
+                                          Icon(
                                             Icons.repeat_rounded,
                                             size: 14,
-                                            color: AppTheme.primaryGreen,
+                                            color: colors.primary,
                                           ),
                                         ],
                                       ],
@@ -232,10 +226,9 @@ class UpcomingBillsSection extends ConsumerWidget {
                                     : 'Reminder',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color:
-                                      bill.hasAmount
-                                          ? null
-                                          : AppTheme.textSecondary,
+                                  color: bill.hasAmount
+                                      ? null
+                                      : colors.textSecondary,
                                 ),
                               ),
                             ],
@@ -255,17 +248,17 @@ class UpcomingBillsSection extends ConsumerWidget {
                                           'Due ${DateFormatUtils.formatDateShort(bill.dueDate)}',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                                color: AppTheme.textSecondary,
+                                                color: colors.textSecondary,
                                               ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       if (bill.reminderEnabled) ...[
                                         const SizedBox(width: 8),
-                                        const Icon(
+                                        Icon(
                                           Icons.notifications_active_outlined,
                                           size: 14,
-                                          color: AppTheme.primaryGreen,
+                                          color: colors.primary,
                                         ),
                                       ],
                                     ],
@@ -274,10 +267,10 @@ class UpcomingBillsSection extends ConsumerWidget {
                                 // Treasurer-only: edit + delete.
                                 if (isTreasurer) ...[
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.edit_outlined,
                                       size: 18,
-                                      color: AppTheme.textSecondary,
+                                      color: colors.textSecondary,
                                     ),
                                     onPressed:
                                         () => _showEditBillDialog(
@@ -289,10 +282,10 @@ class UpcomingBillsSection extends ConsumerWidget {
                                     visualDensity: VisualDensity.compact,
                                   ),
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.delete_outline,
                                       size: 18,
-                                      color: AppTheme.errorRed,
+                                      color: colors.error,
                                     ),
                                     onPressed:
                                         () => _confirmDeleteBill(
@@ -431,10 +424,13 @@ class UpcomingBillsSection extends ConsumerWidget {
       // An amount-bearing bill payment moves real money out of the Central
       // Account (one Direct Payment transaction per paid month) → require that
       // month's receipt/proof via the Mark Paid sheet.
+      final colors = context.colors;
       final paid = await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.white,
+        // `surfaceElevated` — the palette's documented role for sheets and
+        // dialogs, and the exact opaque white V1.0 shipped in light mode.
+        backgroundColor: colors.surfaceElevated,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -511,8 +507,11 @@ class UpcomingBillsSection extends ConsumerWidget {
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
+                // A destructive confirm: the error accent, not the brand teal.
+                // The dark palette lightens it, and the button's inherited
+                // `onPrimary` ink stays legible on it (~6:1).
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.errorRed,
+                  backgroundColor: context.colors.error,
                 ),
                 child: const Text('Delete'),
               ),
@@ -533,6 +532,7 @@ class UpcomingBillsSection extends ConsumerWidget {
     WidgetRef ref,
     BillEntity bill,
   ) {
+    final colors = context.colors;
     final titleController = TextEditingController(text: bill.title);
     final amountController = TextEditingController(
       text: bill.amount?.toStringAsFixed(2) ?? '',
@@ -587,7 +587,9 @@ class UpcomingBillsSection extends ConsumerWidget {
                             horizontal: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.grey.withAlpha(20),
+                            // Was `Colors.grey.withAlpha(20)` — the palette's
+                            // placeholder tint is that same grey in light mode.
+                            color: colors.placeholderTint.withAlpha(20),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -622,7 +624,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                           style: TextStyle(fontSize: 12),
                         ),
                         contentPadding: EdgeInsets.zero,
-                        activeTrackColor: AppTheme.primaryGreen,
+                        activeTrackColor: colors.primary,
                       ),
                     ],
                   ),
@@ -658,6 +660,7 @@ class UpcomingBillsSection extends ConsumerWidget {
   }
 
   void _showAddBillDialog(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final titleController = TextEditingController();
     final amountController = TextEditingController();
     DateTime dueDate = DateTime.now().add(const Duration(days: 7));
@@ -714,7 +717,9 @@ class UpcomingBillsSection extends ConsumerWidget {
                             horizontal: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.grey.withAlpha(20),
+                            // Was `Colors.grey.withAlpha(20)` — the palette's
+                            // placeholder tint is that same grey in light mode.
+                            color: colors.placeholderTint.withAlpha(20),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -751,7 +756,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                           style: TextStyle(fontSize: 12),
                         ),
                         contentPadding: EdgeInsets.zero,
-                        activeTrackColor: AppTheme.primaryGreen,
+                        activeTrackColor: colors.primary,
                       ),
                     ],
                   ),

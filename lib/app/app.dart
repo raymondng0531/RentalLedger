@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'theme/app_theme.dart';
 import 'router/app_router.dart';
+import '../features/settings/presentation/providers/settings_provider.dart';
 
 /// Root widget for Rental Ledger.
 ///
@@ -15,6 +16,12 @@ class RentalLedgerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
+    // The appearance setting lives with the rest of the app's settings rather
+    // than in a theme-specific provider — one source of truth, hydrated from
+    // local storage before `runApp` so the first frame is already correct.
+    final themeMode = ref.watch(
+      appSettingsProvider.select((settings) => settings.themeMode),
+    );
 
     return MaterialApp.router(
       title: 'Rental Ledger',
@@ -22,8 +29,10 @@ class RentalLedgerApp extends ConsumerWidget {
 
       // ── Theme ──
       theme: AppTheme.lightTheme,
-      // Dark mode is a future enhancement — no darkTheme set.
-      themeMode: ThemeMode.light,
+      darkTheme: AppTheme.darkTheme,
+      // System follows the device/browser preference; light and dark are
+      // explicit overrides.
+      themeMode: themeMode,
 
       // ── Router ──
       routerConfig: router,

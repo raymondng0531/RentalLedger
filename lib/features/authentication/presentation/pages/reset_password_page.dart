@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/animated_checkmark.dart';
 import '../../../../core/widgets/breakpoints.dart';
@@ -100,12 +101,21 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
         body = _buildVerifying();
     }
 
+    final colors = context.colors;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         title: const Text('Reset Password'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: colors.surface,
+        // Was a literal `Colors.black`. That is the one light-mode value in
+        // this phase that could not be reproduced exactly — and it had to
+        // move: on the dark app bar a black title measures about 1.2:1, i.e.
+        // invisible. `textPrimary` is the token the app bar theme already uses
+        // for exactly this role (#1D1D1D in light, #F2F4F5 in dark), so the
+        // title now matches every other app bar in the app instead of being
+        // the one screen that inked pure black.
+        foregroundColor: colors.textPrimary,
         elevation: 0,
       ),
       body: ResponsivePage(
@@ -328,12 +338,14 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
             child: FilledButton.icon(
               onPressed: isSubmitting ? null : _handleSubmit,
               icon: isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        // Ink for the primary-filled CTA — white in light mode,
+                        // dark on the lightened dark teal.
+                        color: context.colors.onPrimary,
                       ),
                     )
                   : const Icon(Icons.check_rounded, size: 18),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../providers/notification_provider.dart';
 import '../utils/notification_icon_utils.dart';
@@ -49,17 +49,27 @@ class _NotificationToastListenerState
         if (!mounted) return;
 
         final theme = Theme.of(context);
-        final (iconData, iconColor) = notificationIconFor(newest.type);
+        final colors = context.colors;
+        final (iconData, iconColor) =
+            notificationIconFor(newest.type, colors: colors);
 
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              // Light card — not the default dark charcoal. Reuses the app's
+              // A raised card, not the default dark charcoal. Reuses the app's
               // white-card toast language (SnackbarUtils._ActionToast): same
               // radius, divider border, soft shadow, tinted icon square and
               // two-line title/body type.
-              backgroundColor: Colors.white,
+              //
+              // The fill is `surfaceElevated` — white in light mode, exactly
+              // the shipped value, and the dark palette's floating-surface step
+              // in dark mode. `surface` would also have been byte-identical in
+              // light, but it separates from the dark scaffold by only 1.085:1
+              // against `surfaceElevated`'s 1.202:1, and a shadow does less work
+              // on a dark ground — the same reasoning `darkTheme`'s
+              // `bottomSheetTheme` records for its own fill.
+              backgroundColor: colors.surfaceElevated,
               elevation: 6,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
@@ -70,7 +80,7 @@ class _NotificationToastListenerState
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppConstants.radiusLg),
-                side: const BorderSide(color: AppTheme.dividerColor),
+                side: BorderSide(color: colors.divider),
               ),
               content: Row(
                 children: [
@@ -94,7 +104,7 @@ class _NotificationToastListenerState
                         Text(
                           newest.title,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textPrimary,
+                            color: colors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -102,7 +112,7 @@ class _NotificationToastListenerState
                         Text(
                           newest.body,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: colors.textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

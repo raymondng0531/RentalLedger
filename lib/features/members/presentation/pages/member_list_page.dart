@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/snackbar_utils.dart';
@@ -79,6 +79,13 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               ),
             ),
           ),
+          // A modal scrim, deliberately not a palette token: it is not
+          // "content on a surface" but a veil that darkens whatever is
+          // underneath, in either mode. Black at 15% reads as a dim on the
+          // light page and as a slightly deeper dim on the dark one, which is
+          // the correct behaviour for an overlay — a token tied to `surface`
+          // would stop it dimming anything. The spinner above it is the actual
+          // signal and is themed by the `ProgressIndicatorTheme`.
           if (_isBusy)
             Positioned.fill(
               child: Container(
@@ -115,9 +122,14 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            // Destructive confirm: the semantic error fill with the palette's
+            // "ink on an accent" token. Light mode is unchanged (`error` is the
+            // shipped #DC3545, `onAccent` the shipped white); dark mode inks it
+            // near-black, because white on the lightened dark red would be
+            // about 2.3:1.
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.errorRed,
-              foregroundColor: Colors.white,
+              backgroundColor: context.colors.error,
+              foregroundColor: context.colors.onAccent,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Remove'),
@@ -260,9 +272,14 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            // Destructive confirm: the semantic error fill with the palette's
+            // "ink on an accent" token. Light mode is unchanged (`error` is the
+            // shipped #DC3545, `onAccent` the shipped white); dark mode inks it
+            // near-black, because white on the lightened dark red would be
+            // about 2.3:1.
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.errorRed,
-              foregroundColor: Colors.white,
+              backgroundColor: context.colors.error,
+              foregroundColor: context.colors.onAccent,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Leave'),
@@ -430,7 +447,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                       : 'You are the Treasurer. Transfer ownership to another '
                           'member before you can leave this house.',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -446,14 +463,16 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                   'You are a Member. You can leave this house at any time; '
                   'your account and past records are kept.',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
+                  // Destructive-outline: error ink and edge, from the palette
+                  // rather than the legacy constant. Same values in light mode.
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.errorRed,
-                    side: const BorderSide(color: AppTheme.errorRed),
+                    foregroundColor: context.colors.error,
+                    side: BorderSide(color: context.colors.error),
                   ),
                   onPressed: () => _confirmLeave(house),
                   icon: const Icon(Icons.logout_rounded, size: 18),
@@ -484,7 +503,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppTheme.textSecondary,
+              color: context.colors.textSecondary,
               fontWeight: FontWeight.w600,
             ),
       ),
@@ -515,17 +534,19 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppTheme.backgroundLight,
+                  // The quiet fill the code sits in: the shipped light grey
+                  // (#F5F5F5, unchanged) and its dark-mode counterpart.
+                  color: context.colors.surfaceMuted,
                   borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                 ),
                 child: Text(
                   house.inviteCode,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     letterSpacing: 6,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryGreen,
+                    color: context.colors.primary,
                   ),
                 ),
               ),
@@ -533,7 +554,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               Text(
                 'Share this code with housemates to join.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 12),

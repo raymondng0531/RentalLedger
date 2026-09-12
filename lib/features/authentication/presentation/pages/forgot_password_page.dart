@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/animated_checkmark.dart';
@@ -48,11 +49,16 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final state = ref.watch(forgotPasswordProvider);
     final isLoading = state.isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // Full-page auth surface + an opaque app bar, both `surface`: opaque
+      // white in light mode exactly as shipped, and the dark card tone in dark
+      // mode. The app bar is deliberately *not* `glassBarFill` — that token is
+      // translucent (0xF7FFFFFF) and would change the shipped light bar.
+      backgroundColor: colors.surface,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -60,7 +66,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           tooltip: 'Back',
         ),
         title: const Text('Reset Password'),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
@@ -151,12 +157,14 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             child: FilledButton.icon(
               onPressed: isLoading ? null : _handleReset,
               icon: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        // Ink for the primary-filled CTA — white in light mode,
+                        // dark on the lightened dark teal.
+                        color: context.colors.onPrimary,
                       ),
                     )
                   : const Icon(Icons.send_rounded, size: 18),

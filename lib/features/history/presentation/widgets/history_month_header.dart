@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 
 /// A calendar-month section header, e-wallet style ("AUGUST 2026").
@@ -31,7 +31,7 @@ class HistoryMonthHeader extends StatelessWidget {
         label,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
           fontWeight: FontWeight.w700,
-          color: AppTheme.textSecondary,
+          color: context.colors.textSecondary,
           letterSpacing: 0.6,
         ),
       ),

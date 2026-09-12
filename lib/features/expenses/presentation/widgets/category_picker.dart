@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/animated_pressable.dart';
 import '../../domain/entities/category_entity.dart';
@@ -8,7 +8,7 @@ import '../../domain/entities/category_entity.dart';
 /// A horizontal wrap of pill-style category chips.
 ///
 /// Premium neutral style with an immediately obvious selected state:
-/// - Unselected: white background, light divider border, muted text, a small
+/// - Unselected: surface background, light divider border, muted text, a small
 ///   category-color dot, no shadow.
 /// - Selected: light teal tint, clearly visible teal border, stronger teal
 ///   text, the same color dot, and a subtle scale lift.
@@ -65,6 +65,7 @@ class _CategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categoryColor = Color(category.color);
+    final colors = context.colors;
 
     return Semantics(
       button: true,
@@ -82,17 +83,15 @@ class _CategoryChip extends StatelessWidget {
             duration: AppDurations.standard,
             curve: AppEasing.easeOut,
             // Selected = light teal fill + clear teal border; unselected =
-            // clean white + light divider border. Only the chip whose state
+            // quiet surface + divider border. Only the chip whose state
             // actually changed animates.
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppTheme.primaryGreen.withAlpha(36)
-                  : Colors.white,
+                  ? colors.primary.withAlpha(36)
+                  : colors.surface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isSelected
-                    ? AppTheme.primaryGreen
-                    : AppTheme.dividerColor,
+                color: isSelected ? colors.primary : colors.divider,
                 width: isSelected ? 1.5 : 1.0,
               ),
             ),
@@ -104,6 +103,13 @@ class _CategoryChip extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Small color dot keeps the category identity.
+                //
+                // Painted from the STORED `category.color` verbatim in both
+                // modes. The palette is Firestore data, not theme data — the
+                // chip's own border, fill and label already carry the selected
+                // state, so the dot is identity only and is never the sole
+                // signal for anything. Rewriting it here would desync the dot
+                // from the same category's colour on the detail pages.
                 Container(
                   width: 8,
                   height: 8,
@@ -117,9 +123,7 @@ class _CategoryChip extends StatelessWidget {
                   duration: AppDurations.standard,
                   curve: AppEasing.easeOut,
                   style: TextStyle(
-                    color: isSelected
-                        ? AppTheme.primaryGreen
-                        : AppTheme.textSecondary,
+                    color: isSelected ? colors.primary : colors.textSecondary,
                     fontWeight: isSelected
                         ? FontWeight.w700
                         : FontWeight.w500,

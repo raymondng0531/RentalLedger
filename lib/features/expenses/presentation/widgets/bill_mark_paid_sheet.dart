@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
@@ -91,6 +91,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
   Widget build(BuildContext context) {
     final bill = widget.bill;
     final theme = Theme.of(context);
+    final colors = context.colors;
 
     return Padding(
       // Keep the sheet above the on-screen keyboard.
@@ -111,13 +112,13 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppTheme.statusDirectPayment.withAlpha(20),
+                      color: colors.statusDirectPayment.withAlpha(20),
                       borderRadius: BorderRadius.circular(11),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.check_rounded,
                       size: 20,
-                      color: AppTheme.statusDirectPayment,
+                      color: colors.statusDirectPayment,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -136,7 +137,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                               ? 'Rolls the bill to next month.'
                               : 'Settles this bill.',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],
@@ -147,7 +148,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                     CurrencyUtils.format(bill.amount ?? 0),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.statusDirectPayment,
+                      color: colors.statusDirectPayment,
                     ),
                   ),
                 ],
@@ -206,12 +207,13 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                           ? null
                           : _confirm,
                       child: _submitting
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                // Ink on the FilledButton's fill.
+                                color: colors.onPrimary,
                               ),
                             )
                           : const Text('Confirm Payment'),

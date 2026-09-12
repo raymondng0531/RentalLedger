@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
+import '../../app/theme/app_colors.dart';
 import '../constants/app_constants.dart';
 
 /// App-wide snackbar helpers for clear, consistent feedback.
@@ -18,25 +18,25 @@ class SnackbarUtils {
   /// Green success snackbar.
   static void showSuccess(BuildContext context, String message) {
     _show(context, message,
-        color: AppTheme.successGreen, icon: Icons.check_circle_rounded);
+        color: context.colors.success, icon: Icons.check_circle_rounded);
   }
 
   /// Red error snackbar.
   static void showError(BuildContext context, String message) {
     _show(context, message,
-        color: AppTheme.errorRed, icon: Icons.error_rounded);
+        color: context.colors.error, icon: Icons.error_rounded);
   }
 
   /// Orange warning snackbar.
   static void showWarning(BuildContext context, String message) {
     _show(context, message,
-        color: AppTheme.warningOrange, icon: Icons.warning_amber_rounded);
+        color: context.colors.warning, icon: Icons.warning_amber_rounded);
   }
 
   /// Blue info snackbar.
   static void showInfo(BuildContext context, String message) {
     _show(context, message,
-        color: AppTheme.statusApproved, icon: Icons.info_rounded);
+        color: context.colors.statusApproved, icon: Icons.info_rounded);
   }
 
   static void _show(
@@ -45,6 +45,10 @@ class SnackbarUtils {
     required Color color,
     required IconData icon,
   }) {
+    // The snackbar paints a *semantic* accent, and dark mode lightens every
+    // accent — so the ink on it is `onAccent` (white in light, near-black in
+    // dark) rather than a literal white.
+    final onAccent = context.colors.onAccent;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -63,17 +67,17 @@ class SnackbarUtils {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(35),
+                  color: onAccent.withAlpha(35),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: Colors.white, size: 18),
+                child: Icon(icon, color: onAccent, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   message,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: onAccent,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     height: 1.3,
@@ -188,6 +192,7 @@ class _ActionToastState extends State<_ActionToast>
   }
 
   Widget _toastCard() {
+    final colors = context.colors;
     return Container(
       constraints: const BoxConstraints(maxWidth: 280),
       padding: const EdgeInsets.symmetric(
@@ -195,11 +200,14 @@ class _ActionToastState extends State<_ActionToast>
         vertical: 10,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(AppConstants.radiusLg),
-        border: Border.all(color: AppTheme.dividerColor),
+        border: Border.all(color: colors.divider),
         boxShadow: [
           BoxShadow(
+            // Deliberately literal: a shadow is a cast, not a themed surface,
+            // and it sits outside the semantic ramp. Dark mode's depth comes
+            // from the surface steps rather than from this shadow.
             color: Colors.black.withAlpha(25),
             blurRadius: 16,
             offset: const Offset(0, 4),
@@ -213,12 +221,12 @@ class _ActionToastState extends State<_ActionToast>
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withAlpha(22),
+              color: colors.primary.withAlpha(22),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.info_rounded,
-              color: AppTheme.primaryGreen,
+              color: colors.primary,
               size: 16,
             ),
           ),
@@ -228,8 +236,8 @@ class _ActionToastState extends State<_ActionToast>
               widget.message,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
+              style: TextStyle(
+                color: colors.textPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
+import '../../app/theme/app_colors.dart';
 
 /// A colored badge that displays the status of an expense or transaction.
 ///
@@ -20,28 +20,38 @@ class StatusBadge extends StatelessWidget {
   final String status;
   final StatusBadgeSize size;
 
-  /// Returns the color for a given status string.
-  static Color colorFor(String status) {
+  /// Returns the color for a given status string, from the **light** palette.
+  ///
+  /// Kept as the fixed light-value lookup because it is public API that callers
+  /// and tests depend on. The widget itself renders through [resolve] so it
+  /// follows the active theme; prefer [resolve] wherever a palette is
+  /// available.
+  static Color colorFor(String status) => resolve(status, AppColors.light);
+
+  /// Brightness-aware counterpart of [colorFor]: the same mapping, read from
+  /// the supplied palette. Dark mode's status colours are lightened so they
+  /// stay legible on a dark surface.
+  static Color resolve(String status, AppColors colors) {
     switch (status.toLowerCase()) {
       case 'pending':
-        return AppTheme.statusPending;
+        return colors.statusPending;
       case 'approved':
-        return AppTheme.statusApproved;
+        return colors.statusApproved;
       case 'paid':
       case 'completed':
-        return AppTheme.statusPaid;
+        return colors.statusPaid;
       case 'rejected':
-        return AppTheme.statusRejected;
+        return colors.statusRejected;
       case 'direct payment':
-        return AppTheme.statusDirectPayment;
+        return colors.statusDirectPayment;
       default:
-        return Colors.grey;
+        return colors.statusNeutral;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = colorFor(status);
+    final color = resolve(status, context.colors);
     final fontSize = switch (size) {
       StatusBadgeSize.small => 11.0,
       StatusBadgeSize.medium => 12.0,

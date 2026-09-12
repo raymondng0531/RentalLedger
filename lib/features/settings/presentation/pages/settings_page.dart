@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/responsive_page.dart';
@@ -43,12 +43,14 @@ class SettingsPage extends ConsumerWidget {
             // ── Profile header ──
             Container(
               padding: const EdgeInsets.all(20),
-              color: Colors.white,
+              // The profile header sits on the card surface, not the page tone
+              // — the shipped white (#FFFFFFFF) in light mode, unchanged.
+              color: context.colors.surface,
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: AppTheme.primaryGreen.withAlpha(30),
+                    backgroundColor: context.colors.primary.withAlpha(30),
                     foregroundImage: (profile?.photoUrl?.isNotEmpty == true)
                         ? NetworkImage(profile!.photoUrl!) as ImageProvider
                         : null,
@@ -60,7 +62,7 @@ class SettingsPage extends ConsumerWidget {
                                 .textTheme
                                 .headlineSmall
                                 ?.copyWith(
-                                  color: AppTheme.primaryGreen,
+                                  color: context.colors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -79,7 +81,7 @@ class SettingsPage extends ConsumerWidget {
                         Text(
                           profile?.email ?? '',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: context.colors.textSecondary,
                           ),
                         ),
                       ],
@@ -152,17 +154,21 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // ── Appearance Section ──
+            // The V1.0 row was a "Dark Mode — Coming soon" switch wired to a
+            // stub. It is replaced by the real selector because a two-state
+            // switch cannot express the three modes the theme architecture
+            // already persists (system / light / dark) — and the subtitle now
+            // reports the *stored* choice, so the control reflects what
+            // `appSettingsProvider` actually holds.
             _SectionHeader(title: 'Appearance'),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: SwitchListTile(
-                secondary: const Icon(Icons.dark_mode_outlined),
-                title: const Text('Dark Mode'),
-                subtitle: const Text('Coming soon'),
-                value: settings.darkMode,
-                onChanged: (_) {
-                  SnackbarUtils.showInfo(context, 'Dark mode coming soon');
-                },
+              child: ListTile(
+                leading: const Icon(Icons.dark_mode_outlined),
+                title: const Text('Theme'),
+                subtitle: Text(themeModeLabel(settings.themeMode)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showThemePicker(context, ref, settings),
               ),
             ),
 
@@ -247,10 +253,10 @@ class SettingsPage extends ConsumerWidget {
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: ListTile(
-                leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
+                leading: Icon(Icons.logout_rounded, color: context.colors.error),
                 title: const Text('Sign Out'),
-                titleTextStyle: const TextStyle(
-                  color: AppTheme.errorRed,
+                titleTextStyle: TextStyle(
+                  color: context.colors.error,
                   fontWeight: FontWeight.w500,
                 ),
                 onTap: () async {
@@ -283,6 +289,52 @@ class SettingsPage extends ConsumerWidget {
 
             const SizedBox(height: 32),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Appearance picker — the three modes the theme architecture supports.
+  ///
+  /// Writes through [AppSettingsNotifier.setThemeMode], i.e. the same
+  /// `PreferencesService` slot the app hydrates from before `runApp`, so the
+  /// choice survives a reload and there is no second preference mechanism.
+  /// Nothing here touches Firestore — appearance stays device-scoped.
+  void _showThemePicker(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettings settings,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SpringSheet(
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Appearance',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              const Divider(height: 1),
+              for (final mode in ThemeMode.values)
+                ListTile(
+                  title: Text(themeModeLabel(mode)),
+                  subtitle: mode == ThemeMode.system
+                      ? const Text('Follow your device or browser')
+                      : null,
+                  trailing: settings.themeMode == mode
+                      ? Icon(Icons.check, color: context.colors.primary)
+                      : null,
+                  onTap: () {
+                    ref.read(appSettingsProvider.notifier).setThemeMode(mode);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -353,7 +405,7 @@ class SettingsPage extends ConsumerWidget {
               ListTile(
                 title: const Text('Bahasa Melayu'),
                 trailing: settings.language == 'ms'
-                    ? const Icon(Icons.check, color: AppTheme.primaryGreen)
+                    ? Icon(Icons.check, color: context.colors.primary)
                     : null,
                 onTap: () {
                   ref.read(appSettingsProvider.notifier).setLanguage('ms');
@@ -363,7 +415,7 @@ class SettingsPage extends ConsumerWidget {
               ListTile(
                 title: const Text('English'),
                 trailing: settings.language == 'en'
-                    ? const Icon(Icons.check, color: AppTheme.primaryGreen)
+                    ? Icon(Icons.check, color: context.colors.primary)
                     : null,
                 onTap: () {
                   ref.read(appSettingsProvider.notifier).setLanguage('en');
@@ -395,7 +447,7 @@ class SettingsPage extends ConsumerWidget {
               ListTile(
                 title: const Text('MYR (RM)'),
                 trailing: settings.currency == 'MYR'
-                    ? const Icon(Icons.check, color: AppTheme.primaryGreen)
+                    ? Icon(Icons.check, color: context.colors.primary)
                     : null,
                 onTap: () {
                   ref.read(appSettingsProvider.notifier).setCurrency('MYR');
@@ -405,7 +457,7 @@ class SettingsPage extends ConsumerWidget {
               ListTile(
                 title: const Text('SGD (S\$)'),
                 trailing: settings.currency == 'SGD'
-                    ? const Icon(Icons.check, color: AppTheme.primaryGreen)
+                    ? Icon(Icons.check, color: context.colors.primary)
                     : null,
                 onTap: () {
                   ref.read(appSettingsProvider.notifier).setCurrency('SGD');
@@ -415,7 +467,7 @@ class SettingsPage extends ConsumerWidget {
               ListTile(
                 title: const Text('USD (\$)'),
                 trailing: settings.currency == 'USD'
-                    ? const Icon(Icons.check, color: AppTheme.primaryGreen)
+                    ? Icon(Icons.check, color: context.colors.primary)
                     : null,
                 onTap: () {
                   ref.read(appSettingsProvider.notifier).setCurrency('USD');
@@ -443,12 +495,22 @@ class _SectionHeader extends StatelessWidget {
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
+              color: context.colors.textSecondary,
             ),
       ),
     );
   }
 }
+
+/// The human label for a persisted appearance mode.
+///
+/// Top-level rather than private so a test can pin the exact wording the
+/// Appearance row shows for each stored [ThemeMode].
+String themeModeLabel(ThemeMode mode) => switch (mode) {
+      ThemeMode.system => 'System default',
+      ThemeMode.light => 'Light',
+      ThemeMode.dark => 'Dark',
+    };
 
 class _HelpItem extends StatelessWidget {
   const _HelpItem({
@@ -467,7 +529,7 @@ class _HelpItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: AppTheme.primaryGreen),
+          Icon(icon, size: 20, color: context.colors.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -479,8 +541,8 @@ class _HelpItem extends StatelessWidget {
                 ),
                 Text(
                   description,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    color: context.colors.textSecondary,
                     fontSize: 13,
                   ),
                 ),

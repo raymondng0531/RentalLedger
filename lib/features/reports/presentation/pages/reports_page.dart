@@ -4,7 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
@@ -191,6 +191,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
   /// The scrollable report body: summary → insights → money-out breakdown →
   /// category breakdown → monthly trend.
   List<Widget> _buildContent(bool windowed) {
+    final colors = context.colors;
     // Entrance animations: summary boxes first, insights stagger, then the
     // two chart cards. Keep them subtle (fade + small slide-up, ~400ms).
     const entrance = Duration(milliseconds: 400);
@@ -207,7 +208,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
               child: _SummaryBox(
                 label: 'Money In',
                 amount: data.moneyIn,
-                color: AppTheme.successGreen,
+                color: colors.success,
               ),
             ),
           ),
@@ -219,7 +220,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
               child: _SummaryBox(
                 label: 'Money Out',
                 amount: data.moneyOut,
-                color: AppTheme.errorRed,
+                color: colors.error,
               ),
             ),
           ),
@@ -231,9 +232,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
               child: _SummaryBox(
                 label: windowed ? 'Net' : 'Current Balance',
                 amount: data.balance,
-                color: data.balance >= 0
-                    ? AppTheme.primaryGreen
-                    : AppTheme.errorRed,
+                color: data.balance >= 0 ? colors.primary : colors.error,
               ),
             ),
           ),
@@ -392,7 +391,7 @@ class _SummaryBox extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
             ),
             const SizedBox(height: 4),
@@ -425,6 +424,7 @@ class _InsightsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final highestName = data.highestCategoryName;
 
     // Each card shares the exact same layout so every number sits in the same
@@ -445,7 +445,7 @@ class _InsightsGrid extends StatelessWidget {
           subtitle: highestName,
           amount: highestName == null ? null : data.highestCategoryAmount,
           icon: Icons.category_outlined,
-          color: AppTheme.statusApproved,
+          color: colors.statusApproved,
         ),
       ),
       staggered(
@@ -454,7 +454,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Largest Expense Claim',
           amount: data.largestExpense,
           icon: Icons.receipt_long_outlined,
-          color: AppTheme.errorRed,
+          color: colors.error,
         ),
       ),
       staggered(
@@ -463,7 +463,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Expense Reimbursements',
           amount: data.totalExpenses,
           icon: Icons.payments_outlined,
-          color: AppTheme.warningOrange,
+          color: colors.warning,
         ),
       ),
       staggered(
@@ -472,7 +472,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Pending Reimbursements',
           amount: data.pendingReimbursements,
           icon: Icons.hourglass_bottom_rounded,
-          color: AppTheme.statusPending,
+          color: colors.statusPending,
         ),
       ),
       staggered(
@@ -481,7 +481,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Average Monthly Expense',
           amount: data.averageMonthlyExpense,
           icon: Icons.calculate_outlined,
-          color: AppTheme.primaryGreen,
+          color: colors.primary,
         ),
       ),
       staggered(
@@ -490,7 +490,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Average Deposit',
           amount: data.avgDeposit,
           icon: Icons.savings_outlined,
-          color: AppTheme.successGreen,
+          color: colors.success,
         ),
       ),
       staggered(
@@ -499,7 +499,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Largest Deposit',
           amount: data.largestDeposit,
           icon: Icons.trending_up_rounded,
-          color: AppTheme.primaryGreen,
+          color: colors.primary,
         ),
       ),
       staggered(
@@ -508,7 +508,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Bills Paid',
           count: data.billsPaid,
           icon: Icons.fact_check_outlined,
-          color: AppTheme.successGreen,
+          color: colors.success,
         ),
       ),
       staggered(
@@ -517,7 +517,7 @@ class _InsightsGrid extends StatelessWidget {
           title: 'Bills Pending',
           count: data.billsPending,
           icon: Icons.schedule_rounded,
-          color: AppTheme.warningOrange,
+          color: colors.warning,
         ),
       ),
     ];
@@ -611,7 +611,7 @@ class _InsightCard extends StatelessWidget {
             Text(
               title,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
+                color: context.colors.textSecondary,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -621,7 +621,7 @@ class _InsightCard extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textHint,
+                  color: context.colors.textHint,
                   fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,
@@ -644,13 +644,14 @@ class _AllTimeBalanceNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(
+        Icon(
           Icons.account_balance_outlined,
           size: 14,
-          color: AppTheme.textSecondary,
+          color: colors.textSecondary,
         ),
         const SizedBox(width: 6),
         Flexible(
@@ -659,7 +660,7 @@ class _AllTimeBalanceNote extends StatelessWidget {
             '${CurrencyUtils.format(amount)}',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondary,
+                  color: colors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
           ),
@@ -719,6 +720,7 @@ class _MoneyOutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     final breakdown = data.moneyOutBreakdown;
     final total = breakdown.total;
 
@@ -728,27 +730,27 @@ class _MoneyOutCard extends StatelessWidget {
       (
         label: 'Expense reimbursements',
         amount: breakdown.expenseReimbursements,
-        color: AppTheme.statusApproved,
+        color: colors.statusApproved,
       ),
       (
         label: 'Direct payments',
         amount: breakdown.directPayments,
-        color: AppTheme.warningOrange,
+        color: colors.warning,
       ),
       (
         label: 'Bill payments',
         amount: breakdown.billPayments,
-        color: AppTheme.primaryGreen,
+        color: colors.primary,
       ),
       (
         label: 'Adjustments',
         amount: breakdown.negativeAdjustments,
-        color: AppTheme.errorRed,
+        color: colors.error,
       ),
       (
         label: 'Other',
         amount: breakdown.other,
-        color: AppTheme.textSecondary,
+        color: colors.textSecondary,
       ),
     ].where((b) => b.amount > 0).toList();
 
@@ -767,7 +769,7 @@ class _MoneyOutCard extends StatelessWidget {
             Text(
               'From ${CurrencyUtils.format(total)} of Money Out',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
+                color: colors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -829,7 +831,7 @@ class _MoneyOutCard extends StatelessWidget {
                         '${((b.amount / total) * 100).toStringAsFixed(0)}%',
                         textAlign: TextAlign.right,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
+                          color: colors.textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -847,6 +849,30 @@ class _MoneyOutCard extends StatelessWidget {
 // ──────────────────────────────────────────────
 // Category Breakdown
 // ──────────────────────────────────────────────
+
+/// Resolves a category's display colour for the ACTIVE theme.
+///
+/// A category owns its colour in Firestore (`CategoryEntity.color`, an ARGB
+/// int) and that stored value is never rewritten — the datastore is untouched
+/// by theming. Dark mode therefore has exactly two levers here: leave the
+/// stored hue alone, or adapt it at paint time. **This leaves it alone**, and
+/// that is a measured decision, not an assumption:
+///
+/// Against the card each slice is drawn on, the seven stored defaults measure
+/// 3.04–6.18:1 on the dark card (`#171B1E`) against 2.80–5.70:1 on the light
+/// card (`#FFFFFF`). Dark mode is not a regression for a single one of them —
+/// its floor (`household #7C3AED`, 3.04:1) clears WCAG's 3:1 bar for graphical
+/// objects, while the shipped light palette has two stored colours *below* that
+/// bar (`utilities #F97316` 2.80:1, `maintenance #D97706` 3.19:1). Rewriting
+/// stored hues for dark mode would invent new colours to fix a problem dark
+/// mode does not have, and would make the same category render as a different
+/// colour per theme — which is precisely what Rule 5 forbids.
+///
+/// The one thing that IS theme-resolved is the [AppColors.categoryFallback]
+/// used when a category stores no colour at all: that is a palette value, not
+/// stored data, and the palette already carries a dark variant for it.
+Color _categoryColor(int? stored, AppColors colors) =>
+    Color(stored ?? colors.categoryFallback.toARGB32());
 
 class _CategoryBreakdownCard extends StatefulWidget {
   const _CategoryBreakdownCard({
@@ -905,6 +931,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final breakdown = widget.data.categoryBreakdown;
     final total =
         breakdown.fold<double>(0, (sum, c) => sum + c.amount);
@@ -934,7 +961,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                     PieChartData(
                       sections: List.generate(breakdown.length, (i) {
                         final c = breakdown[i];
-                        final color = Color(c.color ?? AppTheme.categoryFallbackHex);
+                        final color = _categoryColor(c.color, colors);
                         final isSelected = selectedIndex == i;
                         return PieChartSectionData(
                           value: c.amount * grow,
@@ -945,6 +972,15 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                           // this radius change smoothly.
                           radius: isSelected ? 58 : 52,
                           title: '',
+                          // Inert, and deliberately left literal: the slice
+                          // title above is the empty string, so fl_chart lays
+                          // out a zero-width TextPainter and paints nothing —
+                          // no glyph ever takes this colour in either mode.
+                          // There is no "ink on a slice" token, and inventing
+                          // one for text that is never drawn would be palette
+                          // expansion with no rendering change. Slices are
+                          // identified by the legend and the selected-detail
+                          // panel below, not by on-slice labels.
                           titleStyle: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -985,11 +1021,11 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Color(selected.color ?? AppTheme.categoryFallbackHex)
+                            color: _categoryColor(selected.color, colors)
                                 .withAlpha(18),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Color(selected.color ?? AppTheme.categoryFallbackHex)
+                              color: _categoryColor(selected.color, colors)
                                   .withAlpha(70),
                             ),
                           ),
@@ -999,7 +1035,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                                 width: 10,
                                 height: 10,
                                 decoration: BoxDecoration(
-                                  color: Color(selected.color ?? AppTheme.categoryFallbackHex),
+                                  color: _categoryColor(selected.color, colors),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -1029,7 +1065,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                                     .textTheme
                                     .bodySmall
                                     ?.copyWith(
-                                      color: AppTheme.textSecondary,
+                                      color: colors.textSecondary,
                                       fontWeight: FontWeight.w600,
                                     ),
                               ),
@@ -1045,7 +1081,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
-                                ?.copyWith(color: AppTheme.textHint),
+                                ?.copyWith(color: colors.textHint),
                           ),
                         ),
                 ),
@@ -1067,7 +1103,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                     name: c.name,
                     amount: c.amount,
                     percent: percent,
-                    color: Color(c.color ?? AppTheme.categoryFallbackHex),
+                    color: _categoryColor(c.color, colors),
                     isSelected: selectedIndex == i,
                     opacity: opacity,
                     onTap: () => widget.onSelect(selectedIndex == i ? null : i),
@@ -1118,6 +1154,8 @@ class _LegendRow extends StatelessWidget {
             duration: AppDurations.standard,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
+              // `Colors.transparent` is the "paint no highlight" sentinel, not
+              // a palette colour — it stays transparent in both modes.
               color: isSelected ? color.withAlpha(14) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1158,7 +1196,7 @@ class _LegendRow extends StatelessWidget {
                     '$percent%',
                     textAlign: TextAlign.right,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: context.colors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1182,6 +1220,7 @@ class _MonthlyTrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final maxY = data.monthlyTrend.fold<double>(
       0,
       (m, e) => max(m, max(e.moneyIn, e.moneyOut)),
@@ -1198,10 +1237,10 @@ class _MonthlyTrendCard extends StatelessWidget {
           children: [
             // ── Legend ──
             Row(
-              children: const [
-                _LegendDot(color: AppTheme.successGreen, label: 'Money In'),
-                SizedBox(width: 16),
-                _LegendDot(color: AppTheme.errorRed, label: 'Money Out'),
+              children: [
+                _LegendDot(color: colors.success, label: 'Money In'),
+                const SizedBox(width: 16),
+                _LegendDot(color: colors.error, label: 'Money Out'),
               ],
             ),
             const SizedBox(height: 16),
@@ -1224,6 +1263,7 @@ class _MonthlyTrendCard extends StatelessWidget {
     double interval,
     double yMax,
   ) {
+    final colors = context.colors;
     return TweenAnimationBuilder<double>(
       tween: Tween(
         begin: MediaQuery.disableAnimationsOf(context) ? 1.0 : 0.0,
@@ -1238,9 +1278,15 @@ class _MonthlyTrendCard extends StatelessWidget {
           barTouchData: BarTouchData(
             enabled: true,
             touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (_) => Colors.white,
+              // The tooltip floats over the card it belongs to, so it is
+              // filled with the elevation step above a surface rather than a
+              // hardcoded white. It separates from the dark card by 1.11:1
+              // plus its `divider` hairline — measurably MORE separation than
+              // the shipped light mode gets, where a white tooltip on a white
+              // card relies on the hairline alone.
+              getTooltipColor: (_) => colors.surfaceElevated,
               tooltipRoundedRadius: 10,
-              tooltipBorder: const BorderSide(color: AppTheme.dividerColor),
+              tooltipBorder: BorderSide(color: colors.divider),
               maxContentWidth: 200,
               // Keep the tooltip fully inside the chart: when a bar is near an
               // edge, fl_chart shifts the tooltip to the other side (or
@@ -1251,27 +1297,27 @@ class _MonthlyTrendCard extends StatelessWidget {
                 final m = data.monthlyTrend[groupIndex];
                 return BarTooltipItem(
                   '${m.month}\n',
-                  const TextStyle(
+                  TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: colors.textPrimary,
                   ),
                   children: [
                     TextSpan(
                       text:
                           'Money In   ${CurrencyUtils.format(m.moneyIn)}\n',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.successGreen,
+                        color: colors.success,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     TextSpan(
                       text:
                           'Money Out ${CurrencyUtils.format(m.moneyOut)}\n',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.errorRed,
+                        color: colors.error,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1280,9 +1326,7 @@ class _MonthlyTrendCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: m.net >= 0
-                            ? AppTheme.successGreen
-                            : AppTheme.errorRed,
+                        color: m.net >= 0 ? colors.success : colors.error,
                       ),
                     ),
                   ],
@@ -1305,9 +1349,9 @@ class _MonthlyTrendCard extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       data.monthlyTrend[i].month,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: AppTheme.textSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
                   );
@@ -1323,9 +1367,9 @@ class _MonthlyTrendCard extends StatelessWidget {
                   if (value == meta.max) return const SizedBox.shrink();
                   return Text(
                     _shortAmount(value),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: AppTheme.textSecondary,
+                      color: colors.textSecondary,
                     ),
                   );
                 },
@@ -1342,8 +1386,8 @@ class _MonthlyTrendCard extends StatelessWidget {
             show: true,
             drawVerticalLine: false,
             horizontalInterval: interval,
-            getDrawingHorizontalLine: (_) => const FlLine(
-              color: AppTheme.dividerColor,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: colors.divider,
               strokeWidth: 1,
             ),
           ),
@@ -1357,7 +1401,7 @@ class _MonthlyTrendCard extends StatelessWidget {
                 // Money in (positive transactions).
                 BarChartRodData(
                   toY: m.moneyIn * growth,
-                  color: AppTheme.successGreen,
+                  color: colors.success,
                   width: 8,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(3),
@@ -1367,7 +1411,7 @@ class _MonthlyTrendCard extends StatelessWidget {
                 // Money out (negative transactions).
                 BarChartRodData(
                   toY: m.moneyOut * growth,
-                  color: AppTheme.errorRed,
+                  color: colors.error,
                   width: 8,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(3),
@@ -1433,7 +1477,7 @@ class _LegendDot extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
+                color: context.colors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
         ),

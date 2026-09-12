@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/app_logo.dart';
@@ -76,13 +76,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final loginState = ref.watch(loginProvider);
     final socialState = ref.watch(socialLoginProvider);
     final isLoading = loginState.isLoading;
     final socialLoading = socialState.isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // Opaque white in light mode, the dark card tone in dark mode. An auth
+      // screen is a full-page surface, so it takes `surface` rather than the
+      // scaffold's default `background` — that is what V1.0 shipped.
+      backgroundColor: colors.surface,
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
         child: SafeArea(
@@ -163,12 +167,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   FilledButton(
                     onPressed: isLoading ? null : _handleLogin,
                     child: isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              // The FilledButton's fill is `primary`, whose
+                              // foreground is `onPrimary` — white in light mode
+                              // (unchanged), dark ink on the lightened dark
+                              // teal.
+                              color: colors.onPrimary,
                             ),
                           )
                         : const Text('Sign In'),
@@ -199,8 +207,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
                     label: const Text('Continue with Google'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.textPrimary,
-                      side: const BorderSide(color: AppTheme.dividerColor),
+                      foregroundColor: colors.textPrimary,
+                      side: BorderSide(color: colors.divider),
                     ),
                   ),
                   // ── Apple button (only on iOS/macOS where it works) ──
@@ -211,8 +219,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       icon: const Icon(Icons.apple_rounded, size: 20),
                       label: const Text('Continue with Apple'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.textPrimary,
-                        side: const BorderSide(color: AppTheme.dividerColor),
+                        foregroundColor: colors.textPrimary,
+                        side: BorderSide(color: colors.divider),
                       ),
                     ),
                   ],

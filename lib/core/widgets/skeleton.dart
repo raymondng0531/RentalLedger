@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_colors.dart';
 import '../constants/app_constants.dart';
 
 /// Premium skeleton-placeholder primitives.
@@ -22,14 +23,18 @@ class SkeletonBox extends StatelessWidget {
     this.height = 14,
     this.radius = 8,
     this.circular = false,
-    this.color = _skeletonBase,
+    this.color,
   });
 
   final double? width;
   final double height;
   final double radius;
   final bool circular;
-  final Color color;
+
+  /// Overrides the placeholder tint. Defaults to the theme's `skeletonBase` —
+  /// null rather than a const default because the tint is theme-dependent and
+  /// a default parameter value must be a compile-time constant.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +42,7 @@ class SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? context.colors.skeletonBase,
         shape: circular ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: circular ? null : BorderRadius.circular(radius),
       ),
@@ -53,13 +58,18 @@ class Shimmer extends StatefulWidget {
   const Shimmer({
     super.key,
     required this.child,
-    this.baseColor = _skeletonBase,
-    this.highlightColor = const Color(0xFFFAFBFC),
+    this.baseColor,
+    this.highlightColor,
   });
 
   final Widget child;
-  final Color baseColor;
-  final Color highlightColor;
+
+  /// Overrides the resting tint. Defaults to the theme's `skeletonBase`.
+  final Color? baseColor;
+
+  /// Overrides the sweep highlight. Defaults to the theme's
+  /// `skeletonHighlight`.
+  final Color? highlightColor;
 
   @override
   State<Shimmer> createState() => _ShimmerState();
@@ -107,6 +117,11 @@ class _ShimmerState extends State<Shimmer>
   Widget build(BuildContext context) {
     // Reduced motion: render the flat placeholder, no sweep.
     if (_reducedMotion) return widget.child;
+
+    final colors = context.colors;
+    final baseColor = widget.baseColor ?? colors.skeletonBase;
+    final highlightColor = widget.highlightColor ?? colors.skeletonHighlight;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -119,9 +134,9 @@ class _ShimmerState extends State<Shimmer>
               begin: Alignment(shift, 0),
               end: Alignment(shift + 1.5, 0),
               colors: [
-                widget.baseColor,
-                widget.highlightColor,
-                widget.baseColor,
+                baseColor,
+                highlightColor,
+                baseColor,
               ],
               stops: const [0.25, 0.5, 0.75],
             ).createShader(bounds);
@@ -229,7 +244,3 @@ class SkeletonDetailBody extends StatelessWidget {
     );
   }
 }
-
-/// Shared placeholder tint — a soft neutral grey that reads as "content is
-/// coming" without competing with the teal accents.
-const Color _skeletonBase = Color(0xFFEDEFF2);

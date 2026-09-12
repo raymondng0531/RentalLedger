@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/app_logo.dart';
@@ -60,11 +61,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final registerState = ref.watch(registerProvider);
     final isLoading = registerState.isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // Same full-page surface treatment as Login — see the note there.
+      backgroundColor: colors.surface,
       body: ResponsivePage(
         maxWidth: AppContentWidth.form,
         child: SafeArea(
@@ -196,12 +199,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   FilledButton(
                     onPressed: isLoading ? null : _handleRegister,
                     child: isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: colors.onPrimary,
                             ),
                           )
                         : const Text('Create Account'),

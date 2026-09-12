@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/currency_utils.dart';
@@ -10,7 +10,7 @@ import '../../domain/entities/expense_entity.dart';
 /// A card displaying an expense summary in lists.
 ///
 /// Uses the same visual language as the History timeline:
-/// rounded backgroundLight card, category icon, title, "Member • Date • Time"
+/// rounded muted card, category icon, title, "Member • Date • Time"
 /// and status / payment-method / category chips.
 class ExpenseCard extends StatelessWidget {
   const ExpenseCard({
@@ -33,8 +33,10 @@ class ExpenseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = _statusColor(expense.status);
-    final (String sign, Color amountColor) = _amountStyle(expense.status);
+    final colors = context.colors;
+    final statusColor = _statusColor(expense.status, colors: colors);
+    final (String sign, Color amountColor) =
+        _amountStyle(expense.status, colors: colors);
     final member = memberName ?? 'Unknown Member';
     final subtitle =
         '$member • '
@@ -47,7 +49,7 @@ class ExpenseCard extends StatelessWidget {
         vertical: 4,
       ),
       elevation: 0,
-      color: AppTheme.backgroundLight,
+      color: colors.surfaceMuted,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
@@ -91,7 +93,7 @@ class ExpenseCard extends StatelessWidget {
                         Text(
                           subtitle,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: colors.textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -112,7 +114,7 @@ class ExpenseCard extends StatelessWidget {
               ),
               // ── Chips ──
               const SizedBox(height: 10),
-              Wrap(spacing: 6, runSpacing: 6, children: _chips()),
+              Wrap(spacing: 6, runSpacing: 6, children: _chips(colors)),
             ],
           ),
         ),
@@ -120,7 +122,7 @@ class ExpenseCard extends StatelessWidget {
     );
   }
 
-  List<Widget> _chips() {
+  List<Widget> _chips(AppColors colors) {
     final chips = <Widget>[
       // Status chip — crossfades with a subtle scale when the expense's
       // status flips live (Submitted → Approved → Paid / Rejected).
@@ -130,31 +132,37 @@ class ExpenseCard extends StatelessWidget {
         switchOutCurve: AppEasing.accelerate,
         child: _chip(
           _statusLabel(expense.status),
-          _statusColor(expense.status),
+          _statusColor(expense.status, colors: colors),
           key: ValueKey(expense.status),
         ),
       ),
       _chip(
         expense.isPersonal ? 'Personal' : 'Central Account',
-        AppTheme.statusApproved,
+        colors.statusApproved,
       ),
     ];
     if (categoryName != null) {
-      chips.add(_chip(categoryName!, AppTheme.textSecondary));
+      chips.add(_chip(categoryName!, colors.textSecondary));
     }
     return chips;
   }
 
-  Color _statusColor(String status) {
+  /// Status ink for an expense.
+  ///
+  /// Kept local rather than delegating to `activityStatusColor` from the
+  /// dashboard: the two rules agree today, but they live in different feature
+  /// layers and the expense card is the one the Treasurer reads before
+  /// approving, so it is not coupled to the dashboard's feed styling.
+  Color _statusColor(String status, {required AppColors colors}) {
     switch (status) {
       case 'paid':
-        return AppTheme.successGreen;
+        return colors.success;
       case 'approved':
-        return AppTheme.statusApproved;
+        return colors.statusApproved;
       case 'rejected':
-        return AppTheme.errorRed;
+        return colors.error;
       default:
-        return AppTheme.statusPending;
+        return colors.statusPending;
     }
   }
 
@@ -172,12 +180,12 @@ class ExpenseCard extends StatelessWidget {
   }
 
   /// Paid expenses show money out (−, red); others are neutral.
-  (String, Color) _amountStyle(String status) {
+  (String, Color) _amountStyle(String status, {required AppColors colors}) {
     switch (status) {
       case 'paid':
-        return ('-', AppTheme.errorRed);
+        return ('-', colors.error);
       default:
-        return ('', AppTheme.textSecondary);
+        return ('', colors.textSecondary);
     }
   }
 

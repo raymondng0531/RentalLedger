@@ -9,6 +9,7 @@ import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/app_logo.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/auth_provider.dart';
 
 /// Registration screen — create a new account.
@@ -43,7 +44,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final errorMessage = await ref.read(registerProvider.notifier).register(
+    final failure = await ref.read(registerProvider.notifier).register(
           _emailController.text.trim(),
           _passwordController.text,
           _nameController.text.trim(),
@@ -51,17 +52,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     if (!mounted) return;
 
-    if (errorMessage == null) {
+    if (failure == null) {
       // Success — GoRouter's auth guard will redirect to dashboard.
       context.go(RouteNames.dashboard);
     } else {
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+        context,
+        localizeAuthError(AppLocalizations.of(context), failure.code),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final registerState = ref.watch(registerProvider);
     final isLoading = registerState.isLoading;
 
@@ -85,14 +90,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
                   // ── Title ──
                   Text(
-                    'Create Account',
+                    l10n.authCreateAccount,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Join your house and start tracking expenses.',
+                    l10n.authRegisterSubtitle,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -102,13 +107,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   // ── Full name ──
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name',
-                      prefixIcon: Icon(Icons.person_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.authFullNameLabel,
+                      prefixIcon: const Icon(Icons.person_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your name';
+                        return l10n.authNameRequired;
                       }
                       return null;
                     },
@@ -119,16 +124,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.authEmailLabel,
+                      prefixIcon: const Icon(Icons.email_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your email';
+                        return l10n.authEmailRequired;
                       }
                       if (!value.trim().contains('@')) {
-                        return 'Please enter a valid email';
+                        return l10n.authEmailInvalid;
                       }
                       return null;
                     },
@@ -140,7 +145,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: l10n.authPasswordLabel,
                       prefixIcon: const Icon(Icons.lock_outlined),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -154,10 +159,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a password';
+                        return l10n.authCreatePasswordRequired;
                       }
                       if (value.length < AppConstants.passwordMinLength) {
-                        return 'Password must be at least ${AppConstants.passwordMinLength} characters';
+                        return l10n.authPasswordMinLength(
+                            AppConstants.passwordMinLength);
                       }
                       return null;
                     },
@@ -171,7 +177,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _handleRegister(),
                     decoration: InputDecoration(
-                      labelText: 'Confirm Password',
+                      labelText: l10n.authConfirmPasswordLabel,
                       prefixIcon: const Icon(Icons.lock_outlined),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -185,10 +191,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
+                        return l10n.authConfirmPasswordRequired;
                       }
                       if (value != _passwordController.text) {
-                        return 'Passwords do not match';
+                        return l10n.authPasswordsDoNotMatch;
                       }
                       return null;
                     },
@@ -207,7 +213,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                               color: colors.onPrimary,
                             ),
                           )
-                        : const Text('Create Account'),
+                        : Text(l10n.authCreateAccount),
                   ),
                   const SizedBox(height: 24),
 
@@ -216,10 +222,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Flexible lets the text wrap on narrow screens instead of overflowing.
-                      const Flexible(child: Text('Already have an account?')),
+                      Flexible(child: Text(l10n.authHaveAccountPrompt)),
                       TextButton(
                         onPressed: () => context.go(RouteNames.login),
-                        child: const Text('Sign In'),
+                        child: Text(l10n.authSignIn),
                       ),
                     ],
                   ),

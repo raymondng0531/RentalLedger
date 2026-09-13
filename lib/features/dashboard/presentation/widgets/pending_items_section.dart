@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/activity_item.dart';
 import 'activity_visuals.dart';
 
@@ -33,6 +34,7 @@ class PendingItemsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final items = this.items.take(5).toList();
 
     return Column(
@@ -49,7 +51,7 @@ class PendingItemsSection extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Pending Items',
+                  l10n.dashboardPendingItems,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -59,7 +61,7 @@ class PendingItemsSection extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () => context.push(RouteNames.expenses),
                   icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                  label: const Text('View All'),
+                  label: Text(l10n.actionViewAll),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
@@ -77,10 +79,8 @@ class PendingItemsSection extends StatelessWidget {
             ),
             child: ListTile(
               leading: Icon(Icons.task_alt_rounded, color: colors.textHint),
-              title: const Text('No pending items'),
-              subtitle: const Text(
-                'Submitted and approved expenses will appear here.',
-              ),
+              title: Text(l10n.dashboardPendingItemsEmpty),
+              subtitle: Text(l10n.dashboardPendingItemsEmptyDescription),
             ),
           )
         else
@@ -97,6 +97,7 @@ class PendingItemsSection extends StatelessWidget {
   ) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     return [
       for (final item in items)
@@ -153,7 +154,7 @@ class PendingItemsSection extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              CurrencyUtils.format(item.amount),
+                              CurrencyUtils.format(item.amount, localeCode: l10n.localeName),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -162,7 +163,7 @@ class PendingItemsSection extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _waitingLabel(item.status),
+                          _waitingLabel(item.status, l10n),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: _statusColor(item.status, colors: colors),
                             fontWeight: FontWeight.w600,
@@ -180,6 +181,7 @@ class PendingItemsSection extends StatelessWidget {
                             item.paymentSource,
                             categoryMap,
                             colors: context.colors,
+                            l10n: l10n,
                           ),
                         ),
                       ],
@@ -196,11 +198,14 @@ class PendingItemsSection extends StatelessWidget {
   }
 
   /// The waiting label shown under an open claim's title.
-  String _waitingLabel(String? status) {
+  ///
+  /// The stored status decides which of the two labels applies; the wording
+  /// comes from the active locale.
+  String _waitingLabel(String? status, AppLocalizations l10n) {
     if (status == FirestoreConstants.statusApproved) {
-      return 'Approved — waiting for reimbursement';
+      return l10n.dashboardWaitingForReimbursement;
     }
-    return 'Waiting for Treasurer approval';
+    return l10n.dashboardWaitingForApproval;
   }
 
   /// Status color for an open claim: approved blue, otherwise pending amber.

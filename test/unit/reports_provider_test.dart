@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/bill_entity.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/expense_entity.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/transaction_entity.dart';
@@ -50,6 +51,11 @@ BillEntity _bill({required String id, required bool isPaid}) => BillEntity(
     );
 
 void main() {
+  // `computeReportsData` renders month abbreviations through `DateFormat`,
+  // which needs the locale's symbols loaded. The app gets these from
+  // `GlobalMaterialLocalizations`; a pure Dart test has to ask for them.
+  setUpAll(initializeDateFormatting);
+
   group('computeReportsData', () {
     test('totals count paid expenses and approved-only pending reimbursements',
         () {

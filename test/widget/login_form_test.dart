@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_ledger/core/services/firebase_service.dart';
 import 'package:rental_ledger/features/authentication/presentation/pages/login_page.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 Widget _buildLogin() {
   return ProviderScope(
@@ -11,7 +12,13 @@ Widget _buildLogin() {
         const FirebaseInitResult(false, 'Firebase not available in test'),
       ),
     ],
-    child: const MaterialApp(home: LoginPage()),
+    child: const MaterialApp(
+      // Mirrors `app.dart`: LoginPage renders AppLogo, whose tagline is
+      // localized, so the tree needs the generated delegates.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: LoginPage(),
+    ),
   );
 }
 

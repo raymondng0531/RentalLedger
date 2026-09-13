@@ -11,6 +11,7 @@ import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/animated_balance.dart';
 import '../../../../core/widgets/animated_status_badge.dart';
 import '../../../../core/widgets/error_display.dart';
@@ -28,6 +29,7 @@ import '../logic/receipt_edit_decision.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/category_picker.dart';
 import '../widgets/receipt_image.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Expense Details screen — full view of a single expense.
 ///
@@ -41,6 +43,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final expenseAsync = ref.watch(expenseDetailProvider(expenseId));
 
     return expenseAsync.when(
@@ -53,9 +56,9 @@ class ExpenseDetailsPage extends ConsumerWidget {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => Navigator.pop(context),
-                tooltip: 'Back',
+                tooltip: l10n.actionBack,
               ),
-              title: const Text('Expense Details'),
+              title: Text(l10n.expenseDetailsTitle),
               backgroundColor: colors.surface,
             ),
             body: const Shimmer(child: SkeletonDetailBody()),
@@ -67,13 +70,13 @@ class ExpenseDetailsPage extends ConsumerWidget {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => Navigator.pop(context),
-                tooltip: 'Back',
+                tooltip: l10n.actionBack,
               ),
-              title: const Text('Expense Details'),
+              title: Text(l10n.expenseDetailsTitle),
               backgroundColor: colors.surface,
             ),
             body: ErrorDisplay(
-              message: 'Could not load expense.',
+              message: l10n.expenseLoadFailed,
               onRetry: () => ref.invalidate(expenseDetailProvider(expenseId)),
             ),
           ),
@@ -85,12 +88,12 @@ class ExpenseDetailsPage extends ConsumerWidget {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => Navigator.pop(context),
-                tooltip: 'Back',
+                tooltip: l10n.actionBack,
               ),
-              title: const Text('Expense Details'),
+              title: Text(l10n.expenseDetailsTitle),
               backgroundColor: colors.surface,
             ),
-            body: const ErrorDisplay(message: 'Expense not found.'),
+            body: ErrorDisplay(message: l10n.expenseNotFound),
           );
         }
         return _ExpenseDetailContent(expense: expense, ref: ref);
@@ -122,6 +125,7 @@ class _ExpenseDetailContent extends StatelessWidget {
   /// [ReceiptViewer] draws its own fixed black ground in every mode, so white
   /// is the correct ink there and `context.colors` does not apply.
   void _showReceiptFullscreen(BuildContext context, String url) {
+    final l10n = AppLocalizations.of(context);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder:
@@ -133,19 +137,19 @@ class _ExpenseDetailContent extends StatelessWidget {
                     ? child
                     : const Center(child: CircularProgressIndicator()),
                 errorBuilder:
-                    (_, __, ___) => const Center(
+                    (_, __, ___) => Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.image_not_supported_outlined,
                             color: Colors.white54,
                             size: 48,
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
-                            'Failed to load receipt',
-                            style: TextStyle(color: Colors.white54),
+                            l10n.errorFailedToLoadReceipt,
+                            style: const TextStyle(color: Colors.white54),
                           ),
                         ],
                       ),
@@ -177,6 +181,7 @@ class _ExpenseDetailContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     // Resolve the raw category id to its name/colour/icon for display.
     final categoriesAsync = ref.watch(categoriesProvider);
@@ -207,7 +212,7 @@ class _ExpenseDetailContent extends StatelessWidget {
     final purchaserName =
         memberByName[expense.purchasedBy]?.displayName ??
         expense.displayName ??
-        'Unknown Member';
+        l10n.commonUnknownMember;
 
     // Only the purchaser can edit/delete their own pending expense (matches
     // the Firestore rules).
@@ -223,22 +228,22 @@ class _ExpenseDetailContent extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Expense Details'),
+        title: Text(l10n.expenseDetailsTitle),
         backgroundColor: colors.surface,
         actions: [
           if (canEdit)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => _showEditDialog(context, expense),
-              tooltip: 'Edit',
+              tooltip: l10n.actionEdit,
             ),
           if (canDelete)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               onPressed: () => _confirmDelete(context, expense),
-              tooltip: 'Delete',
+              tooltip: l10n.actionDelete,
               color: colors.error,
             ),
         ],
@@ -291,7 +296,14 @@ class _ExpenseDetailContent extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           AnimatedStatusBadge(
+                            // `status` stays the STORED value — it drives the
+                            // badge colour and the change animation. Only the
+                            // displayed text is localized.
                             status: expense.status,
+                            label: VocabularyLabels.statusBadge(
+                              expense.status,
+                              l10n,
+                            ),
                             size: StatusBadgeSize.medium,
                           ),
                         ],
@@ -306,7 +318,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Purchased by $purchaserName',
+                        l10n.expensePurchasedByPerson(purchaserName),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colors.textSecondary,
                         ),
@@ -321,7 +333,7 @@ class _ExpenseDetailContent extends StatelessWidget {
               if (expense.receiptUrl != null &&
                   expense.receiptUrl!.isNotEmpty) ...[
                 Text(
-                  'Receipt',
+                  l10n.receiptTitle,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -357,7 +369,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Receipt unavailable',
+                              l10n.expenseReceiptUnavailable,
                               style: TextStyle(color: colors.textHint),
                             ),
                           ],
@@ -375,7 +387,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                     onPressed: () =>
                         _showReceiptFullscreen(context, expense.receiptUrl!),
                     icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
-                    label: const Text('Preview Receipt'),
+                    label: Text(l10n.actionPreviewReceipt),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -384,25 +396,35 @@ class _ExpenseDetailContent extends StatelessWidget {
               // ── Details card ──
               _buildInfoSection(context, [
                 _InfoRow(
-                  label: 'Category',
-                  value: categoryName,
+                  label: l10n.labelCategory,
+                  value: VocabularyLabels.category(
+                    l10n: l10n,
+                    categoryId: expense.categoryId,
+                    name: categoryName,
+                  ),
                   icon: Icons.category_outlined,
                 ),
                 _InfoRow(
-                  label: 'Payment Source',
+                  label: l10n.labelPaymentSource,
+                  // The expense detail page spells the personal source out in
+                  // full; every other source reads from the shared vocabulary
+                  // mapping keyed on the STORED value.
                   value:
                       expense.isPersonal
-                          ? 'Personal (reimbursement)'
-                          : 'Central Account',
+                          ? l10n.paymentSourcePersonalReimbursement
+                          : VocabularyLabels.paymentSource(
+                            expense.paymentSource,
+                            l10n,
+                          ),
                   icon: Icons.account_balance_wallet_outlined,
                 ),
                 _InfoRow(
-                  label: 'Submitted',
-                  value: DateFormatUtils.formatDate(expense.createdAt),
+                  label: l10n.statusSubmitted,
+                  value: DateFormatUtils.formatDate(expense.createdAt, l10n.localeName),
                   icon: Icons.calendar_today_outlined,
                 ),
                 _InfoRow(
-                  label: 'Purchased By',
+                  label: l10n.labelPurchasedBy,
                   value: purchaserName,
                   icon: Icons.person_outlined,
                 ),
@@ -433,7 +455,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Rejected',
+                            l10n.statusRejected,
                             style: theme.textTheme.titleSmall?.copyWith(
                               color: colors.error,
                               fontWeight: FontWeight.w700,
@@ -443,7 +465,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Reason: ${expense.rejectReason}',
+                        l10n.expenseRejectReason(expense.rejectReason!),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colors.textPrimary,
                           height: 1.4,
@@ -459,7 +481,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                   expense.description!.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 Text(
-                  'Description',
+                  l10n.expenseDescriptionSection,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -476,7 +498,7 @@ class _ExpenseDetailContent extends StatelessWidget {
               // ── Timeline ──
               const SizedBox(height: 24),
               Text(
-                'Timeline',
+                l10n.expenseTimeline,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -502,6 +524,7 @@ class _ExpenseDetailContent extends StatelessWidget {
     // Role check: only the Treasurer can approve/reject/mark paid.
     final house = ref.watch(currentHouseProvider);
     final user = ref.watch(currentUserProvider);
+    final l10n = AppLocalizations.of(context);
     final isTreasurer =
         house != null && user != null && house.treasurerId == user.uid;
 
@@ -511,7 +534,7 @@ class _ExpenseDetailContent extends StatelessWidget {
         // ── Treasurer: approve / reject / mark paid ──
         if (isTreasurer) ...[
           Text(
-            'Treasurer Actions',
+            l10n.expenseTreasurerActions,
             style: Theme.of(
               context,
             ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -526,7 +549,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => _showRejectDialog(context, expense),
                     icon: const Icon(Icons.close_rounded),
-                    label: const Text('Reject'),
+                    label: Text(l10n.actionReject),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: context.colors.error,
                       side: BorderSide(color: context.colors.error),
@@ -538,7 +561,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: () => _doApprove(context, expense.expenseId),
                     icon: const Icon(Icons.check_rounded),
-                    label: const Text('Approve'),
+                    label: Text(l10n.actionApprove),
                   ),
                 ),
               ],
@@ -551,12 +574,12 @@ class _ExpenseDetailContent extends StatelessWidget {
               onPressed:
                   () => _confirmAction(
                     context,
-                    'Mark as Paid',
-                    'Mark "${expense.title}" as reimbursed from the Central Account?',
+                    l10n.actionMarkPaid,
+                    l10n.expenseMarkPaidConfirm(expense.title),
                     () => _doMarkPaid(context, expense.expenseId),
                   ),
               icon: const Icon(Icons.wallet_outlined),
-              label: const Text('Mark as Paid'),
+              label: Text(l10n.actionMarkPaid),
             ),
           ],
         ] else if (user != null && expense.purchasedBy == user.uid) ...[
@@ -567,7 +590,7 @@ class _ExpenseDetailContent extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: () => _remindTreasurer(context, expense),
             icon: const Icon(Icons.notifications_active_outlined),
-            label: const Text('Remind Treasurer'),
+            label: Text(l10n.actionRemindTreasurer),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -597,7 +620,7 @@ class _ExpenseDetailContent extends StatelessWidget {
       if (context.mounted) {
         SnackbarUtils.showError(
           context,
-          'Only the submitter can remind the Treasurer.',
+          AppLocalizations.of(context).expenseRemindOnlySubmitter,
         );
       }
       return;
@@ -618,7 +641,10 @@ class _ExpenseDetailContent extends StatelessWidget {
 
     if (treasurerId.isEmpty) {
       if (context.mounted) {
-        SnackbarUtils.showError(context, 'Could not find the Treasurer.');
+        SnackbarUtils.showError(
+          context,
+          AppLocalizations.of(context).expenseTreasurerNotFound,
+        );
       }
       return;
     }
@@ -641,7 +667,10 @@ class _ExpenseDetailContent extends StatelessWidget {
     );
 
     if (context.mounted) {
-      SnackbarUtils.showSuccess(context, 'Reminder sent to Treasurer');
+      SnackbarUtils.showSuccess(
+        context,
+        AppLocalizations.of(context).actionReminderSent,
+      );
     }
   }
 
@@ -660,14 +689,14 @@ class _ExpenseDetailContent extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(ctx).actionCancel),
               ),
               FilledButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
                   onConfirm();
                 },
-                child: const Text('Confirm'),
+                child: Text(AppLocalizations.of(ctx).actionConfirm),
               ),
             ],
           ),
@@ -684,22 +713,23 @@ class _ExpenseDetailContent extends StatelessWidget {
     BuildContext context,
     ExpenseEntity expense,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Expense?'),
-        content: Text('Delete "${expense.title}"? This cannot be undone.'),
+        title: Text(l10n.expenseDeleteTitle),
+        content: Text(l10n.expenseDeleteConfirm(expense.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(ctx).actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: context.colors.error,
             ),
-            child: const Text('Delete'),
+            child: Text(AppLocalizations.of(ctx).actionDelete),
           ),
         ],
       ),
@@ -711,9 +741,14 @@ class _ExpenseDetailContent extends StatelessWidget {
         .delete(expense);
     if (!context.mounted) return;
     if (error != null) {
+      // The notifier has no BuildContext, so its own failure text stays as it
+      // was returned (see the note in expense_provider.dart).
       SnackbarUtils.showError(context, error);
     } else {
-      SnackbarUtils.showSuccess(context, 'Expense deleted');
+      SnackbarUtils.showSuccess(
+        context,
+        AppLocalizations.of(context).expenseDeleted,
+      );
       Navigator.of(context).pop();
     }
   }
@@ -748,18 +783,17 @@ class _ExpenseDetailContent extends StatelessWidget {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            title: const Text('Reject Expense'),
+            title: Text(AppLocalizations.of(ctx).expenseRejectTitle),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Reject "${expense.title}"?'),
+                Text(AppLocalizations.of(ctx).expenseRejectConfirm(expense.title)),
                 const SizedBox(height: 16),
                 TextField(
                   controller: reasonController,
-                  decoration: const InputDecoration(
-                    labelText: 'Reason (optional)',
-                    hintText:
-                        'e.g. Receipt is blurry, please upload a clearer one.',
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(ctx).expenseRejectReasonLabel,
+                    hintText: AppLocalizations.of(ctx).expenseRejectReasonHint,
                   ),
                   maxLines: 3,
                   textCapitalization: TextCapitalization.sentences,
@@ -769,7 +803,7 @@ class _ExpenseDetailContent extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(ctx).actionCancel),
               ),
               FilledButton(
                 onPressed: () {
@@ -783,7 +817,7 @@ class _ExpenseDetailContent extends StatelessWidget {
                             : reasonController.text.trim(),
                   );
                 },
-                child: const Text('Reject'),
+                child: Text(AppLocalizations.of(ctx).actionReject),
                 style: FilledButton.styleFrom(
                   backgroundColor: context.colors.error,
                 ),
@@ -844,24 +878,25 @@ class _ExpenseDetailContent extends StatelessWidget {
   Widget _buildTimeline(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     // Always show the complete workflow. The Paid step is hidden only
     // when the expense was rejected.
     final steps = <_TimelineStep>[
       // Step 1: Submitted — always present and complete.
       _TimelineStep(
-        title: 'Submitted',
-        subtitle: DateFormatUtils.formatDateTime(expense.createdAt),
+        title: l10n.statusSubmitted,
+        subtitle: DateFormatUtils.formatDateTime(expense.createdAt, l10n.localeName),
         isComplete: true,
         isLast: false,
       ),
       if (expense.isRejected)
         // Rejected → ends here, no Paid step.
         _TimelineStep(
-          title: 'Rejected',
+          title: l10n.statusRejected,
           subtitle:
               expense.approvedAt != null
-                  ? DateFormatUtils.formatDateTime(expense.approvedAt!)
-                  : 'Rejected',
+                  ? DateFormatUtils.formatDateTime(expense.approvedAt!, l10n.localeName)
+                  : l10n.statusRejected,
           isComplete: true,
           isLast: true,
           isError: true,
@@ -869,21 +904,21 @@ class _ExpenseDetailContent extends StatelessWidget {
       else ...[
         // Step 2: Approved.
         _TimelineStep(
-          title: 'Approved',
+          title: l10n.statusApproved,
           subtitle:
               expense.approvedAt != null
-                  ? DateFormatUtils.formatDateTime(expense.approvedAt!)
-                  : 'Waiting...',
+                  ? DateFormatUtils.formatDateTime(expense.approvedAt!, l10n.localeName)
+                  : l10n.expenseTimelineWaiting,
           isComplete: expense.isApproved || expense.isPaid,
           isLast: false,
         ),
         // Step 3: Paid.
         _TimelineStep(
-          title: 'Paid',
+          title: l10n.statusPaid,
           subtitle:
               expense.paidAt != null
-                  ? DateFormatUtils.formatDateTime(expense.paidAt!)
-                  : 'Waiting...',
+                  ? DateFormatUtils.formatDateTime(expense.paidAt!, l10n.localeName)
+                  : l10n.expenseTimelineWaiting,
           isComplete: expense.isPaid,
           isLast: true,
         ),
@@ -1041,7 +1076,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
       if (!mounted) return;
       SnackbarUtils.showError(
         context,
-        'Could not pick a photo. Please try again.',
+        AppLocalizations.of(context).expensePhotoPickFailed,
       );
     }
   }
@@ -1253,7 +1288,10 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      SnackbarUtils.showError(context, 'Could not update. Please try again.');
+      SnackbarUtils.showError(
+        context,
+        AppLocalizations.of(context).expenseUpdateFailed,
+      );
     }
   }
 
@@ -1265,6 +1303,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
     final showingNew = _newReceiptFile != null;
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     // Status line describing the effective outcome.
     final (IconData, Color, String) status;
@@ -1272,25 +1311,25 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
       status = (
         Icons.check_circle_outline,
         colors.success,
-        'New receipt selected — will replace the current one on save.',
+        l10n.expenseReceiptNewSelected,
       );
     } else if (_removeReceipt) {
       status = (
         Icons.delete_outline,
         colors.error,
-        'Receipt will be removed on save.',
+        l10n.expenseReceiptWillRemove,
       );
     } else if (hasCurrent) {
       status = (
         Icons.image_outlined,
         colors.textSecondary,
-        'Current receipt attached.',
+        l10n.expenseReceiptCurrent,
       );
     } else {
       status = (
         Icons.image_not_supported_outlined,
         colors.textSecondary,
-        'No receipt attached.',
+        l10n.expenseReceiptNone,
       );
     }
 
@@ -1322,7 +1361,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
               child: OutlinedButton.icon(
                 onPressed: () => _pickImage(ImageSource.camera),
                 icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                label: const Text('Take Photo'),
+                label: Text(l10n.actionTakePhoto),
               ),
             ),
             const SizedBox(width: 12),
@@ -1330,7 +1369,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
               child: OutlinedButton.icon(
                 onPressed: () => _pickImage(ImageSource.gallery),
                 icon: const Icon(Icons.photo_library_outlined, size: 18),
-                label: const Text('Choose Photo'),
+                label: Text(l10n.actionChoosePhoto),
               ),
             ),
           ],
@@ -1351,7 +1390,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
                   child: OutlinedButton.icon(
                     onPressed: _openEffectiveReceiptFullscreen,
                     icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
-                    label: const Text('Preview Receipt'),
+                    label: Text(l10n.actionPreviewReceipt),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1368,7 +1407,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
                     color: colors.error,
                   ),
                   label: Text(
-                    'Remove receipt',
+                    l10n.expenseRemoveReceipt,
                     style: TextStyle(color: colors.error),
                   ),
                 ),
@@ -1383,9 +1422,10 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return AlertDialog(
-      title: const Text('Edit Expense'),
+      title: Text(l10n.expenseEditTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1393,13 +1433,13 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
+              decoration: InputDecoration(labelText: l10n.expenseFieldTitle),
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _amountController,
-              decoration: const InputDecoration(labelText: 'Amount (RM)'),
+              decoration: InputDecoration(labelText: l10n.expenseAmountRm),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -1407,15 +1447,15 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.expenseDescriptionOptional,
               ),
               maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 16),
             Text(
-              'Category',
+              l10n.labelCategory,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -1428,10 +1468,10 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
                 onSelected: (id) => setState(() => _selectedCategory = id),
               )
             else
-              Text('No categories available.', style: theme.textTheme.bodySmall),
+              Text(l10n.categoryNoneAvailable, style: theme.textTheme.bodySmall),
             const SizedBox(height: 16),
             Text(
-              'Receipt',
+              l10n.receiptTitle,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -1444,7 +1484,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(l10n.actionCancel),
         ),
         FilledButton(
           onPressed: _isSaving ? null : _save,
@@ -1459,7 +1499,7 @@ class _EditExpenseDialogState extends ConsumerState<_EditExpenseDialog> {
                         color: context.colors.onPrimary,
                       ),
                     )
-                  : const Text('Save'),
+                  : Text(l10n.actionSave),
         ),
       ],
     );

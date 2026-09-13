@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../domain/auth_error_codes.dart';
 
 /// Remote data source for authentication.
 ///
@@ -66,7 +67,12 @@ class AuthRemoteDataSource {
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
-        throw const AuthException('Sign in cancelled.');
+        // Carries a stable code so the UI can recognise a cancellation without
+        // pattern-matching on this message — see AuthErrorCodes.
+        throw const AuthException(
+          'Sign in cancelled.',
+          code: AuthErrorCodes.cancelled,
+        );
       }
 
       final googleAuth = await googleUser.authentication;
@@ -252,35 +258,86 @@ class AuthRemoteDataSource {
   }
 
   /// Maps Firebase Auth exceptions to app exceptions.
+  ///
+  /// Each case carries an `AuthErrorCodes` [code] alongside its message. The
+  /// code is the contract the UI branches and displays on; the message is only
+  /// an English fallback for a caller that has no localization to hand (a test,
+  /// a log line). Firebase's own `e.message` is deliberately never surfaced —
+  /// it is untranslated SDK prose.
   AuthException _mapAuthException(firebase_auth.FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
-        return const AuthException('Invalid email address.');
+        return const AuthException(
+          'Invalid email address.',
+          code: AuthErrorCodes.invalidEmail,
+        );
       case 'user-disabled':
-        return const AuthException('This account has been disabled.');
+        return const AuthException(
+          'This account has been disabled.',
+          code: AuthErrorCodes.userDisabled,
+        );
       case 'user-not-found':
-        return const AuthException('No account found with this email.');
+        return const AuthException(
+          'No account found with this email.',
+          code: AuthErrorCodes.userNotFound,
+        );
       case 'wrong-password':
+        return const AuthException(
+          'Invalid email or password.',
+          code: AuthErrorCodes.wrongPassword,
+        );
       case 'invalid-credential':
-        return const AuthException('Invalid email or password.');
+        return const AuthException(
+          'Invalid email or password.',
+          code: AuthErrorCodes.invalidCredential,
+        );
       case 'email-already-in-use':
-        return const AuthException('An account already exists with this email.');
+        return const AuthException(
+          'An account already exists with this email.',
+          code: AuthErrorCodes.emailAlreadyInUse,
+        );
       case 'operation-not-allowed':
-        return const AuthException('Email/password sign-in is not enabled.');
+        return const AuthException(
+          'Email/password sign-in is not enabled.',
+          code: AuthErrorCodes.operationNotAllowed,
+        );
       case 'too-many-requests':
-        return const AuthException('Too many attempts. Please try again later.');
+        return const AuthException(
+          'Too many attempts. Please try again later.',
+          code: AuthErrorCodes.tooManyRequests,
+        );
       case 'weak-password':
-        return const AuthException('Password is too weak.');
+        return const AuthException(
+          'Password is too weak.',
+          code: AuthErrorCodes.weakPassword,
+        );
       case 'invalid-action-code':
         return const AuthException(
-            'This reset link is invalid. Please request a new one.');
+          'This reset link is invalid. Please request a new one.',
+          code: AuthErrorCodes.invalidActionCode,
+        );
       case 'expired-action-code':
         return const AuthException(
-            'This reset link has expired. Please request a new one.');
+          'This reset link has expired. Please request a new one.',
+          code: AuthErrorCodes.expiredActionCode,
+        );
       case 'network-request-failed':
-        return const AuthException('Network error. Please check your connection.');
+        return const AuthException(
+          'Network error. Please check your connection.',
+          code: AuthErrorCodes.networkRequestFailed,
+        );
+      case 'requires-recent-login':
+        return const AuthException(
+          'Please sign in again to continue.',
+          code: AuthErrorCodes.requiresRecentLogin,
+        );
       default:
-        return AuthException(e.message ?? 'An authentication error occurred.');
+        // Nothing mapped this code — report it as unexpected so the UI shows
+        // its generic sentence instead of raw SDK text.
+        return const AuthException(
+          'An authentication error occurred.',
+          code: AuthErrorCodes.unexpected,
+        );
     }
   }
 }

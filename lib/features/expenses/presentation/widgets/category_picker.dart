@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/animated_pressable.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/category_entity.dart';
 
 /// A horizontal wrap of pill-style category chips.
@@ -66,11 +68,19 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final categoryColor = Color(category.color);
     final colors = context.colors;
+    // A seeded default category shows its localized label; a category the user
+    // renamed shows the user's own text. The stored `category.name` is never
+    // rewritten.
+    final label = VocabularyLabels.category(
+      l10n: AppLocalizations.of(context),
+      categoryId: category.categoryId,
+      name: category.name,
+    );
 
     return Semantics(
       button: true,
       selected: isSelected,
-      label: category.name,
+      label: label,
       child: AnimatedPressable(
         scaleAmount: 0.95,
         onTap: onTap,
@@ -129,7 +139,7 @@ class _CategoryChip extends StatelessWidget {
                         : FontWeight.w500,
                     fontSize: 13,
                   ),
-                  child: Text(category.name),
+                  child: Text(label),
                 ),
               ],
             ),

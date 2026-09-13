@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// App logo widget — displays the app name with optional tagline.
 ///
@@ -75,7 +76,10 @@ class AppLogo extends StatelessWidget {
         if (showTagline) ...[
           const SizedBox(height: 4),
           Text(
-            AppConstants.appTagline,
+            // `AppConstants.appName` above stays a constant: the product name
+            // is a proper noun and is never translated. The tagline is real
+            // copy, so it comes from the ARB files.
+            AppLocalizations.of(context).appTagline,
             style: TextStyle(
               fontSize: fontSize * 0.4,
               // Deliberately left on the colour scheme: `onSurfaceVariant` is

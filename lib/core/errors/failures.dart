@@ -4,13 +4,23 @@
 /// a success value or a [Failure]. This prevents raw exceptions
 /// from propagating to the UI layer.
 sealed class Failure {
-  const Failure(this.message, {this.code});
+  const Failure(this.message, {this.code, this.arguments});
 
   /// Human-readable error description.
   final String message;
 
   /// Optional machine-readable error code for debugging.
   final String? code;
+
+  /// Values a rendered message needs, keyed by [FailureCodes.argAmount] and
+  /// friends.
+  ///
+  /// A code alone is enough for a sentence like "You do not have permission",
+  /// but some conditions can only be explained with a figure — an unaffordable
+  /// payout has to name the amount and the balance. Passing those numbers here
+  /// keeps the data layer from having to write the sentence itself, and keeps
+  /// the failure itself locale-free.
+  final Map<String, Object?>? arguments;
 }
 
 /// Failure when there is no network connection.
@@ -19,8 +29,16 @@ class NetworkFailure extends Failure {
 }
 
 /// Failure when the user is not authenticated.
+///
+/// Carries the [code] from the underlying `AuthException` when there is one.
+/// The field was already declared on [Failure] but never populated on this
+/// path, which is what forced the login flow to recognise a cancelled social
+/// sign-in by comparing display text (see `AuthErrorCodes`).
 class AuthenticationFailure extends Failure {
-  const AuthenticationFailure([super.message = 'Authentication required.']);
+  const AuthenticationFailure([
+    super.message = 'Authentication required.',
+    String? code,
+  ]) : super(code: code);
 }
 
 /// Failure when the user lacks permission.
@@ -40,7 +58,7 @@ class NotFoundFailure extends Failure {
 
 /// Failure when a Firebase service encounters an error.
 class FirebaseFailure extends Failure {
-  const FirebaseFailure(super.message, {super.code});
+  const FirebaseFailure(super.message, {super.code, super.arguments});
 }
 
 /// Failure when the app is offline.

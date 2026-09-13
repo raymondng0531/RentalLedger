@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/category_icons.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/activity_card.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Shared visual helpers for the Dashboard's activity-ish sections
 /// (Pending Items and Recent Activity). Both sections show the same card
@@ -25,46 +27,59 @@ List<ActivityChip> activityChips(
   String? paymentSource,
   Map<String, String> categoryMap, {
   required AppColors colors,
+  required AppLocalizations l10n,
 }) {
   switch (type) {
     case 'deposit':
       return [
-        ActivityChip(label: 'Deposit', color: colors.success),
+        ActivityChip(label: l10n.txnTypeDeposit, color: colors.success),
         ActivityChip(
-          label: 'Central Account',
+          label: l10n.paymentSourceCentral,
           color: colors.statusApproved,
         ),
       ];
     case 'reimbursement':
       // A reimbursement IS a paid expense — the title explains the rest.
       return [
-        ActivityChip(label: 'Paid', color: colors.success),
+        ActivityChip(label: l10n.statusPaid, color: colors.success),
       ];
     case 'payment':
+      // The stored note still reads "Bill: ", so the prefix test is and stays
+      // the literal English one; only the chip's text is localized.
       final isBill = title.startsWith('Bill: ');
       return isBill
-          ? [ActivityChip(label: 'Paid', color: colors.success)]
+          ? [ActivityChip(label: l10n.statusPaid, color: colors.success)]
           : [
               ActivityChip(
-                label: 'Direct Payment',
+                label: l10n.txnTypeDirectPayment,
                 color: colors.statusDirectPayment,
               ),
             ];
     case 'expense':
       return [
         ActivityChip(
-          label: activityStatusLabel(status),
+          label: activityStatusLabel(status, l10n),
           color: activityStatusColor(status, colors: colors),
         ),
         if (paymentSource != null)
           ActivityChip(
             label:
-                paymentSource == 'personal' ? 'Personal' : 'Central Account',
+                paymentSource == 'personal'
+                    ? l10n.paymentSourcePersonal
+                    : l10n.paymentSourceCentral,
             color: colors.statusApproved,
           ),
         if (categoryId != null && categoryMap[categoryId] != null)
           ActivityChip(
-            label: categoryMap[categoryId]!,
+            // A default category shows its localized label; a category the user
+            // renamed shows the user's own text.
+            label:
+                VocabularyLabels.categoryOrNull(
+                  l10n: l10n,
+                  categoryId: categoryId,
+                  name: categoryMap[categoryId],
+                ) ??
+                categoryMap[categoryId]!,
             color: colors.textSecondary,
           ),
       ];
@@ -88,33 +103,27 @@ Color activityStatusColor(String? status, {required AppColors colors}) {
 }
 
 /// Human label for an expense's current status.
-String activityStatusLabel(String? status) {
-  switch (status) {
-    case 'paid':
-      return 'Paid';
-    case 'approved':
-      return 'Approved';
-    case 'rejected':
-      return 'Rejected';
-    default:
-      return 'Submitted';
-  }
+///
+/// The stored value decides which label is shown; the wording itself comes from
+/// the shared vocabulary mapping, so it follows the active language.
+String activityStatusLabel(String? status, AppLocalizations l10n) {
+  return VocabularyLabels.activityStatus(status, l10n);
 }
 
 /// Fallback title when an activity item has no title — describes the action,
 /// not the backend event name.
-String activityFallbackTitle(String type) {
+String activityFallbackTitle(String type, AppLocalizations l10n) {
   switch (type) {
     case 'deposit':
-      return 'Deposit';
+      return l10n.txnTypeDeposit;
     case 'payment':
-      return 'Direct Payment';
+      return l10n.txnTypeDirectPayment;
     case 'reimbursement':
-      return 'Expense';
+      return l10n.txnTypeExpense;
     case 'expense':
-      return 'Expense';
+      return l10n.txnTypeExpense;
     default:
-      return 'Activity';
+      return l10n.txnTypeActivity;
   }
 }
 

@@ -7,6 +7,7 @@ import 'package:rental_ledger/features/members/domain/entities/house_entity.dart
 import 'package:rental_ledger/features/members/domain/entities/house_member_entity.dart';
 import 'package:rental_ledger/features/members/presentation/pages/member_list_page.dart';
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Guards the "smallest safe UI" of Task 6 (Treasurer removes a former
 /// member): the trailing Remove action is shown ONLY to the house Treasurer
@@ -79,7 +80,11 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: _overridesFor(viewer),
-      child: const MaterialApp(home: MemberListPage()),
+      child: const MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MemberListPage(),
+      ),
     ),
   );
   await tester.pump(); // Stream.value emits on the next microtask → data state.

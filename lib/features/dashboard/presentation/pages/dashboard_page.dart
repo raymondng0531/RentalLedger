@@ -7,6 +7,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/avatar_utils.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/widgets/animated_entrance.dart';
 import '../../../../core/widgets/balance_card.dart';
 import '../../../../core/widgets/breakpoints.dart';
@@ -19,6 +20,7 @@ import '../../../../features/expenses/presentation/providers/expense_provider.da
 import '../../../../features/notifications/presentation/providers/notification_provider.dart';
 import '../../../../features/notifications/presentation/widgets/notification_toast.dart';
 import '../../../../features/settings/presentation/providers/settings_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../members/presentation/providers/house_provider.dart';
 import '../../domain/entities/dashboard_data.dart';
 import '../providers/dashboard_provider.dart';
@@ -39,6 +41,7 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final house = ref.watch(currentHouseProvider);
     final dashboardAsync = ref.watch(dashboardDataProvider);
     final profile = ref.watch(profileProvider);
@@ -51,7 +54,7 @@ class DashboardPage extends ConsumerWidget {
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded),
           onPressed: () => Scaffold.of(context).openDrawer(),
-          tooltip: 'Menu',
+          tooltip: l10n.navMenu,
         ),
         // Show the current house name clearly with a home icon.
         title: Row(
@@ -61,7 +64,9 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                house?.houseName ?? 'Dashboard',
+                // The house's own name is user data and stays verbatim; the
+                // fallback is the screen's name, so it is localized.
+                house?.houseName ?? l10n.navDashboard,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -84,11 +89,11 @@ class DashboardPage extends ConsumerWidget {
               child: const Icon(Icons.notifications_outlined),
             ),
             onPressed: () => context.push(RouteNames.notifications),
-            tooltip: 'Notifications',
+            tooltip: l10n.navNotifications,
           ),
           // ── Profile (circular avatar with photo or initial) ──
           Semantics(
-            label: 'Profile',
+            label: l10n.dashboardProfileLabel,
             button: true,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -208,8 +213,11 @@ class DashboardPage extends ConsumerWidget {
   // ───── Error State ─────
 
   Widget _buildError(BuildContext context, WidgetRef ref, Object error) {
+    final l10n = AppLocalizations.of(context);
     final message =
-        error is Failure ? error.message : 'Could not load dashboard.';
+        error is Failure
+            ? FailureMessages.of(error, l10n)
+            : l10n.dashboardLoadError;
 
     // If no house, show onboarding prompt.
     if (error is NotFoundFailure) {
@@ -231,6 +239,7 @@ class DashboardPage extends ConsumerWidget {
 
   Widget _buildOnboarding(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     return ListView(
       children: [
@@ -253,7 +262,9 @@ class DashboardPage extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'Welcome to Rental Ledger!',
+                // The product name is injected rather than embedded in the
+                // message: a proper noun is never translated.
+                l10n.dashboardWelcomeTitle(AppConstants.appName),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -262,7 +273,7 @@ class DashboardPage extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
-                  'Create or join a house to start tracking expenses.',
+                  l10n.dashboardOnboardingDescription,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: colors.textSecondary),
                 ),
@@ -271,13 +282,13 @@ class DashboardPage extends ConsumerWidget {
               FilledButton.icon(
                 onPressed: () => context.push(RouteNames.createHouse),
                 icon: const Icon(Icons.add_home_outlined),
-                label: const Text('Create a House'),
+                label: Text(l10n.dashboardCreateHouse),
               ),
               const SizedBox(height: 12),
               TextButton.icon(
                 onPressed: () => context.push(RouteNames.joinHouse),
                 icon: const Icon(Icons.vpn_key_outlined),
-                label: const Text('Join with Code'),
+                label: Text(l10n.dashboardJoinWithCode),
               ),
             ],
           ),
@@ -294,6 +305,7 @@ class DashboardPage extends ConsumerWidget {
     DashboardData data,
   ) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     // Category names for the activity cards' category chips.
     final categories =
@@ -310,7 +322,7 @@ class DashboardPage extends ConsumerWidget {
           child: ScrollLinkedCompress(
             child: BalanceCard(
               balance: data.balance,
-              label: 'Central Account Balance',
+              label: l10n.centralAccountBalance,
               isLoading: false,
             ),
           ),
@@ -323,21 +335,21 @@ class DashboardPage extends ConsumerWidget {
           delay: const Duration(milliseconds: 100),
           child: _buildSummaryRow(
             SummaryCard(
-              label: 'Money In',
+              label: l10n.dashboardMoneyIn,
               amount: data.monthly.moneyIn,
               icon: Icons.trending_up_rounded,
               iconBackground: colors.success,
               onTap: () => context.go(RouteNames.reports),
             ),
             SummaryCard(
-              label: 'Money Out',
+              label: l10n.dashboardMoneyOut,
               amount: data.monthly.moneyOut,
               icon: Icons.trending_down_rounded,
               iconBackground: colors.error,
               onTap: () => context.go(RouteNames.reports),
             ),
             SummaryCard(
-              label: 'Pending',
+              label: l10n.statusPending,
               amount: data.monthly.pendingReimbursements,
               icon: Icons.hourglass_bottom_rounded,
               iconBackground: colors.statusPending,

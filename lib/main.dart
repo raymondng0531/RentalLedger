@@ -8,6 +8,7 @@ import 'core/services/firebase_service.dart';
 import 'core/services/isar_service.dart';
 import 'core/services/preferences_service.dart';
 import 'core/services/push_notification_service.dart';
+import 'core/utils/currency_utils.dart';
 
 Future<void> main() async {
   // ── Ensure Flutter bindings are ready ──
@@ -66,6 +67,15 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('[main] Local preference storage unavailable: $e');
   }
+
+  // ── Seed the currency symbol ──
+  // `CurrencyUtils` holds the symbol as process-global state, so hydrating
+  // `AppSettings.currency` is not enough on its own: every amount formats from
+  // this static, and it would otherwise sit at its MYR default until the user
+  // opened the picker. Applied before runApp — the same reason the theme and
+  // language are read before runApp — so the first frame already shows the
+  // persisted currency rather than flashing RM.
+  CurrencyUtils.setCurrencyCode(PreferencesService(preferences).readCurrency());
 
   // Set up push notifications (only if Firebase is configured).
   if (firebaseResult.isSuccess) {

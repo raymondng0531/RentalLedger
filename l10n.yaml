@@ -1,0 +1,22 @@
+# Flutter's standard localization generation config (package:flutter gen-l10n).
+#
+# `synthetic-package: false` writes the generated Dart into the repository
+# instead of a hidden synthetic package under `.dart_tool`. That keeps the
+# generated code importable through the project's own package path (so the test
+# suite and `flutter analyze` both resolve it the same way the app does), and it
+# avoids the synthetic-package mechanism, which is deprecated upstream.
+#
+# Generation runs automatically as part of `flutter pub get` / `flutter build`
+# because `generate: true` is set in pubspec.yaml; `flutter gen-l10n` forces it.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+output-dir: lib/l10n/generated
+synthetic-package: false
+
+# `AppLocalizations.of(context)` returns a non-null value and throws if the
+# delegate is missing from the widget tree — i.e. the same failure a null-assert
+# would produce, but expressed at the point of the mistake. The default
+# (nullable) only defers the null to the very next member access.
+nullable-getter: false

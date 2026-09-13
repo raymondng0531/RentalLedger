@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_ledger/features/authentication/domain/entities/user_entity.dart';
 import 'package:rental_ledger/features/authentication/presentation/providers/auth_provider.dart';
@@ -7,6 +8,7 @@ import 'package:rental_ledger/features/members/domain/entities/house_entity.dart
 import 'package:rental_ledger/features/members/domain/entities/house_member_entity.dart';
 import 'package:rental_ledger/features/members/domain/repositories/house_repository.dart';
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Guards the V1.0 Treasurer-only "remove a former member" flow.
 ///
@@ -20,9 +22,24 @@ import 'package:rental_ledger/features/members/presentation/providers/house_prov
 /// source is touched, so they are fully deterministic. The recording fake
 /// repository models the data-layer contract: `removeMember` flips only the
 /// target record to `isActive: false` (never deletes it).
+/// The sentences these flows show, unchanged. The notifier now returns a
+/// stable code rather than the sentence itself, so each assertion below pins
+/// the code *and* the localized text it renders to — the code is the contract,
+/// the sentence is what the member actually reads.
 const _permissionOnlyTreasurer = 'Only the Treasurer can remove a member.';
 const _cannotRemoveTreasurer =
     'The Treasurer cannot be removed. Transfer ownership first.';
+const _notAuthenticated = 'Not authenticated.';
+const _noActiveHouse = 'No active house.';
+
+late AppLocalizations _en;
+
+/// The member-visible text for what [removeMemberProvider] handed back.
+///
+/// A null falls through as an empty string so a regression fails the
+/// expectation below rather than throwing before it.
+String _shown(String? error) =>
+    error == null ? '' : HouseErrorCodes.messageFor(error, _en);
 
 final _now = DateTime(2026, 9);
 
@@ -209,6 +226,12 @@ ProviderContainer _containerFor(
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    _en = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   group('Remove Member — Treasurer can remove a former member', () {
     test('removes the target membership only (soft delete, no deletion)',
         () async {
@@ -284,7 +307,8 @@ void main() {
           .read(removeMemberProvider.notifier)
           .remove(target);
 
-      expect(error, _permissionOnlyTreasurer);
+      expect(error, HouseErrorCodes.onlyTreasurerRemove);
+      expect(_shown(error), _permissionOnlyTreasurer);
       // Denied before the data source — no write happened.
       expect(repo.removes, isEmpty);
     });
@@ -299,7 +323,8 @@ void main() {
           .read(removeMemberProvider.notifier)
           .remove(treasurerMember);
 
-      expect(error, _cannotRemoveTreasurer);
+      expect(error, HouseErrorCodes.cannotRemoveTreasurer);
+      expect(_shown(error), _cannotRemoveTreasurer);
       expect(repo.removes, isEmpty);
     });
 
@@ -318,7 +343,8 @@ void main() {
           .read(removeMemberProvider.notifier)
           .remove(_regularMember());
 
-      expect(error, 'Not authenticated.');
+      expect(error, HouseErrorCodes.notAuthenticated);
+      expect(_shown(error), _notAuthenticated);
       expect(repo.removes, isEmpty);
     });
 
@@ -337,7 +363,8 @@ void main() {
           .read(removeMemberProvider.notifier)
           .remove(_regularMember());
 
-      expect(error, 'No active house.');
+      expect(error, HouseErrorCodes.noActiveHouse);
+      expect(_shown(error), _noActiveHouse);
       expect(repo.removes, isEmpty);
     });
   });

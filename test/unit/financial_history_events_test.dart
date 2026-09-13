@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/bill_entity.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/transaction_entity.dart';
 import 'package:rental_ledger/features/history/presentation/providers/history_provider.dart';
@@ -43,6 +44,11 @@ TransactionEntity _tx({
     );
 
 void main() {
+  // `computeReportsData` renders month abbreviations through `DateFormat`,
+  // which needs the locale's symbols loaded. The app gets these from
+  // `GlobalMaterialLocalizations`; a pure Dart test has to ask for them.
+  setUpAll(initializeDateFormatting);
+
   group('Deposit history events — payer attribution', () {
     test('payer, proof and period are forwarded; recorder stays userId',
         () {

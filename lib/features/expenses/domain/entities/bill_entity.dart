@@ -1,3 +1,5 @@
+import '../../../../l10n/generated/app_localizations.dart';
+
 /// A recurring bill or payment reminder for the house.
 ///
 /// Used on the Dashboard's "Upcoming Bills" section.
@@ -62,14 +64,22 @@ class BillEntity {
 
   /// A friendly countdown label: "Due Today", "Tomorrow",
   /// "3 days left", "7 days left", or "Overdue by 2 days".
-  String get countdownLabel {
-    if (isOverdue) {
-      final d = daysLeft.abs();
-      return d == 1 ? 'Overdue by 1 day' : 'Overdue by $d days';
-    }
-    if (isDueToday) return 'Due Today';
-    if (daysLeft == 1) return 'Tomorrow';
-    return '$daysLeft days left';
+  ///
+  /// Takes the locale explicitly and returns display text only. The thresholds
+  /// are unchanged — overdue, due today, tomorrow, then a plain day count — and
+  /// [daysLeft], [isOverdue], [isDueToday] and [urgency] stay locale-independent
+  /// so nothing that branches on the bill's state has to know about language.
+  ///
+  /// This is the one place the domain reaches for a presentation string. It was
+  /// already the case before localization — the getter was hardcoded English in
+  /// a domain entity — so the change moves the text out of the entity rather
+  /// than introducing a new coupling. See the Phase 4 notes for the
+  /// recommendation to lift it back into the widget.
+  String countdownLabel(AppLocalizations l10n) {
+    if (isOverdue) return l10n.billOverdueByDays(daysLeft.abs());
+    if (isDueToday) return l10n.billDueToday;
+    if (daysLeft == 1) return l10n.timeTomorrow;
+    return l10n.billDaysLeft(daysLeft);
   }
 
   /// Countdown urgency: red for due/overdue, orange for 3-7 days,

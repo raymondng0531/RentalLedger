@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'animated_balance.dart';
 
 /// A prominent card that displays a financial balance with animated counting.
@@ -13,7 +14,7 @@ class BalanceCard extends StatelessWidget {
   const BalanceCard({
     super.key,
     required this.balance,
-    this.label = 'Central Account Balance',
+    this.label,
     this.onActionTap,
     this.actionLabel,
     this.actionIcon,
@@ -21,7 +22,11 @@ class BalanceCard extends StatelessWidget {
   });
 
   final double balance;
-  final String label;
+
+  /// Caller-supplied label. When null the widget falls back to the localized
+  /// "Central Account Balance" — nullable rather than a defaulted literal so
+  /// that the fallback follows the active locale.
+  final String? label;
   final VoidCallback? onActionTap;
   final String? actionLabel;
   final IconData? actionIcon;
@@ -47,7 +52,7 @@ class BalanceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              label,
+              label ?? AppLocalizations.of(context).centralAccountBalance,
               style: theme.textTheme.labelLarge?.copyWith(
                 color: onPrimary.withAlpha(200),
               ),

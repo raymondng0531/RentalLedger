@@ -9,11 +9,13 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/receipt_viewer.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/category_picker.dart';
 
@@ -71,8 +73,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       }
     } catch (_) {
       if (!mounted) return;
-      SnackbarUtils.showError(context,
-          'Could not take a photo. Please try again.');
+      SnackbarUtils.showError(
+          context, AppLocalizations.of(context).expensePhotoError);
     }
   }
 
@@ -136,19 +138,20 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
   /// Confirms before removing the receipt.
   Future<void> _confirmRemoveReceipt() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove Receipt'),
-        content: const Text('Are you sure you want to remove this receipt?'),
+        title: Text(l10n.expenseRemoveReceiptTitle),
+        content: Text(l10n.expenseRemoveReceiptMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
+            child: Text(l10n.actionRemove),
           ),
         ],
       ),
@@ -177,15 +180,19 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             );
 
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
 
     if (errorMessage == null) {
       // Show a pop-up toast that auto-dismisses, then go back to dashboard.
-      SnackbarUtils.showSuccess(context, 'Expense submitted');
+      SnackbarUtils.showSuccess(context, l10n.expenseSubmitted);
       context.go(RouteNames.dashboard);
     } else {
       // Failure — re-enable so the user can correct and retry.
       _submitting = false;
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+        context,
+        FailureMessages.forError(errorMessage, l10n),
+      );
     }
   }
 
@@ -195,6 +202,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final state = ref.watch(createExpenseProvider);
     final isLoading = state.isLoading;
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -202,9 +210,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Add Expense'),
+        title: Text(l10n.actionAddExpense),
         backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
@@ -222,13 +230,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     controller: _titleController,
                     textCapitalization: TextCapitalization.sentences,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Title',
-                      hintText: 'What did you buy?',
-                      prefixIcon: Icon(Icons.receipt_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldTitle,
+                      hintText: l10n.expenseFieldTitleHint,
+                      prefixIcon: const Icon(Icons.receipt_outlined),
                     ),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Required' : null,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? l10n.expenseFieldRequired
+                        : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -238,16 +247,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Amount (RM)',
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldAmountRm,
                       hintText: '0.00',
-                      prefixIcon: Icon(Icons.attach_money),
+                      prefixIcon: const Icon(Icons.attach_money),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Required';
+                      if (v == null || v.isEmpty) {
+                        return l10n.expenseFieldRequired;
+                      }
                       final amount = double.tryParse(v);
                       if (amount == null || amount <= 0) {
-                        return 'Enter a valid amount';
+                        return l10n.expenseFieldInvalidAmount;
                       }
                       return null;
                     },
@@ -260,9 +271,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     textCapitalization: TextCapitalization.sentences,
                     maxLines: 3,
                     textInputAction: TextInputAction.newline,
-                    decoration: const InputDecoration(
-                      labelText: 'Description (optional)',
-                      hintText: 'Add more details...',
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldDescription,
+                      hintText: l10n.expenseFieldDescriptionHint,
                       alignLabelWithHint: true,
                     ),
                   ),
@@ -270,7 +281,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
                   // ── Receipt Upload ──
                   Text(
-                    'Receipt',
+                    l10n.receiptTitle,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -281,7 +292,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
                   // ── Category ──
                   Text(
-                    'Category',
+                    l10n.labelCategory,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -292,7 +303,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       spacing: 8,
                       children: [CircularProgressIndicator()],
                     ),
-                    error: (_, __) => const Text('Could not load categories'),
+                    error: (_, __) =>
+                        Text(l10n.expenseCategoriesLoadError),
                     data: (categories) => CategoryPicker(
                       categories: categories,
                       selectedId: _selectedCategory,
@@ -304,7 +316,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
                   // ── Payment Source ──
                   Text(
-                    'Payment Source',
+                    l10n.labelPaymentSource,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -314,12 +326,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     spacing: 8,
                     children: [
                       _PaymentChip(
-                        label: 'Central Account',
+                        // The chip's *value* stays the stored source
+                        // (`central` / `personal`); only the label is localized.
+                        label: l10n.paymentSourceCentral,
                         selected: _paymentSource == 'central',
                         onTap: () => setState(() => _paymentSource = 'central'),
                       ),
                       _PaymentChip(
-                        label: 'Personal (reimburse me)',
+                        label: l10n.expensePaymentSourceReimburse,
                         selected: _paymentSource == 'personal',
                         onTap: () => setState(() => _paymentSource = 'personal'),
                       ),
@@ -352,8 +366,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                         Expanded(
                           child: Text(
                             _paymentSource == 'personal'
-                                ? 'You will be reimbursed from the Central Account after approval.'
-                                : 'This will be paid directly from the Central Account.',
+                                ? l10n.expensePaymentSourceReimburseInfo
+                                : l10n.expensePaymentSourceCentralInfo,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
@@ -380,7 +394,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               )
                             : const Icon(Icons.check_circle_outline_rounded),
                         label: Text(
-                          isLoading ? 'Submitting...' : 'Submit Expense',
+                          isLoading
+                              ? l10n.expenseSubmitting
+                              : l10n.expenseSubmit,
                         ),
                         style: FilledButton.styleFrom(
                           textStyle: const TextStyle(
@@ -409,6 +425,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     // `build`'s local is out of scope in a sibling method; `State.context`
     // resolves the same registered palette.
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     if (_receiptFile != null) {
       // ── Receipt thumbnail + actions ──
       return Column(
@@ -429,7 +446,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                 child: OutlinedButton.icon(
                   onPressed: _showReceiptFullscreen,
                   icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
-                  label: const Text('Preview Receipt'),
+                  label: Text(l10n.expensePreviewReceipt),
                 ),
               ),
               const SizedBox(width: 12),
@@ -438,7 +455,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   onPressed: _confirmRemoveReceipt,
                   icon: Icon(Icons.close, size: 18, color: colors.error),
                   label: Text(
-                    'Remove',
+                    l10n.actionRemove,
                     style: TextStyle(color: colors.error),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -460,7 +477,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           child: OutlinedButton.icon(
             onPressed: () => _pickImage(ImageSource.camera),
             icon: const Icon(Icons.camera_alt_outlined),
-            label: const Text('Take Photo'),
+            label: Text(l10n.actionTakePhoto),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -471,7 +488,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           child: OutlinedButton.icon(
             onPressed: () => _pickImage(ImageSource.gallery),
             icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Choose Photo'),
+            label: Text(l10n.actionChoosePhoto),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),

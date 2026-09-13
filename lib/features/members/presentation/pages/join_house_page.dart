@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_logo.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/house_provider.dart';
 
 /// Join House screen — enter invite code to join an existing household.
@@ -35,9 +36,10 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
   Future<void> _handleJoin() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final l10n = AppLocalizations.of(context);
     final user = ref.read(currentUserProvider);
     if (user == null) {
-      SnackbarUtils.showError(context, 'Not authenticated.');
+      SnackbarUtils.showError(context, l10n.houseErrorNotAuthenticated);
       return;
     }
 
@@ -51,12 +53,14 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
     if (errorMessage == null) {
       context.go(RouteNames.dashboard);
     } else {
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+          context, HouseErrorCodes.messageFor(errorMessage, l10n));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(joinHouseProvider);
     final isLoading = state.isLoading;
 
@@ -70,9 +74,9 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Join House'),
+        title: Text(l10n.houseJoinTitle),
         backgroundColor: context.colors.surface,
       ),
       body: ResponsivePage(
@@ -92,14 +96,14 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
 
                   // ── Title ──
                   Text(
-                    'Enter Invite Code',
+                    l10n.houseJoinHeading,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Ask your Treasurer for the invite code.',
+                    l10n.houseJoinSubtitle,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -120,7 +124,10 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
                     ),
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      labelText: 'Invite Code',
+                      labelText: l10n.houseInviteCode,
+                      // A sample of the code's shape, not a translatable word:
+                      // the code itself is user data and keeps its exact
+                      // spelling and case. Left as-is on purpose.
                       hintText: 'ABC12345',
                       counterText: '',
                       prefixIcon: Padding(
@@ -133,10 +140,11 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter an invite code';
+                        return l10n.houseInviteCodeRequired;
                       }
                       if (value.trim().length < AppConstants.inviteCodeLength) {
-                        return 'Code must be ${AppConstants.inviteCodeLength} characters';
+                        return l10n.houseInviteCodeLength(
+                            AppConstants.inviteCodeLength);
                       }
                       return null;
                     },
@@ -156,7 +164,7 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
                               color: context.colors.onPrimary,
                             ),
                           )
-                        : const Text('Join House'),
+                        : Text(l10n.houseJoinTitle),
                   ),
                   const SizedBox(height: 16),
 
@@ -165,10 +173,10 @@ class _JoinHousePageState extends ConsumerState<JoinHousePage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Flexible lets the text wrap on narrow screens instead of overflowing.
-                      const Flexible(child: Text("Don't have a code?")),
+                      Flexible(child: Text(l10n.houseJoinNoCode)),
                       TextButton(
                         onPressed: () => context.push(RouteNames.createHouse),
-                        child: const Text('Create a House'),
+                        child: Text(l10n.houseJoinCreateLink),
                       ),
                     ],
                   ),

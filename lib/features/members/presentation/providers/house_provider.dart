@@ -2,13 +2,109 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/services/firebase_service.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../data/datasources/house_remote_datasource.dart';
 import '../../data/repositories/house_repository_impl.dart';
 import '../../domain/entities/house_entity.dart';
 import '../../domain/entities/house_member_entity.dart';
 import '../../domain/repositories/house_repository.dart';
+
+/// Stable, machine-readable codes for the house-management guards whose message
+/// reaches the screen.
+///
+/// ## Why this exists
+///
+/// A provider has no `BuildContext`, so it cannot localize its own text, and
+/// `AppLocalizations` must never be looked up from here. Instead of returning
+/// English prose that would be shown verbatim to a Malay reader, each notifier
+/// returns one of the codes below and the **page** that displays it resolves
+/// the code to a localized message via [messageFor]. The decision "which error
+/// is this" is therefore keyed on a stable code, never on translated text —
+/// the same contract `AuthErrorCodes` established for the sign-in flow.
+///
+/// A value that is *not* one of these codes is a message that came from a
+/// [Failure] raised in the data layer; [messageFor] passes it through unchanged,
+/// exactly as it was displayed before.
+class HouseErrorCodes {
+  const HouseErrorCodes._();
+
+  /// The action ran without a signed-in user.
+  static const String notAuthenticated = 'house/not-authenticated';
+
+  /// The action ran with no active house selected.
+  static const String noActiveHouse = 'house/no-active-house';
+
+  /// A non-Treasurer attempted a Treasurer-only action.
+  static const String onlyTreasurerRemove = 'house/only-treasurer-remove';
+
+  /// The house Treasurer can never be removed — ownership must be transferred.
+  static const String cannotRemoveTreasurer = 'house/cannot-remove-treasurer';
+
+  /// Fallback for an unclassified failure.
+  static const String unexpected = 'house/unexpected';
+
+  /// Firebase was never initialised, so no house call can run.
+  static const String firebaseNotConfigured = 'house/firebase-not-configured';
+
+  /// Every code [messageFor] can turn into a localized message.
+  ///
+  /// [fromFailure] only ever returns a code from this set, which is what keeps
+  /// an unknown third-party code from reaching the screen as a raw slug.
+  static const Set<String> _localized = {
+    notAuthenticated,
+    noActiveHouse,
+    onlyTreasurerRemove,
+    cannotRemoveTreasurer,
+    unexpected,
+    firebaseNotConfigured,
+    // Raised by the Cloud Function / datasource and described by the shared
+    // failure vocabulary the other features use, so the join flow reads the
+    // same way a failed expense action does.
+    FailureCodes.houseAlreadyMember,
+    FailureCodes.houseInvalidCode,
+    FailureCodes.permission,
+    FailureCodes.network,
+  };
+
+  /// What a notifier should return for a data-layer [Failure]: the failure's
+  /// stable [Failure.code] when this layer knows how to localize it, otherwise
+  /// the failure's own message — which is what was displayed before.
+  static String fromFailure(Failure failure) {
+    final code = failure.code;
+    if (code != null && _localized.contains(code)) return code;
+    return failure.message;
+  }
+
+  /// The message to show for a value returned by one of the house notifiers.
+  ///
+  /// Call this from the page that displays the error, passing the active
+  /// [l10n] — that is what keeps the text following a runtime language switch.
+  static String messageFor(String error, AppLocalizations l10n) {
+    switch (error) {
+      case notAuthenticated:
+        return l10n.houseErrorNotAuthenticated;
+      case noActiveHouse:
+        return l10n.houseErrorNoActiveHouse;
+      case onlyTreasurerRemove:
+        return l10n.houseErrorOnlyTreasurerRemove;
+      case cannotRemoveTreasurer:
+        return l10n.houseErrorCannotRemoveTreasurer;
+      case unexpected:
+        return l10n.houseErrorUnexpected;
+      case firebaseNotConfigured:
+        return l10n.houseErrorFirebaseNotConfigured;
+      default:
+        // Anything else is either a code the shared failure vocabulary knows or
+        // text the data layer already wrote for display; [forError] resolves the
+        // first and passes the second through untouched, so no code slug can
+        // reach the user and no English prose is invented here.
+        return FailureMessages.forError(error, l10n);
+    }
+  }
+}
 
 // ───── Repository Provider ─────
 
@@ -64,7 +160,7 @@ class SwitchHouseNotifier extends AutoDisposeAsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final user = ref.read(currentUserProvider);
-      if (user == null) return 'Not authenticated.';
+      if (user == null) return HouseErrorCodes.notAuthenticated;
 
       final repo = ref.read(houseRepositoryProvider);
       await repo.switchHouse(user.uid, houseId);
@@ -72,10 +168,10 @@ class SwitchHouseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return HouseErrorCodes.fromFailure(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return HouseErrorCodes.unexpected;
     }
   }
 }
@@ -99,10 +195,10 @@ class CreateHouseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return HouseErrorCodes.fromFailure(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return HouseErrorCodes.unexpected;
     }
   }
 }
@@ -126,10 +222,10 @@ class JoinHouseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return HouseErrorCodes.fromFailure(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return HouseErrorCodes.unexpected;
     }
   }
 }
@@ -209,7 +305,7 @@ class RegenerateCodeNotifier extends AutoDisposeAsyncNotifier<String> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return HouseErrorCodes.fromFailure(e);
     }
   }
 }
@@ -234,10 +330,10 @@ class TransferTreasurerNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return HouseErrorCodes.fromFailure(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return HouseErrorCodes.unexpected;
     }
   }
 }
@@ -262,10 +358,10 @@ class LeaveHouseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return HouseErrorCodes.fromFailure(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return HouseErrorCodes.unexpected;
     }
   }
 }
@@ -280,10 +376,13 @@ class RemoveMemberNotifier extends AutoDisposeAsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
+  /// Public names for the two Treasurer-only guards. Their value is now the
+  /// stable code from [HouseErrorCodes] rather than English prose, so the page
+  /// can resolve it to the active locale — see [HouseErrorCodes.messageFor].
   static const String permissionOnlyTreasurer =
-      'Only the Treasurer can remove a member.';
+      HouseErrorCodes.onlyTreasurerRemove;
   static const String cannotRemoveTreasurer =
-      'The Treasurer cannot be removed. Transfer ownership first.';
+      HouseErrorCodes.cannotRemoveTreasurer;
 
   /// Removes [member] from the current house (soft delete: `isActive` → false).
   ///
@@ -297,11 +396,11 @@ class RemoveMemberNotifier extends AutoDisposeAsyncNotifier<void> {
     try {
       final user = ref.read(currentUserProvider);
       if (user == null || user.uid.isEmpty) {
-        return 'Not authenticated.';
+        return HouseErrorCodes.notAuthenticated;
       }
       final house = ref.read(currentHouseProvider);
       if (house == null) {
-        return 'No active house.';
+        return HouseErrorCodes.noActiveHouse;
       }
       if (house.treasurerId != user.uid) {
         return permissionOnlyTreasurer;
@@ -316,10 +415,10 @@ class RemoveMemberNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return HouseErrorCodes.fromFailure(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return HouseErrorCodes.unexpected;
     }
   }
 }
@@ -362,15 +461,24 @@ class _NoOpHouseRepository implements HouseRepository {
 
   @override
   Future<HouseEntity> createHouse(String houseName, String treasurerId) =>
-      throw FirebaseFailure('Firebase is not configured.');
+      throw FirebaseFailure(
+        'Firebase is not configured.',
+        code: HouseErrorCodes.firebaseNotConfigured,
+      );
 
   @override
   Future<HouseEntity> joinHouse(String inviteCode, String userId) =>
-      throw FirebaseFailure('Firebase is not configured.');
+      throw FirebaseFailure(
+        'Firebase is not configured.',
+        code: HouseErrorCodes.firebaseNotConfigured,
+      );
 
   @override
   Future<String> regenerateInviteCode(String houseId) =>
-      throw FirebaseFailure('Firebase is not configured.');
+      throw FirebaseFailure(
+        'Firebase is not configured.',
+        code: HouseErrorCodes.firebaseNotConfigured,
+      );
 
   @override
   Future<List<HouseMemberEntity>> getMembers(String houseId) =>
@@ -383,17 +491,26 @@ class _NoOpHouseRepository implements HouseRepository {
   @override
   Future<void> transferTreasurer(
           String houseId, String fromId, String toId) =>
-      throw FirebaseFailure('Firebase is not configured.');
+      throw FirebaseFailure(
+        'Firebase is not configured.',
+        code: HouseErrorCodes.firebaseNotConfigured,
+      );
 
   @override
   Future<void> removeMember(
           String houseId, String memberId, String requesterId) =>
-      throw FirebaseFailure('Firebase is not configured.');
+      throw FirebaseFailure(
+        'Firebase is not configured.',
+        code: HouseErrorCodes.firebaseNotConfigured,
+      );
 
   @override
   Future<void> leaveHouse(
           String houseId, String userId, bool isTreasurer) =>
-      throw FirebaseFailure('Firebase is not configured.');
+      throw FirebaseFailure(
+        'Firebase is not configured.',
+        code: HouseErrorCodes.firebaseNotConfigured,
+      );
 
   @override
   Stream<List<HouseMemberEntity>> membersStream(String houseId) =>

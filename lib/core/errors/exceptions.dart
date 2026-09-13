@@ -3,10 +3,16 @@
 /// These are caught by repositories and converted into [Failure] objects
 /// so that presentation layers never deal with raw exceptions.
 sealed class AppException implements Exception {
-  const AppException(this.message, {this.code});
+  const AppException(this.message, {this.code, this.arguments});
 
   final String message;
   final String? code;
+
+  /// Values a rendered message needs, keyed by the `FailureCodes.arg*`
+  /// constants — see `Failure.arguments`. The [message] stays as the
+  /// developer-facing English text; a repository copies this map onto the
+  /// `Failure` it builds so the presentation layer can compose the sentence.
+  final Map<String, Object?>? arguments;
 }
 
 /// Exception thrown when a Firebase operation fails.
@@ -31,7 +37,7 @@ class CacheException extends AppException {
 
 /// Exception thrown when input validation fails.
 class ValidationException extends AppException {
-  const ValidationException(super.message);
+  const ValidationException(super.message, {super.code, super.arguments});
 }
 
 /// Exception thrown when a write is refused because the record is no longer in
@@ -43,5 +49,5 @@ class ValidationException extends AppException {
 /// fail with a message explaining why rather than silently no-op or, worse,
 /// write a second time.
 class ConflictException extends AppException {
-  const ConflictException(super.message, {super.code});
+  const ConflictException(super.message, {super.code, super.arguments});
 }

@@ -1,0 +1,2303 @@
+{
+  "@@locale": "en",
+  "languageSectionTitle": "Language",
+  "@languageSectionTitle": {
+    "description": "Section header for the language picker in Settings."
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "Name of the English language option in the picker."
+  },
+  "languageMalay": "Bahasa Melayu",
+  "@languageMalay": {
+    "description": "Name of the Malay language option in the picker. Language names are written in their own language, so this is identical in both ARB files."
+  },
+  "navHome": "Home",
+  "@navHome": {
+    "description": "Bottom navigation label for the dashboard/home tab."
+  },
+  "navDashboard": "Dashboard",
+  "@navDashboard": {
+    "description": "Navigation drawer label for the dashboard."
+  },
+  "navHistory": "History",
+  "@navHistory": {
+    "description": "Navigation label for the transaction history screen."
+  },
+  "navBillHistory": "Bill History",
+  "@navBillHistory": {
+    "description": "Navigation drawer label for the bill history screen."
+  },
+  "navExpenses": "Expenses",
+  "@navExpenses": {
+    "description": "Navigation label for the expense list screen."
+  },
+  "navMembers": "Members",
+  "@navMembers": {
+    "description": "Navigation drawer label for the household members screen."
+  },
+  "navNotifications": "Notifications",
+  "@navNotifications": {
+    "description": "Navigation drawer label for the notifications screen."
+  },
+  "navReports": "Reports",
+  "@navReports": {
+    "description": "Navigation label for the reports screen."
+  },
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Navigation drawer label for the settings screen."
+  },
+  "actionSignOut": "Sign Out",
+  "@actionSignOut": {
+    "description": "Drawer action that ends the session."
+  },
+  "drawerMyHouses": "MY HOUSES",
+  "@drawerMyHouses": {
+    "description": "Header above the house switcher in the navigation drawer. Shipped in upper case as a styled section label; keep the target translation upper case too."
+  },
+  "actionDirectPayment": "Direct Payment",
+  "@actionDirectPayment": {
+    "description": "Speed-dial action for recording a payment made directly between members. This is a UI label only — the value stored on a transaction is a separate, untranslated Firestore constant."
+  },
+  "actionDeposit": "Deposit",
+  "@actionDeposit": {
+    "description": "Speed-dial action for depositing into the Central Account."
+  },
+  "actionAddExpense": "Add Expense",
+  "@actionAddExpense": {
+    "description": "Speed-dial action for submitting a new expense claim."
+  },
+  "pageNotFoundTitle": "Page not found",
+  "@pageNotFoundTitle": {
+    "description": "Heading on the router's 404 error page."
+  },
+  "pageNotFoundMessage": "The page you are looking for does not exist.",
+  "@pageNotFoundMessage": {
+    "description": "Body text on the router's 404 error page."
+  },
+  "actionGoHome": "Go Home",
+  "@actionGoHome": {
+    "description": "Button on the 404 page that returns to the dashboard."
+  },
+  "unableToOpenItem": "Unable to open this item.",
+  "@unableToOpenItem": {
+    "description": "Fallback shown when a detail route is opened without its payload, e.g. a stale deep link."
+  },
+  "errorGenericMessage": "Something went wrong. Please try again.",
+  "@errorGenericMessage": {
+    "description": "Default message on the shared ErrorDisplay widget when the caller supplies none."
+  },
+  "actionTryAgain": "Try Again",
+  "@actionTryAgain": {
+    "description": "Retry button on the shared ErrorDisplay widget."
+  },
+  "centralAccountBalance": "Central Account Balance",
+  "@centralAccountBalance": {
+    "description": "Default label on the shared BalanceCard when the caller supplies none."
+  },
+  "receiptTitle": "Receipt",
+  "@receiptTitle": {
+    "description": "Default title on the shared full-screen ReceiptViewer when the caller supplies none."
+  },
+  "appTagline": "Your household finances, simplified",
+  "@appTagline": {
+    "description": "Product tagline shown under the app name on the shared AppLogo. The app name itself is a product name and is never translated."
+  },
+  "timeJustNow": "Just now",
+  "@timeJustNow": {
+    "description": "Relative timestamp for something that happened less than a minute ago."
+  },
+  "timeMinutesAgo": "{count}m ago",
+  "@timeMinutesAgo": {
+    "description": "Relative timestamp in minutes. The 'm' is the shipped abbreviation; Malay spells the unit out.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "timeHoursAgo": "{count}h ago",
+  "@timeHoursAgo": {
+    "description": "Relative timestamp in hours, for anything between one hour and one day old.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "timeYesterday": "Yesterday",
+  "@timeYesterday": {
+    "description": "Relative timestamp for exactly one day ago. Also the label of the Yesterday date-filter preset — same word, same meaning."
+  },
+  "timeDaysAgo": "{count}d ago",
+  "@timeDaysAgo": {
+    "description": "Relative timestamp in days, for anything two to six days old.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "timeToday": "Today",
+  "@timeToday": {
+    "description": "The current day. Used both as a relative timestamp and as the label of the Today date-filter preset."
+  },
+  "timeTomorrow": "Tomorrow",
+  "@timeTomorrow": {
+    "description": "The day after today, shown on a bill that falls due tomorrow."
+  },
+  "periodLast7Days": "Last 7 Days",
+  "@periodLast7Days": {
+    "description": "Date-filter preset covering today and the six days before it."
+  },
+  "periodLast30Days": "Last 30 Days",
+  "@periodLast30Days": {
+    "description": "Date-filter preset covering today and the twenty-nine days before it."
+  },
+  "periodLast90Days": "Last 90 Days",
+  "@periodLast90Days": {
+    "description": "Date-filter preset covering today and the eighty-nine days before it."
+  },
+  "periodThisMonth": "This Month",
+  "@periodThisMonth": {
+    "description": "Date-filter preset covering the current calendar month."
+  },
+  "periodLastMonth": "Last Month",
+  "@periodLastMonth": {
+    "description": "Date-filter preset covering the previous calendar month."
+  },
+  "periodAll": "All",
+  "@periodAll": {
+    "description": "Label for 'no date filtering' on the active-filter chip."
+  },
+  "periodCustomRange": "Custom Range",
+  "@periodCustomRange": {
+    "description": "Label for an explicit start/end date range on the active-filter chip."
+  },
+  "billDueToday": "Due Today",
+  "@billDueToday": {
+    "description": "Countdown label on a bill that falls due today."
+  },
+  "billDaysLeft": "{count, plural, =1{1 day left} other{{count} days left}}",
+  "@billDaysLeft": {
+    "description": "Countdown label on a bill that is still in the future. Malay has no plural form, so its translation uses a single `other` branch.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "billOverdueByDays": "{count, plural, =1{Overdue by 1 day} other{Overdue by {count} days}}",
+  "@billOverdueByDays": {
+    "description": "Countdown label on a bill whose due date has passed.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "reportPeriodAllTime": "All time",
+  "@reportPeriodAllTime": {
+    "description": "Reports date filter covering the whole ledger, with no lower bound."
+  },
+  "reportPeriodThisMonth": "This month",
+  "@reportPeriodThisMonth": {
+    "description": "Reports date filter covering the current calendar month. Sentence case, unlike the History chip's periodThisMonth."
+  },
+  "reportPeriodLast3Months": "Last 3 months",
+  "@reportPeriodLast3Months": {
+    "description": "Reports date filter covering the current month and the two before it."
+  },
+  "reportPeriodThisYear": "This year",
+  "@reportPeriodThisYear": {
+    "description": "Reports date filter covering the current calendar year."
+  },
+  "reportPeriodCustomRange": "Custom range",
+  "@reportPeriodCustomRange": {
+    "description": "Reports date filter for an explicit start/end range. Sentence case, unlike the History chip's periodCustomRange."
+  },
+  "authSignInCancelled": "Sign in cancelled.",
+  "@authSignInCancelled": {
+    "description": "Shown when the user dismisses the Google sign-in sheet. NOTE: the code never compares against this text — the cancellation is detected by the stable `cancelled` failure code (see AuthErrorCodes), so translating it cannot break the flow."
+  },
+  "scaffoldGreeting": "Hello, {name}",
+  "@scaffoldGreeting": {
+    "description": "SCAFFOLD ONLY — proves placeholder interpolation generates and resolves. Delete once the real string migration lands; the `scaffold` prefix marks keys that are not part of the shipped UI.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Raymond"
+      }
+    }
+  },
+  "scaffoldItemCount": "{count, plural, =0{No items} =1{1 item} other{{count} items}}",
+  "@scaffoldItemCount": {
+    "description": "SCAFFOLD ONLY — proves ICU pluralisation generates and resolves per locale. Delete once the real string migration lands.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statusPending": "Pending",
+  "@statusPending": {
+    "description": "Expense or bill awaiting Treasurer review."
+  },
+  "statusApproved": "Approved",
+  "@statusApproved": {
+    "description": "Expense approved by the Treasurer and awaiting payment."
+  },
+  "statusRejected": "Rejected",
+  "@statusRejected": {
+    "description": "Expense declined by the Treasurer."
+  },
+  "statusPaid": "Paid",
+  "@statusPaid": {
+    "description": "Expense reimbursed, or bill settled."
+  },
+  "statusSubmitted": "Submitted",
+  "@statusSubmitted": {
+    "description": "Expense submitted by a member and awaiting review."
+  },
+  "statusCompleted": "Completed",
+  "@statusCompleted": {
+    "description": "Generic finished state for a record."
+  },
+  "statusOverdue": "Overdue",
+  "@statusOverdue": {
+    "description": "A bill whose due date has passed."
+  },
+  "txnTypeDeposit": "Deposit",
+  "@txnTypeDeposit": {
+    "description": "Money paid into the central house account."
+  },
+  "txnTypeReimbursement": "Reimbursement",
+  "@txnTypeReimbursement": {
+    "description": "Money paid out to reimburse a member."
+  },
+  "txnTypeDirectPayment": "Direct Payment",
+  "@txnTypeDirectPayment": {
+    "description": "Money paid straight out of the central account."
+  },
+  "txnTypeAdjustment": "Adjustment",
+  "@txnTypeAdjustment": {
+    "description": "Manual correction to the central account balance."
+  },
+  "txnTypeExpense": "Expense",
+  "@txnTypeExpense": {
+    "description": "Generic label for an expense record."
+  },
+  "txnTypeBill": "Bill",
+  "@txnTypeBill": {
+    "description": "Generic label for a recurring or one-off bill."
+  },
+  "txnTypeActivity": "Activity",
+  "@txnTypeActivity": {
+    "description": "Fallback title when an activity item has no description."
+  },
+  "paymentSourcePersonal": "Personal",
+  "@paymentSourcePersonal": {
+    "description": "The member paid out of their own pocket and is owed a reimbursement."
+  },
+  "paymentSourceCentral": "Central Account",
+  "@paymentSourceCentral": {
+    "description": "The money came out of the shared house account."
+  },
+  "paymentSourcePersonalReimbursement": "Personal (reimbursement)",
+  "@paymentSourcePersonalReimbursement": {
+    "description": "Expanded personal-source label on the expense detail page."
+  },
+  "paymentMethodCash": "Cash",
+  "@paymentMethodCash": {
+    "description": "Display label for the stored payment method \"Cash\"."
+  },
+  "paymentMethodBankTransfer": "Bank Transfer",
+  "@paymentMethodBankTransfer": {
+    "description": "Display label for the stored payment method \"Bank Transfer\"."
+  },
+  "paymentMethodEWallet": "e-Wallet",
+  "@paymentMethodEWallet": {
+    "description": "Display label for the stored payment method \"e-Wallet\"."
+  },
+  "paymentMethodCard": "Card",
+  "@paymentMethodCard": {
+    "description": "Display label for the stored payment method \"Card\"."
+  },
+  "categoryRent": "Rent",
+  "@categoryRent": {
+    "description": "Display label for the default \"Rent\" category."
+  },
+  "categoryUtilities": "Utilities",
+  "@categoryUtilities": {
+    "description": "Display label for the default \"Utilities\" category."
+  },
+  "categoryFood": "Food",
+  "@categoryFood": {
+    "description": "Display label for the default \"Food\" category."
+  },
+  "categoryHousehold": "Household",
+  "@categoryHousehold": {
+    "description": "Display label for the default \"Household\" category."
+  },
+  "categoryMaintenance": "Maintenance",
+  "@categoryMaintenance": {
+    "description": "Display label for the default \"Maintenance\" category."
+  },
+  "categoryInternet": "Internet",
+  "@categoryInternet": {
+    "description": "Display label for the default \"Internet\" category."
+  },
+  "categoryOther": "Other",
+  "@categoryOther": {
+    "description": "Display label for the default \"Other\" category."
+  },
+  "categoryAll": "All Categories",
+  "@categoryAll": {
+    "description": "Filter chip that clears the category filter."
+  },
+  "categoryNoneAvailable": "No categories available.",
+  "@categoryNoneAvailable": {
+    "description": "Shown when a house has no categories to pick from."
+  },
+  "actionBack": "Back",
+  "@actionBack": {
+    "description": "App bar back button."
+  },
+  "actionSave": "Save",
+  "@actionSave": {
+    "description": "Save button."
+  },
+  "actionCancel": "Cancel",
+  "@actionCancel": {
+    "description": "Dismiss a dialog without applying changes."
+  },
+  "actionDelete": "Delete",
+  "@actionDelete": {
+    "description": "Delete button."
+  },
+  "actionRemove": "Remove",
+  "@actionRemove": {
+    "description": "Remove an attachment, member or item."
+  },
+  "actionEdit": "Edit",
+  "@actionEdit": {
+    "description": "Edit button."
+  },
+  "actionClose": "Close",
+  "@actionClose": {
+    "description": "Close a sheet or dialog."
+  },
+  "actionDone": "Done",
+  "@actionDone": {
+    "description": "Finish a step or dialog."
+  },
+  "actionApply": "Apply",
+  "@actionApply": {
+    "description": "Apply the selected filters."
+  },
+  "actionReset": "Reset",
+  "@actionReset": {
+    "description": "Clear every filter back to its default."
+  },
+  "actionClearAll": "Clear all",
+  "@actionClearAll": {
+    "description": "Clear every active filter or search term."
+  },
+  "actionAdd": "Add",
+  "@actionAdd": {
+    "description": "Add button."
+  },
+  "actionViewAll": "View All",
+  "@actionViewAll": {
+    "description": "Open the full list behind a dashboard section."
+  },
+  "actionSeeAll": "See all",
+  "@actionSeeAll": {
+    "description": "Open the full list behind a dashboard section."
+  },
+  "actionSeeAllActivity": "See All Activity",
+  "@actionSeeAllActivity": {
+    "description": "Open the full history timeline from the dashboard."
+  },
+  "actionShare": "Share",
+  "@actionShare": {
+    "description": "Share the house invite code."
+  },
+  "actionCopy": "Copy",
+  "@actionCopy": {
+    "description": "Copy the house invite code to the clipboard."
+  },
+  "actionCopied": "Copied",
+  "@actionCopied": {
+    "description": "Confirmation after copying to the clipboard."
+  },
+  "actionYes": "Yes",
+  "@actionYes": {
+    "description": "Affirmative answer in a confirmation dialog."
+  },
+  "actionNo": "No",
+  "@actionNo": {
+    "description": "Negative answer in a confirmation dialog."
+  },
+  "actionPreview": "Preview",
+  "@actionPreview": {
+    "description": "Open an image full screen."
+  },
+  "actionTakePhoto": "Take Photo",
+  "@actionTakePhoto": {
+    "description": "Capture a photo with the camera."
+  },
+  "actionChoosePhoto": "Choose Photo",
+  "@actionChoosePhoto": {
+    "description": "Pick a photo from the device."
+  },
+  "actionChooseFromGallery": "Choose from Gallery",
+  "@actionChooseFromGallery": {
+    "description": "Pick a profile photo from the device."
+  },
+  "actionShowPassword": "Show password",
+  "@actionShowPassword": {
+    "description": "Reveal the password field contents."
+  },
+  "actionHidePassword": "Hide password",
+  "@actionHidePassword": {
+    "description": "Mask the password field contents."
+  },
+  "actionMarkPaid": "Mark as Paid",
+  "@actionMarkPaid": {
+    "description": "Settle an approved expense or a bill."
+  },
+  "actionApprove": "Approve",
+  "@actionApprove": {
+    "description": "Treasurer approves an expense."
+  },
+  "actionReject": "Reject",
+  "@actionReject": {
+    "description": "Treasurer rejects an expense."
+  },
+  "actionExportPdf": "Export PDF",
+  "@actionExportPdf": {
+    "description": "Export the current report as a PDF file."
+  },
+  "actionMarkAllRead": "Mark all as read",
+  "@actionMarkAllRead": {
+    "description": "Mark every notification as read."
+  },
+  "actionGotIt": "Got it",
+  "@actionGotIt": {
+    "description": "Dismiss an informational dialog."
+  },
+  "labelStatus": "Status",
+  "@labelStatus": {
+    "description": "Status field label."
+  },
+  "labelCategory": "Category",
+  "@labelCategory": {
+    "description": "Category field label."
+  },
+  "labelType": "Type",
+  "@labelType": {
+    "description": "Transaction type field label."
+  },
+  "labelPeriod": "Period",
+  "@labelPeriod": {
+    "description": "Period covered by a payment."
+  },
+  "labelFilters": "Filters",
+  "@labelFilters": {
+    "description": "Filter sheet title."
+  },
+  "labelPaymentMethod": "Payment Method",
+  "@labelPaymentMethod": {
+    "description": "How the money moved."
+  },
+  "labelPaymentSource": "Payment Source",
+  "@labelPaymentSource": {
+    "description": "Whether the money was personal or central."
+  },
+  "labelPaidBy": "Paid by",
+  "@labelPaidBy": {
+    "description": "Who physically handed over the money."
+  },
+  "labelRecordedBy": "Recorded by",
+  "@labelRecordedBy": {
+    "description": "Who entered the record."
+  },
+  "labelPerformedBy": "Performed By",
+  "@labelPerformedBy": {
+    "description": "Who carried out the transaction."
+  },
+  "labelPurchasedBy": "Purchased By",
+  "@labelPurchasedBy": {
+    "description": "Who bought the item."
+  },
+  "labelDueDate": "Due Date",
+  "@labelDueDate": {
+    "description": "Date a bill must be paid by."
+  },
+  "labelCreated": "Created",
+  "@labelCreated": {
+    "description": "Date a record was created."
+  },
+  "labelDate": "Date",
+  "@labelDate": {
+    "description": "Date field label."
+  },
+  "labelPurpose": "Purpose",
+  "@labelPurpose": {
+    "description": "Why the money moved."
+  },
+  "labelReceiptProof": "Receipt / Proof",
+  "@labelReceiptProof": {
+    "description": "Receipt or proof of payment attachment."
+  },
+  "labelReceiptProofRequired": "Receipt / Proof (required)",
+  "@labelReceiptProofRequired": {
+    "description": "Attachment field that must be filled before submitting."
+  },
+  "labelMember": "Member",
+  "@labelMember": {
+    "description": "A single house member."
+  },
+  "labelMembers": "Members",
+  "@labelMembers": {
+    "description": "The house member list."
+  },
+  "labelTreasurer": "Treasurer",
+  "@labelTreasurer": {
+    "description": "House member who manages the account."
+  },
+  "labelRole": "Role",
+  "@labelRole": {
+    "description": "The part a member plays in the house."
+  },
+  "labelHouse": "House",
+  "@labelHouse": {
+    "description": "The house a member belongs to."
+  },
+  "labelHouseName": "House Name",
+  "@labelHouseName": {
+    "description": "Name of the house."
+  },
+  "labelNotSet": "Not set",
+  "@labelNotSet": {
+    "description": "Placeholder when a profile field is empty."
+  },
+  "labelNoEmail": "No email",
+  "@labelNoEmail": {
+    "description": "Placeholder when an account has no email address."
+  },
+  "labelNet": "Net",
+  "@labelNet": {
+    "description": "Net money in minus money out."
+  },
+  "labelAmount": "Amount",
+  "@labelAmount": {
+    "description": "A money amount."
+  },
+  "labelSupport": "Support",
+  "@labelSupport": {
+    "description": "Settings section heading."
+  },
+  "labelAbout": "About",
+  "@labelAbout": {
+    "description": "Settings section heading."
+  },
+  "emptyNoResults": "No results found",
+  "@emptyNoResults": {
+    "description": "Shown when a search or filter matches nothing."
+  },
+  "emptyNoActivity": "No activity yet",
+  "@emptyNoActivity": {
+    "description": "Shown on an empty history timeline."
+  },
+  "emptyNoMembers": "No members yet",
+  "@emptyNoMembers": {
+    "description": "Shown on an empty member list."
+  },
+  "emptyNoNotifications": "No notifications yet",
+  "@emptyNoNotifications": {
+    "description": "Shown on an empty notification list."
+  },
+  "emptyNoExpenses": "No expenses yet",
+  "@emptyNoExpenses": {
+    "description": "Shown on an empty expense list."
+  },
+  "emptyNoBills": "No bills yet",
+  "@emptyNoBills": {
+    "description": "Shown on an empty bill list."
+  },
+  "errorFailedToLoad": "Failed to load",
+  "@errorFailedToLoad": {
+    "description": "Generic load failure heading."
+  },
+  "errorFailedToLoadReceipt": "Failed to load receipt",
+  "@errorFailedToLoadReceipt": {
+    "description": "Shown when a receipt image cannot be displayed."
+  },
+  "errorNetwork": "No internet connection.",
+  "@errorNetwork": {
+    "description": "Shown when a request fails because the device is offline."
+  },
+  "errorOffline": "You are offline. Showing cached data.",
+  "@errorOffline": {
+    "description": "Shown when the app falls back to cached data."
+  },
+  "errorPermission": "You do not have permission to do that.",
+  "@errorPermission": {
+    "description": "Shown when an action is refused by the security rules."
+  },
+  "errorNotFound": "We could not find that item.",
+  "@errorNotFound": {
+    "description": "Shown when the requested record no longer exists."
+  },
+  "errorAuthentication": "Please sign in again.",
+  "@errorAuthentication": {
+    "description": "Shown when the session is no longer valid."
+  },
+  "errorUnexpected": "Something went wrong. Please try again.",
+  "@errorUnexpected": {
+    "description": "Generic fallback for an error with no more specific message."
+  },
+  "errorLoadFailed": "We could not load this. Please try again.",
+  "@errorLoadFailed": {
+    "description": "Shown when a list or page fails to load."
+  },
+  "errorSaveFailed": "We could not save your changes. Please try again.",
+  "@errorSaveFailed": {
+    "description": "Shown when a write or update fails."
+  },
+  "houseAlreadyMember": "You are already a member of this house.",
+  "@houseAlreadyMember": {
+    "description": "Shown when a join code resolves to a house the user already belongs to."
+  },
+  "houseJoinInvalidCode": "That invite code is not valid.",
+  "@houseJoinInvalidCode": {
+    "description": "Shown when a join code matches no house."
+  },
+  "errorActionFailed": "We could not complete that action. Please try again.",
+  "@errorActionFailed": {
+    "description": "Generic message for a refused financial transition (approve, reject, mark paid)."
+  },
+  "errorExpenseAlreadyReviewed": "This expense has already been reviewed by someone else. Refresh to see its current state.",
+  "@errorExpenseAlreadyReviewed": {
+    "description": "Shown when an approve or reject loses a race against another Treasurer."
+  },
+  "errorExpenseNotAwaitingReimbursement": "This expense is not awaiting reimbursement. Refresh to see its current state.",
+  "@errorExpenseNotAwaitingReimbursement": {
+    "description": "Shown when Mark Paid is used on an expense that is not in the approved state."
+  },
+  "errorBillAlreadyPaid": "This bill has already been paid for that period. Refresh to see its current state.",
+  "@errorBillAlreadyPaid": {
+    "description": "Shown when a bill payment is submitted twice for the same due date."
+  },
+  "errorRecordMissing": "This record no longer exists. Refresh to see the current list.",
+  "@errorRecordMissing": {
+    "description": "Shown when the record a user is acting on was deleted in another session."
+  },
+  "errorInsufficientBalance": "Insufficient balance. This payment of {amount} exceeds the Central Account balance of {balance}.",
+  "@errorInsufficientBalance": {
+    "description": "Refusal shown when an outflow would overdraw the Central Account. Both figures are formatted for the current locale.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "RM 150.00"
+      },
+      "balance": {
+        "type": "String",
+        "example": "RM 90.00"
+      }
+    }
+  },
+  "authEmailLabel": "Email",
+  "@authEmailLabel": {
+    "description": "Label of the email field on the sign-in, register and forgot-password forms."
+  },
+  "authEmailHint": "you@example.com",
+  "@authEmailHint": {
+    "description": "Greyed-out example address inside the forgot-password email field."
+  },
+  "authEmailRequired": "Please enter your email",
+  "@authEmailRequired": {
+    "description": "Validation error when the email field is left empty."
+  },
+  "authEmailInvalid": "Please enter a valid email",
+  "@authEmailInvalid": {
+    "description": "Validation error when the email field has no @ sign."
+  },
+  "authPasswordLabel": "Password",
+  "@authPasswordLabel": {
+    "description": "Label of the password field on the sign-in and register forms."
+  },
+  "authPasswordRequired": "Please enter your password",
+  "@authPasswordRequired": {
+    "description": "Validation error when the sign-in password field is empty."
+  },
+  "authCreatePasswordRequired": "Please enter a password",
+  "@authCreatePasswordRequired": {
+    "description": "Validation error when the register password field is empty."
+  },
+  "authPasswordMinLength": "Password must be at least {count} characters",
+  "@authPasswordMinLength": {
+    "description": "Validation error when a password is shorter than the minimum length.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "6"
+      }
+    }
+  },
+  "authForgotPassword": "Forgot Password?",
+  "@authForgotPassword": {
+    "description": "Link on the sign-in page that opens the password-reset request page."
+  },
+  "authSignIn": "Sign In",
+  "@authSignIn": {
+    "description": "Primary button on the sign-in page, and the link back to it from the register page."
+  },
+  "authSignUp": "Sign Up",
+  "@authSignUp": {
+    "description": "Link on the sign-in page that opens the registration page."
+  },
+  "authOrContinueWith": "or continue with",
+  "@authOrContinueWith": {
+    "description": "Divider caption above the social sign-in buttons."
+  },
+  "authContinueWithGoogle": "Continue with Google",
+  "@authContinueWithGoogle": {
+    "description": "Google sign-in button label."
+  },
+  "authContinueWithApple": "Continue with Apple",
+  "@authContinueWithApple": {
+    "description": "Apple sign-in button label (iOS/macOS only)."
+  },
+  "authNoAccountPrompt": "Don't have an account?",
+  "@authNoAccountPrompt": {
+    "description": "Caption before the Sign Up link on the sign-in page."
+  },
+  "authHaveAccountPrompt": "Already have an account?",
+  "@authHaveAccountPrompt": {
+    "description": "Caption before the Sign In link on the register page."
+  },
+  "authCreateAccount": "Create Account",
+  "@authCreateAccount": {
+    "description": "Heading and primary button label on the register page."
+  },
+  "authRegisterSubtitle": "Join your house and start tracking expenses.",
+  "@authRegisterSubtitle": {
+    "description": "Sub-heading on the register page."
+  },
+  "authFullNameLabel": "Full Name",
+  "@authFullNameLabel": {
+    "description": "Label of the name field on the register form."
+  },
+  "authNameRequired": "Please enter your name",
+  "@authNameRequired": {
+    "description": "Validation error when the register name field is empty."
+  },
+  "authConfirmPasswordLabel": "Confirm Password",
+  "@authConfirmPasswordLabel": {
+    "description": "Label of the confirm-password field on the register form."
+  },
+  "authConfirmPasswordRequired": "Please confirm your password",
+  "@authConfirmPasswordRequired": {
+    "description": "Validation error when the register confirm-password field is empty."
+  },
+  "authPasswordsDoNotMatch": "Passwords do not match",
+  "@authPasswordsDoNotMatch": {
+    "description": "Validation error when the two password fields differ."
+  },
+  "authResetPasswordTitle": "Reset Password",
+  "@authResetPasswordTitle": {
+    "description": "App bar title on the forgot-password and reset-password pages, and the reset form's submit button."
+  },
+  "authResetYourPasswordTitle": "Reset your password",
+  "@authResetYourPasswordTitle": {
+    "description": "Heading on the forgot-password form."
+  },
+  "authResetInstructions": "Enter your email and we'll send you a secure link to reset your password.",
+  "@authResetInstructions": {
+    "description": "Body text under the forgot-password heading."
+  },
+  "authSending": "Sending...",
+  "@authSending": {
+    "description": "Send-reset-link button label while the email is being sent."
+  },
+  "authSendResetLink": "Send Reset Link",
+  "@authSendResetLink": {
+    "description": "Send-reset-link button label at rest."
+  },
+  "authBackToSignIn": "Back to Sign In",
+  "@authBackToSignIn": {
+    "description": "Link back to the sign-in page from the password-reset pages."
+  },
+  "authEmailSentTitle": "Email Sent!",
+  "@authEmailSentTitle": {
+    "description": "Success heading after the reset email is sent."
+  },
+  "authEmailSentBody": "Check your inbox for the password reset link. It may take a few minutes to arrive.",
+  "@authEmailSentBody": {
+    "description": "Success body text after the reset email is sent."
+  },
+  "authVerifyingLink": "Verifying your reset link…",
+  "@authVerifyingLink": {
+    "description": "Spinner caption while the Firebase action code is validated."
+  },
+  "authResetLinkInvalidTitle": "Reset link not valid",
+  "@authResetLinkInvalidTitle": {
+    "description": "Heading shown when the reset link is missing, invalid or expired."
+  },
+  "authResetLinkInvalidBody": "This reset link is invalid or has expired.\nPlease request a new one.",
+  "@authResetLinkInvalidBody": {
+    "description": "Body shown when the reset link is invalid or expired and no more specific reason is available."
+  },
+  "authRequestNewLink": "Request a New Link",
+  "@authRequestNewLink": {
+    "description": "Button on the invalid-reset-link state that opens the forgot-password page."
+  },
+  "authSetNewPasswordTitle": "Set a new password",
+  "@authSetNewPasswordTitle": {
+    "description": "Heading on the new-password form of the reset page."
+  },
+  "authSetNewPasswordBody": "Enter a new password for your account. It must be at least {count} characters.",
+  "@authSetNewPasswordBody": {
+    "description": "Body text above the new-password form, stating the minimum length.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "6"
+      }
+    }
+  },
+  "authNewPasswordLabel": "New password",
+  "@authNewPasswordLabel": {
+    "description": "Label of the new-password field on the reset form."
+  },
+  "authNewPasswordRequired": "Please enter a new password",
+  "@authNewPasswordRequired": {
+    "description": "Validation error when the new-password field is empty."
+  },
+  "authConfirmNewPasswordLabel": "Confirm new password",
+  "@authConfirmNewPasswordLabel": {
+    "description": "Label of the confirm field on the reset form."
+  },
+  "authConfirmNewPasswordRequired": "Please confirm your new password",
+  "@authConfirmNewPasswordRequired": {
+    "description": "Validation error when the reset confirm-password field is empty."
+  },
+  "authResetting": "Resetting…",
+  "@authResetting": {
+    "description": "Submit button label while the new password is being saved."
+  },
+  "authPasswordUpdatedTitle": "Password Updated!",
+  "@authPasswordUpdatedTitle": {
+    "description": "Success heading after the password has been changed."
+  },
+  "authPasswordUpdatedBody": "Your password has been changed. You can now sign in with your new password.",
+  "@authPasswordUpdatedBody": {
+    "description": "Success body text after the password has been changed."
+  },
+  "authErrorInvalidEmail": "Invalid email address.",
+  "@authErrorInvalidEmail": {
+    "description": "Sign-in/register error for Firebase code invalid-email."
+  },
+  "authErrorUserDisabled": "This account has been disabled.",
+  "@authErrorUserDisabled": {
+    "description": "Sign-in error for Firebase code user-disabled."
+  },
+  "authErrorUserNotFound": "No account found with this email.",
+  "@authErrorUserNotFound": {
+    "description": "Sign-in error for Firebase code user-not-found."
+  },
+  "authErrorInvalidCredentials": "Invalid email or password.",
+  "@authErrorInvalidCredentials": {
+    "description": "Sign-in error for the wrong-password and invalid-credential codes."
+  },
+  "authErrorEmailAlreadyInUse": "An account already exists with this email.",
+  "@authErrorEmailAlreadyInUse": {
+    "description": "Registration error for Firebase code email-already-in-use."
+  },
+  "authErrorOperationNotAllowed": "Email/password sign-in is not enabled.",
+  "@authErrorOperationNotAllowed": {
+    "description": "Error for Firebase code operation-not-allowed."
+  },
+  "authErrorTooManyRequests": "Too many attempts. Please try again later.",
+  "@authErrorTooManyRequests": {
+    "description": "Error for Firebase code too-many-requests."
+  },
+  "authErrorWeakPassword": "Password is too weak.",
+  "@authErrorWeakPassword": {
+    "description": "Registration/reset error for Firebase code weak-password."
+  },
+  "authErrorInvalidActionCode": "This reset link is invalid. Please request a new one.",
+  "@authErrorInvalidActionCode": {
+    "description": "Reset error for Firebase code invalid-action-code."
+  },
+  "authErrorExpiredActionCode": "This reset link has expired. Please request a new one.",
+  "@authErrorExpiredActionCode": {
+    "description": "Reset error for Firebase code expired-action-code."
+  },
+  "authErrorNetworkFailed": "Network error. Please check your connection.",
+  "@authErrorNetworkFailed": {
+    "description": "Error for Firebase code network-request-failed."
+  },
+  "authErrorRequiresRecentLogin": "Please sign in again to continue.",
+  "@authErrorRequiresRecentLogin": {
+    "description": "Error for Firebase code requires-recent-login."
+  },
+  "authErrorMissingActionCode": "This reset link is missing its code. Please request a new one.",
+  "@authErrorMissingActionCode": {
+    "description": "Reset page opened without an action code in the link."
+  },
+  "authErrorVerifyLinkFailed": "We could not verify this reset link. Please request a new one.",
+  "@authErrorVerifyLinkFailed": {
+    "description": "Unexpected failure while validating the reset action code."
+  },
+  "authErrorNotConfigured": "Firebase is not configured.",
+  "@authErrorNotConfigured": {
+    "description": "Shown when the app runs without a Firebase configuration, so auth cannot work."
+  },
+  "expenseFieldTitle": "Title",
+  "@expenseFieldTitle": {
+    "description": "Label of the expense-title field on Add Expense and Direct Payment."
+  },
+  "expenseFieldTitleHint": "What did you buy?",
+  "@expenseFieldTitleHint": {
+    "description": "Hint inside the title field on Add Expense."
+  },
+  "expenseFieldAmountRm": "Amount (RM)",
+  "@expenseFieldAmountRm": {
+    "description": "Label of the amount field. The currency code RM is a currency code and is never translated."
+  },
+  "expenseFieldDescription": "Description (optional)",
+  "@expenseFieldDescription": {
+    "description": "Label of the optional description field on Add Expense."
+  },
+  "expenseFieldDescriptionHint": "Add more details...",
+  "@expenseFieldDescriptionHint": {
+    "description": "Hint inside the optional description field on Add Expense."
+  },
+  "expenseFieldRequired": "Required",
+  "@expenseFieldRequired": {
+    "description": "Validation error under an empty required field."
+  },
+  "expenseFieldInvalidAmount": "Enter a valid amount",
+  "@expenseFieldInvalidAmount": {
+    "description": "Validation error when the amount is not a positive number."
+  },
+  "expenseFieldForMonth": "For month (optional)",
+  "@expenseFieldForMonth": {
+    "description": "Label of the optional month/period field on Deposit and Direct Payment."
+  },
+  "expenseFieldForMonthHint": "e.g. 2026-09",
+  "@expenseFieldForMonthHint": {
+    "description": "Hint inside the optional month/period field, showing the expected year-month format. The example digits stay the same in both locales."
+  },
+  "expenseCategoriesLoadError": "Could not load categories",
+  "@expenseCategoriesLoadError": {
+    "description": "Shown in place of the category picker when the category list fails to load."
+  },
+  "expensePhotoError": "Could not take a photo. Please try again.",
+  "@expensePhotoError": {
+    "description": "Error snackbar when the camera or gallery picker throws."
+  },
+  "expenseRemoveReceiptTitle": "Remove Receipt",
+  "@expenseRemoveReceiptTitle": {
+    "description": "Title of the dialog that confirms removing an attached receipt on Add Expense."
+  },
+  "expenseRemoveReceiptMessage": "Are you sure you want to remove this receipt?",
+  "@expenseRemoveReceiptMessage": {
+    "description": "Body of the dialog that confirms removing an attached receipt on Add Expense."
+  },
+  "expensePreviewReceipt": "Preview Receipt",
+  "@expensePreviewReceipt": {
+    "description": "Button that opens the attached receipt full screen on Add Expense."
+  },
+  "expensePreviewProof": "Preview Proof",
+  "@expensePreviewProof": {
+    "description": "Button that opens the attached proof image full screen in the shared ProofPicker."
+  },
+  "expenseRemoveProofTitle": "Remove Proof",
+  "@expenseRemoveProofTitle": {
+    "description": "Title of the dialog that confirms removing an attached proof image in the shared ProofPicker."
+  },
+  "expenseRemoveProofMessage": "Are you sure you want to remove this proof?",
+  "@expenseRemoveProofMessage": {
+    "description": "Body of the dialog that confirms removing an attached proof image in the shared ProofPicker."
+  },
+  "expenseSubmit": "Submit Expense",
+  "@expenseSubmit": {
+    "description": "Primary button that submits a new expense claim."
+  },
+  "expenseSubmitting": "Submitting...",
+  "@expenseSubmitting": {
+    "description": "Label on the submit button while the expense claim is being written."
+  },
+  "expenseSubmitted": "Expense submitted",
+  "@expenseSubmitted": {
+    "description": "Success snackbar after an expense claim is submitted."
+  },
+  "expensePaymentSourceReimburse": "Personal (reimburse me)",
+  "@expensePaymentSourceReimburse": {
+    "description": "Payment-source choice meaning the member paid out of their own pocket and wants reimbursing. This is a UI label only — the stored value is the separate, untranslated constant `personal`."
+  },
+  "expensePaymentSourceReimburseInfo": "You will be reimbursed from the Central Account after approval.",
+  "@expensePaymentSourceReimburseInfo": {
+    "description": "Info banner under the payment-source chips when the personal source is selected."
+  },
+  "expensePaymentSourceCentralInfo": "This will be paid directly from the Central Account.",
+  "@expensePaymentSourceCentralInfo": {
+    "description": "Info banner under the payment-source chips when the central source is selected."
+  },
+  "expenseMenuTooltip": "Menu",
+  "@expenseMenuTooltip": {
+    "description": "Tooltip on the Expenses app-bar button that opens the navigation drawer. \"Menu\" is the ordinary Malay word, so the two locales are identical by design."
+  },
+  "expenseFilterAll": "All",
+  "@expenseFilterAll": {
+    "description": "The status filter tab that clears the status filter on the expense list."
+  },
+  "expenseListLoadError": "Could not load expenses.",
+  "@expenseListLoadError": {
+    "description": "Fallback error on the expense list when the failure carries no message of its own."
+  },
+  "expenseEmptyDescription": "Submit an expense to get started.",
+  "@expenseEmptyDescription": {
+    "description": "Body of the empty state on the expense list when no status filter is active."
+  },
+  "expenseEmptyFiltered": "No {status} expenses yet.",
+  "@expenseEmptyFiltered": {
+    "description": "Body of the empty state on the expense list while a status filter is active. The {status} placeholder carries an already-localized status label.",
+    "placeholders": {
+      "status": {
+        "type": "String",
+        "example": "Pending"
+      }
+    }
+  },
+  "expenseUnknownMember": "Unknown Member",
+  "@expenseUnknownMember": {
+    "description": "Fallback shown in place of a purchaser's name when it cannot be resolved. Never a real member name."
+  },
+  "depositRecordTitle": "Record Deposit",
+  "@depositRecordTitle": {
+    "description": "Title of the Record Deposit screen, and the label of its submit button."
+  },
+  "depositSubtitle": "Add money to the Central Account.",
+  "@depositSubtitle": {
+    "description": "Explanatory line under the icon on the Record Deposit screen."
+  },
+  "depositPurposeLabel": "Purpose (optional)",
+  "@depositPurposeLabel": {
+    "description": "Label of the optional purpose dropdown on the Record Deposit screen."
+  },
+  "depositPurposeHint": "e.g. Monthly Rental",
+  "@depositPurposeHint": {
+    "description": "Hint inside the optional purpose dropdown; it names one of the seeded purposes, so it matches that purpose's localized label."
+  },
+  "depositNotesLabel": "Notes (optional)",
+  "@depositNotesLabel": {
+    "description": "Label of the optional notes field on the Record Deposit screen."
+  },
+  "depositNotesHint": "e.g. Sep rent for Ahmad & Mei",
+  "@depositNotesHint": {
+    "description": "Hint inside the optional notes field. The sample member names are illustrative user data and are left as-is in both locales."
+  },
+  "depositRecorded": "Deposit recorded",
+  "@depositRecorded": {
+    "description": "Success snackbar after a deposit is recorded."
+  },
+  "depositProofRequiredHint": "Attach a receipt or proof above to record the deposit.",
+  "@depositProofRequiredHint": {
+    "description": "Shown under the disabled submit button on the Record Deposit screen until a proof image is attached."
+  },
+  "depositPurposeMonthlyRental": "Monthly Rental",
+  "@depositPurposeMonthlyRental": {
+    "description": "Display label for the stored deposit purpose \"Monthly Rental\". The stored value itself is never translated."
+  },
+  "depositPurposeHouseContribution": "House Contribution",
+  "@depositPurposeHouseContribution": {
+    "description": "Display label for the stored deposit purpose \"House Contribution\". The stored value itself is never translated."
+  },
+  "depositPurposeGeneralTopUp": "General Top-up",
+  "@depositPurposeGeneralTopUp": {
+    "description": "Display label for the stored deposit purpose \"General Top-up\". The stored value itself is never translated."
+  },
+  "depositPurposeUtilities": "Utilities",
+  "@depositPurposeUtilities": {
+    "description": "Display label for the stored deposit purpose \"Utilities\". The stored value itself is never translated."
+  },
+  "depositPurposeOther": "Other",
+  "@depositPurposeOther": {
+    "description": "Display label for the stored deposit purpose \"Other\". The stored value itself is never translated."
+  },
+  "directPaymentSubtitle": "Pay directly from the Central Account.",
+  "@directPaymentSubtitle": {
+    "description": "Explanatory line under the icon on the Direct Payment screen."
+  },
+  "directPaymentTitleHint": "What was it for?",
+  "@directPaymentTitleHint": {
+    "description": "Hint inside the title field on the Direct Payment screen."
+  },
+  "directPaymentRecord": "Record Payment",
+  "@directPaymentRecord": {
+    "description": "Primary button that records a direct payment."
+  },
+  "directPaymentRecorded": "Payment recorded",
+  "@directPaymentRecorded": {
+    "description": "Success snackbar after a direct payment is recorded."
+  },
+  "directPaymentProofRequiredHint": "Attach a receipt or proof above to record the payment.",
+  "@directPaymentProofRequiredHint": {
+    "description": "Shown under the disabled submit button on the Direct Payment screen until a proof image is attached."
+  },
+  "houseCreateTitle": "Create House",
+  "@houseCreateTitle": {
+    "description": "App bar title of the Create House onboarding page, and the label of its submit button."
+  },
+  "houseCreateHeading": "Create Your House",
+  "@houseCreateHeading": {
+    "description": "Large heading above the Create House form."
+  },
+  "houseCreateSubtitle": "Set up your shared household account.",
+  "@houseCreateSubtitle": {
+    "description": "Supporting line under the Create House heading."
+  },
+  "houseNameHint": "e.g. Jalan Ampang Homestead",
+  "@houseNameHint": {
+    "description": "Placeholder example inside the House Name field. An illustrative sample only — never a real house name."
+  },
+  "houseNameRequired": "Please enter a house name",
+  "@houseNameRequired": {
+    "description": "Validation error under the House Name field when it is left empty."
+  },
+  "houseCreateTreasurerNotice": "You will become the Treasurer of this house.",
+  "@houseCreateTreasurerNotice": {
+    "description": "Informational note on the Create House form explaining the creator's role."
+  },
+  "houseCreateAlreadyHave": "Already have a house?",
+  "@houseCreateAlreadyHave": {
+    "description": "Lead-in text next to the link that opens the Join House page."
+  },
+  "houseJoinWithCode": "Join with Code",
+  "@houseJoinWithCode": {
+    "description": "Link on the Create House page that opens the Join House page."
+  },
+  "houseJoinTitle": "Join House",
+  "@houseJoinTitle": {
+    "description": "App bar title of the Join House onboarding page, and the label of its submit button."
+  },
+  "houseJoinHeading": "Enter Invite Code",
+  "@houseJoinHeading": {
+    "description": "Large heading above the Join House invite-code field."
+  },
+  "houseJoinSubtitle": "Ask your Treasurer for the invite code.",
+  "@houseJoinSubtitle": {
+    "description": "Supporting line under the Join House heading."
+  },
+  "houseInviteCode": "Invite Code",
+  "@houseInviteCode": {
+    "description": "Field label on the Join House page, and the heading of the invite-code card on the member list. The code value itself is user data and is never translated."
+  },
+  "houseInviteCodeRequired": "Please enter an invite code",
+  "@houseInviteCodeRequired": {
+    "description": "Validation error when the invite-code field is left empty."
+  },
+  "houseInviteCodeLength": "Code must be {count} characters",
+  "@houseInviteCodeLength": {
+    "description": "Validation error when the invite code is shorter than the required length.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "8"
+      }
+    }
+  },
+  "houseJoinNoCode": "Don't have a code?",
+  "@houseJoinNoCode": {
+    "description": "Lead-in text next to the link that opens the Create House page."
+  },
+  "houseJoinCreateLink": "Create a House",
+  "@houseJoinCreateLink": {
+    "description": "Link on the Join House page that opens the Create House page."
+  },
+  "houseErrorNotAuthenticated": "Not authenticated.",
+  "@houseErrorNotAuthenticated": {
+    "description": "SnackBar shown when a house action runs without a signed-in user."
+  },
+  "houseErrorNoActiveHouse": "No active house.",
+  "@houseErrorNoActiveHouse": {
+    "description": "SnackBar shown when a house action runs with no active house selected."
+  },
+  "houseErrorOnlyTreasurerRemove": "Only the Treasurer can remove a member.",
+  "@houseErrorOnlyTreasurerRemove": {
+    "description": "SnackBar shown when a non-Treasurer attempts to remove a member."
+  },
+  "houseErrorCannotRemoveTreasurer": "The Treasurer cannot be removed. Transfer ownership first.",
+  "@houseErrorCannotRemoveTreasurer": {
+    "description": "SnackBar shown when a Treasurer tries to remove themselves instead of transferring ownership."
+  },
+  "houseErrorUnexpected": "An unexpected error occurred.",
+  "@houseErrorUnexpected": {
+    "description": "Fallback SnackBar for an unclassified house-action failure."
+  },
+  "houseErrorFirebaseNotConfigured": "Firebase is not configured.",
+  "@houseErrorFirebaseNotConfigured": {
+    "description": "SnackBar shown when a house action runs while Firebase failed to initialise."
+  },
+  "houseMembersLoadFailed": "Could not load members.",
+  "@houseMembersLoadFailed": {
+    "description": "Error state on the member list when the members could not be loaded."
+  },
+  "houseNoMembersDescription": "Share your invite code to add housemates.",
+  "@houseNoMembersDescription": {
+    "description": "Supporting text under the empty member list heading."
+  },
+  "houseThisMember": "This member",
+  "@houseThisMember": {
+    "description": "Placeholder used in member dialogs when a member has neither a display name nor an email address."
+  },
+  "houseRemoveMemberTitle": "Remove Member",
+  "@houseRemoveMemberTitle": {
+    "description": "Title of the confirm dialog for removing a member from the house."
+  },
+  "houseRemoveMemberTooltip": "Remove member",
+  "@houseRemoveMemberTooltip": {
+    "description": "Tooltip on the remove icon in a member tile's trailing actions."
+  },
+  "houseRemoveMemberBody": "Remove {name} from {house}?\n\nThey will no longer be part of this house or be able to access its data. Their account and all past expense and transaction history will be kept.",
+  "@houseRemoveMemberBody": {
+    "description": "Body of the confirm dialog for removing a member. {name} is the member's name and {house} the house name — both user data, inserted verbatim.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Aminah"
+      },
+      "house": {
+        "type": "String",
+        "example": "Jalan Ampang Homestead"
+      }
+    }
+  },
+  "houseMemberRemoved": "{name} removed from the house.",
+  "@houseMemberRemoved": {
+    "description": "Success SnackBar after a member is removed. {name} is user data.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Aminah"
+      }
+    }
+  },
+  "houseTransferTitle": "Transfer Ownership",
+  "@houseTransferTitle": {
+    "description": "Title of the confirm dialog for handing the Treasurer role to another member."
+  },
+  "houseTransferBody": "Make {name} the new Treasurer of {house}?\n\nYou will become a regular Member and will no longer be able to approve expenses, record deposits or manage the house until ownership is transferred back to you.",
+  "@houseTransferBody": {
+    "description": "Body of the transfer-ownership confirm dialog. {name} and {house} are user data.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Aminah"
+      },
+      "house": {
+        "type": "String",
+        "example": "Jalan Ampang Homestead"
+      }
+    }
+  },
+  "houseTransferConfirm": "Transfer",
+  "@houseTransferConfirm": {
+    "description": "Confirming button in the transfer-ownership dialog."
+  },
+  "houseTransferDone": "{name} is now the Treasurer.",
+  "@houseTransferDone": {
+    "description": "Success SnackBar after ownership is transferred. {name} is user data.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Aminah"
+      }
+    }
+  },
+  "houseTransferSheetTitle": "Transfer to…",
+  "@houseTransferSheetTitle": {
+    "description": "Title of the bottom sheet that lists the members ownership can be transferred to."
+  },
+  "houseTransferSheetSubtitle": "Make this member the Treasurer",
+  "@houseTransferSheetSubtitle": {
+    "description": "Subtitle on each row of the transfer-target bottom sheet."
+  },
+  "houseLeaveTitle": "Leave House",
+  "@houseLeaveTitle": {
+    "description": "Title of the confirm dialog for leaving the house."
+  },
+  "houseLeaveBody": "Leave {house}?\n\nYou will no longer be able to view this house or submit expenses until you are invited back. Your account and all past records are kept.",
+  "@houseLeaveBody": {
+    "description": "Body of the confirm dialog for leaving the house. {house} is user data.",
+    "placeholders": {
+      "house": {
+        "type": "String",
+        "example": "Jalan Ampang Homestead"
+      }
+    }
+  },
+  "houseLeaveConfirm": "Leave",
+  "@houseLeaveConfirm": {
+    "description": "Confirming button in the leave-house dialog."
+  },
+  "houseLeaveDone": "You left {house}.",
+  "@houseLeaveDone": {
+    "description": "Success SnackBar after leaving the house. {house} is user data.",
+    "placeholders": {
+      "house": {
+        "type": "String",
+        "example": "Jalan Ampang Homestead"
+      }
+    }
+  },
+  "houseYourMembership": "Your membership",
+  "@houseYourMembership": {
+    "description": "Heading of the card describing the viewer's own membership in the house."
+  },
+  "houseTreasurerOnlyMember": "You are the Treasurer and currently the only member. Another member must join before ownership can be transferred.",
+  "@houseTreasurerOnlyMember": {
+    "description": "Membership-card explanation for a Treasurer who is the only member, so ownership cannot be transferred yet."
+  },
+  "houseTreasurerCanTransfer": "You are the Treasurer. Transfer ownership to another member before you can leave this house.",
+  "@houseTreasurerCanTransfer": {
+    "description": "Membership-card explanation for a Treasurer who still has to transfer ownership before leaving."
+  },
+  "houseTransferOwnership": "Transfer ownership",
+  "@houseTransferOwnership": {
+    "description": "Membership-card button that opens the transfer-ownership flow."
+  },
+  "houseMemberCanLeave": "You are a Member. You can leave this house at any time; your account and past records are kept.",
+  "@houseMemberCanLeave": {
+    "description": "Membership-card explanation for a regular Member."
+  },
+  "houseLeaveHouse": "Leave house",
+  "@houseLeaveHouse": {
+    "description": "Membership-card button that starts the leave-house flow."
+  },
+  "houseInviteShareHint": "Share this code with housemates to join.",
+  "@houseInviteShareHint": {
+    "description": "Hint under the invite code on the member list."
+  },
+  "houseInviteCodeCopied": "Invite code copied!",
+  "@houseInviteCodeCopied": {
+    "description": "Confirmation SnackBar after copying the invite code to the clipboard."
+  },
+  "houseShareMessage": "Join my house on Rental Ledger!\n\nInvite Code: {code}",
+  "@houseShareMessage": {
+    "description": "Body of the platform share sheet for the invite code. 'Rental Ledger' is the product name and is never translated; {code} is user data inserted verbatim.",
+    "placeholders": {
+      "code": {
+        "type": "String",
+        "example": "ABC12345"
+      }
+    }
+  },
+  "houseShareSubject": "Rental Ledger Invite",
+  "@houseShareSubject": {
+    "description": "Subject line of the platform share sheet for the invite code. 'Rental Ledger' is the product name and is never translated."
+  },
+  "houseJoinedOn": "Joined {date}",
+  "@houseJoinedOn": {
+    "description": "Join date shown under a member's name on a member tile. {date} is already formatted for the active locale.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "12 Jan 2026"
+      }
+    }
+  },
+  "houseMakeTreasurer": "Make treasurer",
+  "@houseMakeTreasurer": {
+    "description": "Tooltip on the transfer-ownership icon in a member tile's trailing actions."
+  },
+  "actionMenu": "Menu",
+  "@actionMenu": {
+    "description": "Tooltip on the app-bar hamburger button that opens the navigation drawer (shared with the other list screens)."
+  },
+  "actionSignOutConfirm": "Are you sure you want to sign out?",
+  "@actionSignOutConfirm": {
+    "description": "Confirmation body in the sign-out dialog, on the Settings and Profile screens."
+  },
+  "reportPdfComingSoon": "PDF export coming soon",
+  "@reportPdfComingSoon": {
+    "description": "Toast shown when the Reports PDF-export button is tapped (the feature is not built yet)."
+  },
+  "reportLoadFailed": "Could not load reports.",
+  "@reportLoadFailed": {
+    "description": "Error display on the Reports screen when the report fails to load and no domain failure message is available."
+  },
+  "reportMoneyIn": "Money In",
+  "@reportMoneyIn": {
+    "description": "Reports summary box and monthly-trend legend: every positive transaction in scope."
+  },
+  "reportMoneyOut": "Money Out",
+  "@reportMoneyOut": {
+    "description": "Reports summary box and monthly-trend legend: every negative transaction in scope."
+  },
+  "reportCurrentBalance": "Current Balance",
+  "@reportCurrentBalance": {
+    "description": "Third summary box on the all-time report, where In minus Out is the real account balance."
+  },
+  "reportCentralBalanceAllTime": "Central Account balance (all time): {amount}",
+  "@reportCentralBalanceAllTime": {
+    "description": "Note under the summary row while a period filter is active, so the filtered figures are not mistaken for the account balance. {amount} is an already-formatted currency string.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "RM 1,200.00"
+      }
+    }
+  },
+  "reportInsights": "Insights",
+  "@reportInsights": {
+    "description": "Section heading above the reports insight cards."
+  },
+  "reportWhereMoneyGoes": "Where the Money Goes",
+  "@reportWhereMoneyGoes": {
+    "description": "Section heading for the breakdown of what makes up Money Out."
+  },
+  "reportCategoryBreakdown": "Category Breakdown",
+  "@reportCategoryBreakdown": {
+    "description": "Section heading above the donut chart of spending by category."
+  },
+  "reportMonthlyTrend": "Monthly Trend",
+  "@reportMonthlyTrend": {
+    "description": "Section heading above the monthly Money In / Money Out bar chart."
+  },
+  "reportEmptyTitle": "No reports yet",
+  "@reportEmptyTitle": {
+    "description": "Empty state on the Reports screen when the house has no money movement at all."
+  },
+  "reportEmptyDescription": "Deposits and expenses will appear here as they are recorded.",
+  "@reportEmptyDescription": {
+    "description": "Body of the Reports empty state."
+  },
+  "reportEmptyPeriodTitle": "Nothing in this period",
+  "@reportEmptyPeriodTitle": {
+    "description": "Empty state on the Reports screen when the selected period contains no activity."
+  },
+  "reportEmptyPeriodDescription": "No deposits, expense claims, or reimbursements fell inside the selected period.",
+  "@reportEmptyPeriodDescription": {
+    "description": "Body of the Reports empty state for a period filter that matches nothing."
+  },
+  "reportShowAllTime": "Show all time",
+  "@reportShowAllTime": {
+    "description": "Action on the empty-period state that clears the Reports date filter."
+  },
+  "reportChoosePeriod": "Choose a report period",
+  "@reportChoosePeriod": {
+    "description": "Help text at the top of the Reports date-range picker."
+  },
+  "reportHighestExpenseCategory": "Highest Expense Category",
+  "@reportHighestExpenseCategory": {
+    "description": "Insight card title naming the category with the most spending."
+  },
+  "reportLargestExpenseClaim": "Largest Expense Claim",
+  "@reportLargestExpenseClaim": {
+    "description": "Insight card title for the single biggest paid expense claim."
+  },
+  "reportExpenseReimbursements": "Expense Reimbursements",
+  "@reportExpenseReimbursements": {
+    "description": "Insight card title for the total of reimbursed expense claims."
+  },
+  "reportPendingReimbursements": "Pending Reimbursements",
+  "@reportPendingReimbursements": {
+    "description": "Insight card title for approved expenses not yet paid out."
+  },
+  "reportAverageMonthlyExpense": "Average Monthly Expense",
+  "@reportAverageMonthlyExpense": {
+    "description": "Insight card title for average spending per active month."
+  },
+  "reportAverageDeposit": "Average Deposit",
+  "@reportAverageDeposit": {
+    "description": "Insight card title for the mean deposit amount."
+  },
+  "reportLargestDeposit": "Largest Deposit",
+  "@reportLargestDeposit": {
+    "description": "Insight card title for the single biggest deposit."
+  },
+  "reportBillsPaid": "Bills Paid",
+  "@reportBillsPaid": {
+    "description": "Insight card title showing a count of settled bills."
+  },
+  "reportBillsPending": "Bills Pending",
+  "@reportBillsPending": {
+    "description": "Insight card title showing a count of bills still outstanding."
+  },
+  "reportMoneyOutReimbursements": "Expense reimbursements",
+  "@reportMoneyOutReimbursements": {
+    "description": "Legend row in the Money Out breakdown covering reimbursed expense claims."
+  },
+  "reportMoneyOutDirectPayments": "Direct payments",
+  "@reportMoneyOutDirectPayments": {
+    "description": "Legend row in the Money Out breakdown covering direct payments that are not bill payments."
+  },
+  "reportMoneyOutBillPayments": "Bill payments",
+  "@reportMoneyOutBillPayments": {
+    "description": "Legend row in the Money Out breakdown covering bills settled from the central account."
+  },
+  "reportMoneyOutAdjustments": "Adjustments",
+  "@reportMoneyOutAdjustments": {
+    "description": "Legend row in the Money Out breakdown covering negative balance adjustments."
+  },
+  "reportMoneyOutOther": "Other",
+  "@reportMoneyOutOther": {
+    "description": "Legend row in the Money Out breakdown covering any remaining outgoing money."
+  },
+  "reportMoneyOutFrom": "From {amount} of Money Out",
+  "@reportMoneyOutFrom": {
+    "description": "Intro line above the Money Out breakdown, stating the total being split. {amount} is an already-formatted currency string.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "RM 600.00"
+      }
+    }
+  },
+  "reportTapSliceHint": "Tap a slice to see details",
+  "@reportTapSliceHint": {
+    "description": "Hint under the category donut chart when no slice is selected."
+  },
+  "settingsUser": "User",
+  "@settingsUser": {
+    "description": "Placeholder in the Settings profile header when the account has no display name. The name itself is user data and is never translated."
+  },
+  "settingsEditProfile": "Edit Profile",
+  "@settingsEditProfile": {
+    "description": "Settings row and header button that open the profile editor."
+  },
+  "settingsInviteCode": "Invite Code",
+  "@settingsInviteCode": {
+    "description": "Settings row label for the house invite code. The code itself is a stored value."
+  },
+  "settingsInviteCodeCopied": "Invite code copied",
+  "@settingsInviteCodeCopied": {
+    "description": "Confirmation after copying the house invite code to the clipboard."
+  },
+  "settingsAccount": "Account",
+  "@settingsAccount": {
+    "description": "Settings section heading covering the account/profile row."
+  },
+  "settingsAppearance": "Appearance",
+  "@settingsAppearance": {
+    "description": "Settings section heading and the theme picker's sheet title."
+  },
+  "settingsTheme": "Theme",
+  "@settingsTheme": {
+    "description": "Settings row that opens the appearance-mode picker."
+  },
+  "settingsThemeSystem": "System default",
+  "@settingsThemeSystem": {
+    "description": "Appearance option that follows the device or browser theme."
+  },
+  "settingsThemeLight": "Light",
+  "@settingsThemeLight": {
+    "description": "Explicit light appearance option."
+  },
+  "settingsThemeDark": "Dark",
+  "@settingsThemeDark": {
+    "description": "Explicit dark appearance option."
+  },
+  "settingsThemeSystemHint": "Follow your device or browser",
+  "@settingsThemeSystemHint": {
+    "description": "Subtitle under the system-default appearance option."
+  },
+  "settingsPushNotifications": "Push Notifications",
+  "@settingsPushNotifications": {
+    "description": "Settings switch that turns device notifications on or off."
+  },
+  "settingsNotificationsSubtitle": "Receive alerts for expense updates",
+  "@settingsNotificationsSubtitle": {
+    "description": "Subtitle under the push-notification switch."
+  },
+  "settingsPreferences": "Preferences",
+  "@settingsPreferences": {
+    "description": "Settings section heading covering language and currency."
+  },
+  "settingsCurrency": "Currency",
+  "@settingsCurrency": {
+    "description": "Settings row and the currency picker's sheet title. The currency codes themselves are stored values and stay untranslated."
+  },
+  "settingsHelpCenter": "Help Center",
+  "@settingsHelpCenter": {
+    "description": "Settings row that opens the help dialog."
+  },
+  "settingsVersion": "Version {version}",
+  "@settingsVersion": {
+    "description": "Subtitle under the About row. {version} is the build version, a technical value that is not translated.",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "settingsAboutLegalese": "A household finance management app.",
+  "@settingsAboutLegalese": {
+    "description": "Legalese line in the About dialog."
+  },
+  "settingsHelpIntro": "Track shared household expenses with ease.",
+  "@settingsHelpIntro": {
+    "description": "One-line introduction under the product name in the help dialog."
+  },
+  "settingsHelpSubmitExpenses": "Submit Expenses",
+  "@settingsHelpSubmitExpenses": {
+    "description": "Help dialog item title explaining how to file a claim."
+  },
+  "settingsHelpSubmitExpensesDesc": "Tap + to add a new expense claim with receipt.",
+  "@settingsHelpSubmitExpensesDesc": {
+    "description": "Help dialog item describing how to file a claim."
+  },
+  "settingsHelpTreasurerApproval": "Treasurer Approval",
+  "@settingsHelpTreasurerApproval": {
+    "description": "Help dialog item title explaining the Treasurer's review step."
+  },
+  "settingsHelpTreasurerApprovalDesc": "The Treasurer reviews and approves expenses.",
+  "@settingsHelpTreasurerApprovalDesc": {
+    "description": "Help dialog item describing the Treasurer's review step."
+  },
+  "settingsHelpReimbursements": "Reimbursements",
+  "@settingsHelpReimbursements": {
+    "description": "Help dialog item title explaining how members get paid back."
+  },
+  "settingsHelpReimbursementsDesc": "Once approved and paid, you get reimbursed.",
+  "@settingsHelpReimbursementsDesc": {
+    "description": "Help dialog item describing how members get paid back."
+  },
+  "settingsHelpInviteHousemates": "Invite Housemates",
+  "@settingsHelpInviteHousemates": {
+    "description": "Help dialog item title explaining house invitations."
+  },
+  "settingsHelpInviteHousematesDesc": "Share your invite code from the Members screen.",
+  "@settingsHelpInviteHousematesDesc": {
+    "description": "Help dialog item describing house invitations."
+  },
+  "profileTitle": "Profile",
+  "@profileTitle": {
+    "description": "App-bar title of the profile screen."
+  },
+  "profileChangePhoto": "Change Photo",
+  "@profileChangePhoto": {
+    "description": "Button under the avatar and the sheet title for the photo-source picker."
+  },
+  "profilePhotoFailed": "Could not take a photo. Please try again.",
+  "@profilePhotoFailed": {
+    "description": "Error shown when the camera or gallery picker fails."
+  },
+  "profileDisplayName": "Display Name",
+  "@profileDisplayName": {
+    "description": "Label on the profile name field. The name the user types is their own data and is never translated."
+  },
+  "profileDisplayNameHint": "Enter your name",
+  "@profileDisplayNameHint": {
+    "description": "Placeholder inside the profile name field."
+  },
+  "profileDisplayNameEmpty": "Display name cannot be empty.",
+  "@profileDisplayNameEmpty": {
+    "description": "Validation message when the profile name field is blank on save."
+  },
+  "profileEmail": "Email",
+  "@profileEmail": {
+    "description": "Label for the read-only email row on the profile screen. The address itself is user data."
+  },
+  "profileHouseAndAccount": "House & Account",
+  "@profileHouseAndAccount": {
+    "description": "Section heading above the house, role and join-date rows."
+  },
+  "profileJoined": "Joined",
+  "@profileJoined": {
+    "description": "Label for the row showing the date the member joined the house."
+  },
+  "profileUpdated": "Profile updated",
+  "@profileUpdated": {
+    "description": "Confirmation after the profile change is saved."
+  },
+  "profileUpdateFailed": "Could not update your profile. Please try again.",
+  "@profileUpdateFailed": {
+    "description": "Error shown when saving the profile fails."
+  },
+  "profileSaving": "Saving…",
+  "@profileSaving": {
+    "description": "Save button label while the profile change is being written."
+  },
+  "actionConfirm": "Confirm",
+  "@actionConfirm": {
+    "description": "Confirm button in a generic confirmation dialog."
+  },
+  "actionViewReceipt": "View Receipt",
+  "@actionViewReceipt": {
+    "description": "Button that opens the attached receipt in the full-screen viewer."
+  },
+  "actionPreviewReceipt": "Preview Receipt",
+  "@actionPreviewReceipt": {
+    "description": "Button that opens a receipt preview before it is saved."
+  },
+  "actionRemindTreasurer": "Remind Treasurer",
+  "@actionRemindTreasurer": {
+    "description": "Member action that nudges the Treasurer about a bill."
+  },
+  "actionReminderSent": "Reminder sent to Treasurer",
+  "@actionReminderSent": {
+    "description": "Confirmation after a bill reminder notification is sent."
+  },
+  "billDetailsTitle": "Bill Details",
+  "@billDetailsTitle": {
+    "description": "App-bar title of the bill details screen."
+  },
+  "billLoadFailed": "Could not load bill.",
+  "@billLoadFailed": {
+    "description": "Shown on the bill details screen when the bill cannot be read."
+  },
+  "billNotFound": "Bill not found.",
+  "@billNotFound": {
+    "description": "Shown when the bill details screen is opened for a bill that no longer exists."
+  },
+  "billStatusUpcoming": "Upcoming Bill",
+  "@billStatusUpcoming": {
+    "description": "Status label on a bill details page for a bill that has not been paid yet."
+  },
+  "billRecurring": "Recurring",
+  "@billRecurring": {
+    "description": "Field label telling whether a bill repeats every month."
+  },
+  "billRecurringYes": "Yes — rolls monthly",
+  "@billRecurringYes": {
+    "description": "Value shown for a bill that repeats every month."
+  },
+  "billReminderOnly": "Reminder",
+  "@billReminderOnly": {
+    "description": "Shown in place of an amount for a bill that only reminds and carries no money."
+  },
+  "billConfirmPayment": "Confirm Payment",
+  "@billConfirmPayment": {
+    "description": "Confirm button on the bill payment sheet."
+  },
+  "billMarkPaidConfirm": "Mark \"{title}\" as paid?",
+  "@billMarkPaidConfirm": {
+    "description": "Confirmation dialog question before a bill is marked paid. The bill title is user-entered and is inserted verbatim.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Electricity"
+      }
+    }
+  },
+  "billRollsToNextMonth": "Rolls the bill to next month.",
+  "@billRollsToNextMonth": {
+    "description": "Dialog body explaining what marking a recurring bill paid will do."
+  },
+  "billSettles": "Settles this bill.",
+  "@billSettles": {
+    "description": "Dialog body explaining what marking a one-off bill paid will do."
+  },
+  "billPaymentCoversMonth": "Payment covers month",
+  "@billPaymentCoversMonth": {
+    "description": "Field label for the month a bill payment applies to."
+  },
+  "billPaymentCoversMonthHint": "e.g. 2026-09",
+  "@billPaymentCoversMonthHint": {
+    "description": "Format example under the month field, showing the year-month shape."
+  },
+  "billProofRequired": "A receipt or proof is required for a bill with an amount.",
+  "@billProofRequired": {
+    "description": "Refusal shown when a bill that carries an amount is paid without attaching a receipt."
+  },
+  "billTreasurerOnlyMarkPaid": "Only the Treasurer can mark a bill as paid.",
+  "@billTreasurerOnlyMarkPaid": {
+    "description": "Refusal shown to a member who attempts to record a bill payment."
+  },
+  "billMarkPaidFailed": "Could not mark the bill as paid. Please try again.",
+  "@billMarkPaidFailed": {
+    "description": "Shown when recording a bill payment fails for an unexpected reason."
+  },
+  "billMarkedPaid": "Bill marked as paid",
+  "@billMarkedPaid": {
+    "description": "Confirmation after a bill payment is recorded."
+  },
+  "billDeleteTitle": "Delete Bill?",
+  "@billDeleteTitle": {
+    "description": "Confirmation dialog title before a bill is deleted."
+  },
+  "billDeleted": "Bill deleted",
+  "@billDeleted": {
+    "description": "Confirmation after a bill is deleted."
+  },
+  "billUpdated": "Bill updated",
+  "@billUpdated": {
+    "description": "Confirmation after an existing bill is edited and saved."
+  },
+  "billDueOn": "Due {date}",
+  "@billDueOn": {
+    "description": "Compact due-date line on a bill card. The date is already formatted for the active locale.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "15 Sep"
+      }
+    }
+  },
+  "billDueDateLabel": "Due: {date}",
+  "@billDueDateLabel": {
+    "description": "Field label for the due date in the add/edit bill form. The date is already formatted for the active locale.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "15 September 2026"
+      }
+    }
+  },
+  "depositDetailsTitle": "Deposit Details",
+  "@depositDetailsTitle": {
+    "description": "App-bar title of the transaction details screen for a deposit."
+  },
+  "directPaymentDetailsTitle": "Direct Payment Details",
+  "@directPaymentDetailsTitle": {
+    "description": "App-bar title of the transaction details screen for a direct payment."
+  },
+  "txnByPerson": "by {name}",
+  "@txnByPerson": {
+    "description": "Subtitle naming who performed a transaction. The member name is user data and is inserted verbatim.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+  "txnCoversMonth": "Covers Month",
+  "@txnCoversMonth": {
+    "description": "Field label for the period a transaction applies to, such as a bill payment's month."
+  },
+  "expenseDetailsTitle": "Expense Details",
+  "@expenseDetailsTitle": {
+    "description": "App-bar title of the expense details screen."
+  },
+  "expenseLoadFailed": "Could not load expense.",
+  "@expenseLoadFailed": {
+    "description": "Shown on the expense details screen when the expense cannot be read."
+  },
+  "expenseNotFound": "Expense not found.",
+  "@expenseNotFound": {
+    "description": "Shown when the expense details screen is opened for an expense that no longer exists."
+  },
+  "expensePurchasedByPerson": "Purchased by {name}",
+  "@expensePurchasedByPerson": {
+    "description": "Line naming who paid for a purchase. The member name is user data and is inserted verbatim.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+  "expenseReceiptUnavailable": "Receipt unavailable",
+  "@expenseReceiptUnavailable": {
+    "description": "Shown instead of a receipt thumbnail when the stored image cannot be loaded."
+  },
+  "expenseRejectReason": "Reason: {reason}",
+  "@expenseRejectReason": {
+    "description": "Line showing the Treasurer's rejection reason. The reason is user-entered text and is inserted verbatim.",
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "Receipt is blurry"
+      }
+    }
+  },
+  "expenseDescriptionSection": "Description",
+  "@expenseDescriptionSection": {
+    "description": "Section heading above an expense's description."
+  },
+  "expenseTimeline": "Timeline",
+  "@expenseTimeline": {
+    "description": "Section heading above an expense's approval timeline."
+  },
+  "expenseTreasurerActions": "Treasurer Actions",
+  "@expenseTreasurerActions": {
+    "description": "Section heading above the approve/reject/mark-paid controls, shown only to the Treasurer."
+  },
+  "expenseMarkPaidConfirm": "Mark \"{title}\" as reimbursed from the Central Account?",
+  "@expenseMarkPaidConfirm": {
+    "description": "Confirmation dialog question before a reimbursement is paid out. The expense title is user-entered and is inserted verbatim.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Groceries"
+      }
+    }
+  },
+  "expenseDeleteTitle": "Delete Expense?",
+  "@expenseDeleteTitle": {
+    "description": "Confirmation dialog title before a member deletes their own pending expense."
+  },
+  "expenseDeleteConfirm": "Delete \"{title}\"? This cannot be undone.",
+  "@expenseDeleteConfirm": {
+    "description": "Confirmation dialog body before an expense is deleted. The expense title is user-entered and is inserted verbatim.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Groceries"
+      }
+    }
+  },
+  "expenseDeleted": "Expense deleted",
+  "@expenseDeleted": {
+    "description": "Confirmation after a member deletes their own pending expense."
+  },
+  "expenseRejectTitle": "Reject Expense",
+  "@expenseRejectTitle": {
+    "description": "Title of the dialog in which the Treasurer rejects a claim."
+  },
+  "expenseRejectConfirm": "Reject \"{title}\"?",
+  "@expenseRejectConfirm": {
+    "description": "Question at the top of the reject dialog. The expense title is user-entered and is inserted verbatim.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Groceries"
+      }
+    }
+  },
+  "expenseRejectReasonLabel": "Reason (optional)",
+  "@expenseRejectReasonLabel": {
+    "description": "Field label for the Treasurer's rejection reason."
+  },
+  "expenseRejectReasonHint": "e.g. Receipt is blurry, please upload a clearer one.",
+  "@expenseRejectReasonHint": {
+    "description": "Example text under the rejection reason field."
+  },
+  "expenseTimelineWaiting": "Waiting...",
+  "@expenseTimelineWaiting": {
+    "description": "Placeholder in a timeline step that has not happened yet."
+  },
+  "expenseRemindOnlySubmitter": "Only the submitter can remind the Treasurer.",
+  "@expenseRemindOnlySubmitter": {
+    "description": "Refusal shown to anyone other than the claim's submitter who tries to send a reminder."
+  },
+  "expenseTreasurerNotFound": "Could not find the Treasurer.",
+  "@expenseTreasurerNotFound": {
+    "description": "Shown when a reminder cannot be addressed because the house has no Treasurer on record."
+  },
+  "expensePhotoPickFailed": "Could not pick a photo. Please try again.",
+  "@expensePhotoPickFailed": {
+    "description": "Shown when the camera or gallery picker returns no image."
+  },
+  "expenseUpdateFailed": "Could not update. Please try again.",
+  "@expenseUpdateFailed": {
+    "description": "Shown when saving an edited expense fails."
+  },
+  "expenseEditTitle": "Edit Expense",
+  "@expenseEditTitle": {
+    "description": "App-bar title of the expense edit screen."
+  },
+  "expenseAmountRm": "Amount (RM)",
+  "@expenseAmountRm": {
+    "description": "Field label above the amount, naming the currency in use."
+  },
+  "expenseDescriptionOptional": "Description (optional)",
+  "@expenseDescriptionOptional": {
+    "description": "Field label for an expense's description."
+  },
+  "expenseReceiptNewSelected": "New receipt selected — will replace the current one on save.",
+  "@expenseReceiptNewSelected": {
+    "description": "Status line in the expense edit form after a replacement receipt is chosen."
+  },
+  "expenseReceiptWillRemove": "Receipt will be removed on save.",
+  "@expenseReceiptWillRemove": {
+    "description": "Status line in the expense edit form after the receipt is marked for removal."
+  },
+  "expenseReceiptCurrent": "Current receipt attached.",
+  "@expenseReceiptCurrent": {
+    "description": "Status line in the expense edit form when the existing receipt is kept."
+  },
+  "expenseReceiptNone": "No receipt attached.",
+  "@expenseReceiptNone": {
+    "description": "Status line in the expense edit form when there is no receipt."
+  },
+  "expenseRemoveReceipt": "Remove receipt",
+  "@expenseRemoveReceipt": {
+    "description": "Button that marks the attached receipt for removal when the expense is saved."
+  },
+  "dashboardProfileLabel": "Profile",
+  "@dashboardProfileLabel": {
+    "description": "Screen-reader label on the dashboard's profile button."
+  },
+  "dashboardLoadError": "Could not load dashboard.",
+  "@dashboardLoadError": {
+    "description": "Shown on the dashboard when the summary fails to load and the error is not a recognized failure."
+  },
+  "dashboardWelcomeTitle": "Welcome to {appName}!",
+  "@dashboardWelcomeTitle": {
+    "description": "Onboarding heading shown before the user belongs to a house. The product name is injected so it is never translated.",
+    "placeholders": {
+      "appName": {
+        "type": "String",
+        "example": "Rental Ledger"
+      }
+    }
+  },
+  "dashboardOnboardingDescription": "Create or join a house to start tracking expenses.",
+  "@dashboardOnboardingDescription": {
+    "description": "Onboarding body text shown before the user belongs to a house."
+  },
+  "dashboardCreateHouse": "Create a House",
+  "@dashboardCreateHouse": {
+    "description": "Onboarding button that opens the create-house form."
+  },
+  "dashboardJoinWithCode": "Join with Code",
+  "@dashboardJoinWithCode": {
+    "description": "Onboarding button that opens the join-house form."
+  },
+  "dashboardMoneyIn": "Money In",
+  "@dashboardMoneyIn": {
+    "description": "Summary card label for deposits recorded this month."
+  },
+  "dashboardMoneyOut": "Money Out",
+  "@dashboardMoneyOut": {
+    "description": "Summary card label for money paid out this month."
+  },
+  "dashboardPendingItems": "Pending Items",
+  "@dashboardPendingItems": {
+    "description": "Heading of the dashboard section listing open expense claims."
+  },
+  "dashboardPendingItemsEmpty": "No pending items",
+  "@dashboardPendingItemsEmpty": {
+    "description": "Empty-state title in the dashboard's pending-items section."
+  },
+  "dashboardPendingItemsEmptyDescription": "Submitted and approved expenses will appear here.",
+  "@dashboardPendingItemsEmptyDescription": {
+    "description": "Empty-state description in the dashboard's pending-items section."
+  },
+  "dashboardWaitingForReimbursement": "Approved — waiting for reimbursement",
+  "@dashboardWaitingForReimbursement": {
+    "description": "Sub-label under an approved claim that has not been paid out yet. Chosen from the stored status value, never from text."
+  },
+  "dashboardWaitingForApproval": "Waiting for Treasurer approval",
+  "@dashboardWaitingForApproval": {
+    "description": "Sub-label under a pending claim. Chosen from the stored status value, never from text."
+  },
+  "dashboardRecentActivity": "Recent Activity",
+  "@dashboardRecentActivity": {
+    "description": "Heading of the dashboard's recent-activity section."
+  },
+  "dashboardRecentActivityEmptyDescription": "Transactions, expenses, and deposits will appear here.",
+  "@dashboardRecentActivityEmptyDescription": {
+    "description": "Empty-state description in the dashboard's recent-activity section."
+  },
+  "commonUnknownMember": "Unknown Member",
+  "@commonUnknownMember": {
+    "description": "Stand-in shown for a transaction whose member name could not be resolved. Never replaces a real member name."
+  },
+  "historySearchHint": "Search by name...",
+  "@historySearchHint": {
+    "description": "Placeholder in the History screen's search field."
+  },
+  "historyLoadError": "Could not load history.",
+  "@historyLoadError": {
+    "description": "Shown on the History screen when the load fails and the error is not a recognized failure."
+  },
+  "historyNoResultsHint": "Try adjusting your search or filters.",
+  "@historyNoResultsHint": {
+    "description": "Empty-state description when filters or a search exclude every event."
+  },
+  "historyEmptyDescription": "Deposits, expenses, and bills will appear here.",
+  "@historyEmptyDescription": {
+    "description": "Empty-state description when a house has no recorded activity yet."
+  },
+  "historyExpenseSubmitted": "Expense Submitted",
+  "@historyExpenseSubmitted": {
+    "description": "History event label for an expense entering review. Derived from an internal event type, never from a stored value."
+  },
+  "historyExpenseApproved": "Expense Approved",
+  "@historyExpenseApproved": {
+    "description": "History event label for an approved claim. Derived from an internal event type, never from a stored value."
+  },
+  "historyExpenseRejected": "Expense Rejected",
+  "@historyExpenseRejected": {
+    "description": "History event label for a rejected claim. Derived from an internal event type, never from a stored value."
+  },
+  "historyTypeExpensePaid": "Expense Paid",
+  "@historyTypeExpensePaid": {
+    "description": "History event label for a reimbursed claim, and the matching entry in the History type filter."
+  },
+  "historyBillCreated": "Bill Created",
+  "@historyBillCreated": {
+    "description": "History event label for a bill being added."
+  },
+  "historyBillPaid": "Bill Paid",
+  "@historyBillPaid": {
+    "description": "History event label for a bill payment."
+  },
+  "historyUpcomingBill": "Upcoming Bill",
+  "@historyUpcomingBill": {
+    "description": "Status chip on a history entry for a bill that has not been paid yet."
+  },
+  "statusUpcoming": "Upcoming",
+  "@statusUpcoming": {
+    "description": "Status label for a bill whose due date is still ahead. The status is derived, so it is never a stored value."
+  },
+  "billUpcomingBills": "Upcoming Bills",
+  "@billUpcomingBills": {
+    "description": "Heading of the dashboard section listing bills that are due."
+  },
+  "billAdd": "Add Bill",
+  "@billAdd": {
+    "description": "Button that opens the add-bill form, and the title of that form."
+  },
+  "billListLoadFailed": "Could not load bills. Pull to refresh.",
+  "@billListLoadFailed": {
+    "description": "Shown in the bills section when the list cannot be read."
+  },
+  "billNoneUpcoming": "No upcoming bills",
+  "@billNoneUpcoming": {
+    "description": "Empty-state title in the dashboard bills section."
+  },
+  "billNoneUpcomingHint": "Add recurring bills to track them here.",
+  "@billNoneUpcomingHint": {
+    "description": "Empty-state description in the dashboard bills section."
+  },
+  "billEditTooltip": "Edit bill",
+  "@billEditTooltip": {
+    "description": "Tooltip on the edit action of a bill card."
+  },
+  "billDeleteTooltip": "Delete bill",
+  "@billDeleteTooltip": {
+    "description": "Tooltip on the delete action of a bill card."
+  },
+  "billReminderOn": "Reminder On",
+  "@billReminderOn": {
+    "description": "State label for a bill whose reminder is enabled."
+  },
+  "billSetReminder": "Set Reminder",
+  "@billSetReminder": {
+    "description": "Action that turns on a bill reminder."
+  },
+  "billMarkPaid": "Mark Paid",
+  "@billMarkPaid": {
+    "description": "Button that records a bill payment."
+  },
+  "billEditTitle": "Edit Bill",
+  "@billEditTitle": {
+    "description": "Title of the form for editing an existing bill."
+  },
+  "billName": "Bill name",
+  "@billName": {
+    "description": "Field label for a bill name in the add/edit bill form."
+  },
+  "billAmountRmOptional": "Amount (RM) — optional",
+  "@billAmountRmOptional": {
+    "description": "Field label for a bill amount. Blank makes the bill a reminder only."
+  },
+  "billAmountHint": "Leave blank for reminder only",
+  "@billAmountHint": {
+    "description": "Hint under the bill amount field explaining that a blank amount is allowed."
+  },
+  "billRepeatMonthly": "Repeat every month",
+  "@billRepeatMonthly": {
+    "description": "Switch label that makes a bill recur monthly."
+  },
+  "billRepeatMonthlyHint": "Auto-create the next bill each month",
+  "@billRepeatMonthlyHint": {
+    "description": "Sub-label under the repeat-monthly switch."
+  },
+  "billRollNextMonth": "This will roll the bill to next month.",
+  "@billRollNextMonth": {
+    "description": "Dialog body shown when marking a recurring bill paid."
+  },
+  "billWillBeMarkedPaid": "This bill will be marked as paid.",
+  "@billWillBeMarkedPaid": {
+    "description": "Dialog body shown when marking a one-off bill paid."
+  },
+  "billHistorySearchHint": "Search by bill title...",
+  "@billHistorySearchHint": {
+    "description": "Placeholder in the Bill History search field."
+  },
+  "billHistoryLoadFailed": "Could not load bill history.",
+  "@billHistoryLoadFailed": {
+    "description": "Shown on the Bill History screen when the list cannot be read."
+  },
+  "billHistoryEmpty": "No bills yet",
+  "@billHistoryEmpty": {
+    "description": "Empty-state title on Bill History when the house has recorded no bills."
+  },
+  "billHistoryEmptyDescription": "Bills added to this house will appear here.",
+  "@billHistoryEmptyDescription": {
+    "description": "Empty-state description on Bill History when no filter is active."
+  },
+  "billHistoryMemberFilterEmpty": "Bills name a member only when a payment was recorded against them, so this filter hides upcoming bills and bills settled without a payment record.",
+  "@billHistoryMemberFilterEmpty": {
+    "description": "Empty-state description on Bill History when a member filter hides every row. Explains the structural reason rather than telling the user to adjust filters."
+  },
+  "billHistoryCoversPeriod": "Covers {period}",
+  "@billHistoryCoversPeriod": {
+    "description": "Chip on a bill payment naming the month it paid for. The period is a stored value such as 2026-08 and is shown verbatim.",
+    "placeholders": {
+      "period": {
+        "type": "String",
+        "example": "2026-08"
+      }
+    }
+  },
+  "billHistoryPaymentCount": "{count, plural, =1{1 payment} other{{count} payments}}",
+  "@billHistoryPaymentCount": {
+    "description": "Chip counting how many settlements a rolling recurring bill holds.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifAllMarkedRead": "All marked as read",
+  "@notifAllMarkedRead": {
+    "description": "Confirmation toast after marking every notification read."
+  },
+  "notifLoadFailed": "Could not load notifications.",
+  "@notifLoadFailed": {
+    "description": "Error state when the notifications stream fails."
+  },
+  "notifEmptyDescription": "Updates about expenses, payments, and approvals will appear here.",
+  "@notifEmptyDescription": {
+    "description": "Description under the empty notifications state."
+  },
+  "timeThisWeek": "This Week",
+  "@timeThisWeek": {
+    "description": "Notification group header for items from the last seven days."
+  },
+  "timeEarlier": "Earlier",
+  "@timeEarlier": {
+    "description": "Notification group header for items older than a week."
+  },
+  "navMenu": "Menu",
+  "@navMenu": {
+    "description": "Accessibility tooltip for the button that opens the navigation drawer. The word is the same in Malaysian Malay, which is why both locales match."
+  },
+  "labelReceipt": "Receipt",
+  "@labelReceipt": {
+    "description": "Short chip label linking to a stored receipt image."
+  },
+  "errorNoHouse": "No house found.",
+  "@errorNoHouse": {
+    "description": "Guard shown when an action needs an active house but none is loaded."
+  },
+  "errorNotSignedIn": "Not authenticated.",
+  "@errorNotSignedIn": {
+    "description": "Guard shown when an action needs a signed-in user but there is none."
+  },
+  "errorBillCreateFailed": "Failed to create bill.",
+  "@errorBillCreateFailed": {
+    "description": "Guard shown when a bill could not be created at all."
+  }
+}

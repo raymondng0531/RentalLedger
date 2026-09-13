@@ -12,6 +12,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/spring_sheet.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
@@ -19,6 +20,7 @@ import '../../../../features/dashboard/presentation/providers/dashboard_provider
 import '../../../../features/members/domain/entities/house_member_entity.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
 import '../providers/settings_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Profile page — view/change photo, view/edit display name, view email.
 ///
@@ -53,6 +55,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
+    final l10n = AppLocalizations.of(context);
     try {
       final picked = await _picker.pickImage(
         source: source,
@@ -65,8 +68,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       }
     } catch (_) {
       if (mounted) {
-        SnackbarUtils.showError(context,
-            'Could not take a photo. Please try again.');
+        SnackbarUtils.showError(context, l10n.profilePhotoFailed);
       }
     }
   }
@@ -74,47 +76,52 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   void _showPhotoOptions() {
     showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => SpringSheet(
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Change Photo',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return SpringSheet(
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    l10n.profileChangePhoto,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text('Take Photo'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _pickPhoto(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Choose from Gallery'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _pickPhoto(ImageSource.gallery);
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: Text(l10n.actionTakePhoto),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickPhoto(ImageSource.camera);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: Text(l10n.actionChooseFromGallery),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickPhoto(ImageSource.gallery);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final newName = _nameController.text.trim();
     if (newName.isEmpty) {
-      SnackbarUtils.showError(context, 'Display name cannot be empty.');
+      SnackbarUtils.showError(context, l10n.profileDisplayNameEmpty);
       return;
     }
     final user = ref.read(currentUserProvider);
@@ -150,12 +157,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       ref.invalidate(membersStreamProvider);
       ref.invalidate(dashboardDataProvider);
 
-      SnackbarUtils.showSuccess(context, 'Profile updated');
+      SnackbarUtils.showSuccess(context, l10n.profileUpdated);
       context.pop();
     } catch (_) {
       if (mounted) {
-        SnackbarUtils.showError(context,
-            'Could not update your profile. Please try again.');
+        SnackbarUtils.showError(context, l10n.profileUpdateFailed);
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -169,6 +175,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final membersAsync = ref.watch(membersStreamProvider);
     final user = ref.watch(currentUserProvider);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     // The signed-in user's member record (role + join date) in this house.
     HouseMemberEntity? currentMember;
@@ -189,9 +196,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Profile'),
+        title: Text(l10n.profileTitle),
       ),
       body: ResponsivePage(
         // maxWidth omitted — defaults to AppContentWidth.detail (800).
@@ -264,7 +271,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               child: TextButton.icon(
                 onPressed: _showPhotoOptions,
                 icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                label: const Text('Change Photo'),
+                label: Text(l10n.profileChangePhoto),
               ),
             ),
             const SizedBox(height: 24),
@@ -280,21 +287,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     TextField(
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Display Name',
-                        hintText: 'Enter your name',
-                        prefixIcon: Icon(Icons.badge_outlined),
+                      decoration: InputDecoration(
+                        labelText: l10n.profileDisplayName,
+                        hintText: l10n.profileDisplayNameHint,
+                        prefixIcon: const Icon(Icons.badge_outlined),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.email_outlined),
-                      title: const Text('Email'),
+                      title: Text(l10n.profileEmail),
+                      // The address itself is the user's own data.
                       subtitle: Text(
                         (profile?.email?.isNotEmpty == true)
                             ? profile!.email!
-                            : 'No email',
+                            : l10n.labelNoEmail,
                       ),
                     ),
                   ],
@@ -306,7 +314,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
             // ── House & account ──
             Text(
-              'House & Account',
+              l10n.profileHouseAndAccount,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -322,8 +330,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       vertical: 4,
                     ),
                     leading: const Icon(Icons.home_outlined),
-                    title: const Text('House'),
-                    subtitle: Text(house?.houseName ?? 'Not set'),
+                    title: Text(l10n.labelHouse),
+                    // The house name is the user's own text.
+                    subtitle: Text(house?.houseName ?? l10n.labelNotSet),
                   ),
                   if (currentMember != null) ...[
                     const Divider(height: 1, indent: 56),
@@ -333,8 +342,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         vertical: 4,
                       ),
                       leading: const Icon(Icons.workspace_premium_outlined),
-                      title: const Text('Role'),
-                      subtitle: Text(currentMember.role),
+                      title: Text(l10n.labelRole),
+                      // Stored value → localized label ("Treasurer" / "Member").
+                      subtitle: Text(
+                        VocabularyLabels.role(currentMember.role, l10n),
+                      ),
                     ),
                     const Divider(height: 1, indent: 56),
                     ListTile(
@@ -343,9 +355,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         vertical: 4,
                       ),
                       leading: const Icon(Icons.event_available_outlined),
-                      title: const Text('Joined'),
+                      title: Text(l10n.profileJoined),
                       subtitle: Text(
-                        DateFormatUtils.formatDateShort(currentMember.joinedAt),
+                        DateFormatUtils.formatDateShort(
+                          currentMember.joinedAt,
+                          l10n.localeName,
+                        ),
                       ),
                     ),
                   ],
@@ -369,7 +384,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                     )
                   : const Icon(Icons.check_rounded),
-              label: Text(_saving ? 'Saving…' : 'Save'),
+              label: Text(_saving ? l10n.profileSaving : l10n.actionSave),
             ),
 
             const SizedBox(height: 24),
@@ -382,7 +397,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   Icons.logout_rounded,
                   color: context.colors.error,
                 ),
-                title: const Text('Sign Out'),
+                title: Text(l10n.actionSignOut),
                 titleTextStyle: TextStyle(
                   color: context.colors.error,
                   fontWeight: FontWeight.w500,
@@ -401,20 +416,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.actionSignOut),
+          content: Text(l10n.actionSignOutConfirm),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.actionSignOut),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed == true) {
       await ref.read(logoutProvider.notifier).logout();

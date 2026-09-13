@@ -23,6 +23,7 @@ import 'package:rental_ledger/features/notifications/presentation/widgets/notifi
 import 'package:rental_ledger/features/settings/presentation/pages/profile_page.dart';
 import 'package:rental_ledger/features/settings/presentation/pages/settings_page.dart';
 import 'package:rental_ledger/features/settings/presentation/providers/settings_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Phase 3E + 3F — Members, Notifications and Settings dark-mode migration.
@@ -100,6 +101,10 @@ Future<void> _pumpPage(
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
               themeMode: mode,
+              // Mirrors `app.dart`: a screen that reads AppLocalizations needs
+              // the generated delegates in the tree, exactly as in the app.
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               home: page,
             ),
     ),
@@ -129,6 +134,8 @@ class _SettingsDrivenApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: home,
     );
   }

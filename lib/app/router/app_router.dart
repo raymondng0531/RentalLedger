@@ -34,6 +34,7 @@ import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/profile_page.dart';
 import '../../features/members/presentation/pages/member_list_page.dart';
 import '../../features/members/presentation/providers/house_provider.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 import 'route_names.dart';
 import 'reset_deep_link.dart';
@@ -133,12 +134,16 @@ Page<T> _slideUpTransition<T>(Widget child) {
 
 /// Fallback when a detail route is reached without the expected payload
 /// (e.g. a stale deep link) — never crash.
-Widget _missingExtraScaffold() {
-  return const Scaffold(
+///
+/// Takes a [BuildContext] rather than reaching for one: it is only ever built
+/// from inside a `pageBuilder: (context, state)` closure, so the context of the
+/// route that is failing is passed down explicitly.
+Widget _missingExtraScaffold(BuildContext context) {
+  return Scaffold(
     body: Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text('Unable to open this item.'),
+        padding: const EdgeInsets.all(24),
+        child: Text(AppLocalizations.of(context).unableToOpenItem),
       ),
     ),
   );
@@ -356,7 +361,7 @@ class AppRouter {
             return _slideUpTransition(
               event is HistoryEvent
                   ? DepositDetailsPage(event: event)
-                  : _missingExtraScaffold(),
+                  : _missingExtraScaffold(context),
             );
           },
         ),
@@ -369,7 +374,7 @@ class AppRouter {
             return _slideUpTransition(
               event is HistoryEvent
                   ? DirectPaymentDetailsPage(event: event)
-                  : _missingExtraScaffold(),
+                  : _missingExtraScaffold(context),
             );
           },
         ),
@@ -395,40 +400,42 @@ class AppRouter {
       ],
 
       // ── Error page ──
-      errorBuilder:
-          (context, state) => Scaffold(
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: context.colors.error,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Page not found',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'The page you are looking for does not exist.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: () => context.go(RouteNames.dashboard),
-                      child: const Text('Go Home'),
-                    ),
-                  ],
-                ),
+      errorBuilder: (context, state) {
+        final l10n = AppLocalizations.of(context);
+        return Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: context.colors.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.pageNotFoundTitle,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.pageNotFoundMessage,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: () => context.go(RouteNames.dashboard),
+                    child: Text(l10n.actionGoHome),
+                  ),
+                ],
               ),
             ),
           ),
+        );
+      },
     );
   }
 
@@ -611,7 +618,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
               child: Text(
-                'MY HOUSES',
+                AppLocalizations.of(context).drawerMyHouses,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: colors.textSecondary,
                   fontWeight: FontWeight.w700,
@@ -667,6 +674,7 @@ class _AppShellState extends ConsumerState<_AppShell>
   /// Builds the navigation drawer with app-wide links.
   Widget _buildDrawer(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     // The header sits on the primary fill, so its foreground is `onPrimary` —
     // white in light mode, dark ink in dark mode.
     final onPrimary = context.colors.onPrimary;
@@ -705,7 +713,7 @@ class _AppShellState extends ConsumerState<_AppShell>
 
             _DrawerItem(
               icon: Icons.dashboard_outlined,
-              label: 'Dashboard',
+              label: l10n.navDashboard,
               onTap: () {
                 Navigator.pop(context);
                 context.go(RouteNames.dashboard);
@@ -713,7 +721,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             ),
             _DrawerItem(
               icon: Icons.history_outlined,
-              label: 'History',
+              label: l10n.navHistory,
               onTap: () {
                 Navigator.pop(context);
                 context.go(RouteNames.history);
@@ -721,7 +729,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             ),
             _DrawerItem(
               icon: Icons.event_note_outlined,
-              label: 'Bill History',
+              label: l10n.navBillHistory,
               // Sub-page — push (like Members/Notifications) so Back returns
               // to where the drawer was opened from.
               onTap: () {
@@ -731,7 +739,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             ),
             _DrawerItem(
               icon: Icons.receipt_long_outlined,
-              label: 'Expenses',
+              label: l10n.navExpenses,
               onTap: () {
                 Navigator.pop(context);
                 context.go(RouteNames.expenses);
@@ -739,7 +747,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             ),
             _DrawerItem(
               icon: Icons.people_outlined,
-              label: 'Members',
+              label: l10n.navMembers,
               // Sub-page — push (not go) so the AppBar back button has a
               // previous page to pop back to. Tabs above use go() because
               // they're root destinations where back-stacking is wrong.
@@ -750,7 +758,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             ),
             _DrawerItem(
               icon: Icons.notifications_outlined,
-              label: 'Notifications',
+              label: l10n.navNotifications,
               onTap: () {
                 Navigator.pop(context);
                 context.push(RouteNames.notifications);
@@ -758,7 +766,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             ),
             _DrawerItem(
               icon: Icons.bar_chart_outlined,
-              label: 'Reports',
+              label: l10n.navReports,
               onTap: () {
                 Navigator.pop(context);
                 context.go(RouteNames.reports);
@@ -767,7 +775,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             const Divider(),
             _DrawerItem(
               icon: Icons.settings_outlined,
-              label: 'Settings',
+              label: l10n.navSettings,
               onTap: () {
                 Navigator.pop(context);
                 context.push(RouteNames.settings);
@@ -776,7 +784,7 @@ class _AppShellState extends ConsumerState<_AppShell>
             const Spacer(),
             _DrawerItem(
               icon: Icons.logout_outlined,
-              label: 'Sign Out',
+              label: l10n.actionSignOut,
               color: context.colors.error,
               onTap: () async {
                 Navigator.pop(context);
@@ -819,6 +827,7 @@ class _AppShellState extends ConsumerState<_AppShell>
   /// item. Each item is equal-width so 5 items fit on narrow screens without
   /// clipping or overflow; the whole bar is safe-area aware.
   Widget _buildBottomBar(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BottomAppBar(
       // `surface`, not `glassBarFill`: the latter is translucent by design and
       // would change the shipped light bar. The opaque surface token is the
@@ -844,14 +853,14 @@ class _AppShellState extends ConsumerState<_AppShell>
                 _BottomNavItem(
                   icon: Icons.home_outlined,
                   activeIcon: Icons.home_rounded,
-                  label: 'Home',
+                  label: l10n.navHome,
                   selected: widget.currentIndex == 0,
                   onTap: () => _onNavTap(0),
                 ),
                 _BottomNavItem(
                   icon: Icons.history_outlined,
                   activeIcon: Icons.history_rounded,
-                  label: 'History',
+                  label: l10n.navHistory,
                   selected: widget.currentIndex == 1,
                   onTap: () => _onNavTap(1),
                 ),
@@ -860,14 +869,14 @@ class _AppShellState extends ConsumerState<_AppShell>
                 _BottomNavItem(
                   icon: Icons.receipt_long_outlined,
                   activeIcon: Icons.receipt_long_rounded,
-                  label: 'Expenses',
+                  label: l10n.navExpenses,
                   selected: widget.currentIndex == 3,
                   onTap: () => _onNavTap(3),
                 ),
                 _BottomNavItem(
                   icon: Icons.bar_chart_outlined,
                   activeIcon: Icons.bar_chart_rounded,
-                  label: 'Reports',
+                  label: l10n.navReports,
                   selected: widget.currentIndex == 4,
                   onTap: () => _onNavTap(4),
                 ),
@@ -885,6 +894,7 @@ class _AppShellState extends ConsumerState<_AppShell>
   Widget _buildFab(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     // Deposit and Direct Payment move money in/out of the Central Account, so
     // the speed-dial only offers them to the house Treasurer. Add Expense is
     // available to every member (they claim against the account; the Treasurer
@@ -915,14 +925,14 @@ class _AppShellState extends ConsumerState<_AppShell>
           if (isTreasurer) ...[
             _SpeedDialItem(
               icon: Icons.payment_outlined,
-              label: 'Direct Payment',
+              label: l10n.actionDirectPayment,
               color: colors.statusDirectPayment,
               onTap: () => _navigateTo(RouteNames.directPayment),
             ),
             const SizedBox(height: 8),
             _SpeedDialItem(
               icon: Icons.arrow_downward_rounded,
-              label: 'Deposit',
+              label: l10n.actionDeposit,
               color: colors.success,
               onTap: () => _navigateTo(RouteNames.deposit),
             ),
@@ -930,7 +940,7 @@ class _AppShellState extends ConsumerState<_AppShell>
           ],
           _SpeedDialItem(
             icon: Icons.receipt_long_outlined,
-            label: 'Add Expense',
+            label: l10n.actionAddExpense,
             color: theme.colorScheme.primary,
             onTap: () => _navigateTo(RouteNames.addExpense),
           ),

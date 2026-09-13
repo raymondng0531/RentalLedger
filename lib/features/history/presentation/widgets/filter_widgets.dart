@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/spring_sheet.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../expenses/domain/entities/category_entity.dart';
 import '../utils/filter_periods.dart';
 
@@ -70,7 +72,18 @@ sealed class FilterSectionSpec {
 
   /// Uppercase section heading, and the key this section's selection is
   /// returned under in [FilterSheetResult.selections].
+  ///
+  /// This stays a **stable key**: it is what [FilterSheetResult.select] is
+  /// asked for, so it must not change with the language. The heading the user
+  /// reads comes from [localizedLabel].
   final String label;
+
+  /// The heading shown above the section, in the active language.
+  ///
+  /// Option sections are handed an already-localized label by their caller, so
+  /// the default is the label itself; the period and category sections are
+  /// rendered by the sheet alone and answer with their own fixed heading.
+  String localizedLabel(AppLocalizations l10n) => label;
 }
 
 /// A grid of option tiles (History's Type and Status, Bill History's Status
@@ -92,6 +105,9 @@ class FilterPeriodSection extends FilterSectionSpec {
   /// One of [FilterPeriods.presets], `'custom'`, or `null` for All.
   final String? preset;
   final DateTimeRange? range;
+
+  @override
+  String localizedLabel(AppLocalizations l10n) => l10n.labelPeriod;
 }
 
 /// The shared category dropdown.
@@ -103,6 +119,9 @@ class FilterCategorySection extends FilterSectionSpec {
 
   final String? category;
   final List<CategoryEntity> categories;
+
+  @override
+  String localizedLabel(AppLocalizations l10n) => l10n.labelCategory;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -233,6 +252,7 @@ class _FilterSheetState extends State<FilterSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -256,13 +276,13 @@ class _FilterSheetState extends State<FilterSheet> {
             children: [
               Expanded(
                 child: Text(
-                  'Filters',
+                  l10n.labelFilters,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              TextButton(onPressed: _reset, child: const Text('Reset')),
+              TextButton(onPressed: _reset, child: Text(l10n.actionReset)),
             ],
           ),
         ),
@@ -277,14 +297,17 @@ class _FilterSheetState extends State<FilterSheet> {
               children: [
                 for (final section in widget.sections)
                   FilterSection(
-                    label: section.label,
+                    // The heading only — the section's own label stays the
+                    // stable key its selection is reported under.
+                    label: section.localizedLabel(l10n),
                     child: switch (section) {
                       FilterOptionsSection(:final group) => _buildOptions(
                         section.label,
                         group,
+                        l10n,
                       ),
                       FilterPeriodSection() => _buildPeriod(theme),
-                      FilterCategorySection() => _buildCategory(section),
+                      FilterCategorySection() => _buildCategory(section, l10n),
                     },
                   ),
               ],
@@ -302,7 +325,7 @@ class _FilterSheetState extends State<FilterSheet> {
               height: 52,
               child: FilledButton(
                 onPressed: () => widget.onApply(_result()),
-                child: const Text('Apply'),
+                child: Text(l10n.actionApply),
               ),
             ),
           ),
@@ -311,13 +334,17 @@ class _FilterSheetState extends State<FilterSheet> {
     );
   }
 
-  Widget _buildOptions(String label, FilterOptionGroup group) {
+  Widget _buildOptions(
+    String label,
+    FilterOptionGroup group,
+    AppLocalizations l10n,
+  ) {
     final selected = _selections[label]!;
 
     return FilterOptionGrid(
       children: [
         FilterSelectableOption(
-          label: 'All',
+          label: l10n.periodAll,
           selected: selected.isEmpty,
           onTap: () => setState(selected.clear),
         ),
@@ -344,13 +371,14 @@ class _FilterSheetState extends State<FilterSheet> {
 
   Widget _buildPeriod(ThemeData theme) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         FilterOptionGrid(
           children: [
             FilterSelectableOption(
-              label: 'All',
+              label: FilterPeriods.labelFor(null, l10n),
               selected: _preset == null && _range == null,
               onTap:
                   () => setState(() {
@@ -360,7 +388,7 @@ class _FilterSheetState extends State<FilterSheet> {
             ),
             for (var i = 0; i < FilterPeriods.presets.length; i++)
               FilterSelectableOption(
-                label: FilterPeriods.labels[i],
+                label: FilterPeriods.labelFor(FilterPeriods.presets[i], l10n),
                 selected: _preset == FilterPeriods.presets[i],
                 onTap:
                     () => setState(() {
@@ -369,8 +397,8 @@ class _FilterSheetState extends State<FilterSheet> {
                     }),
               ),
             FilterSelectableOption(
-              label: 'Custom Range',
-              selected: _preset == 'custom',
+              label: FilterPeriods.labelFor(FilterPeriods.custom, l10n),
+              selected: _preset == FilterPeriods.custom,
               onTap: () => _pickCustomRange(_range),
             ),
           ],
@@ -387,8 +415,8 @@ class _FilterSheetState extends State<FilterSheet> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '${DateFormatUtils.formatDateShort(_range!.start)} – '
-                  '${DateFormatUtils.formatDateShort(_range!.end)}',
+                  '${DateFormatUtils.formatDateShort(_range!.start, l10n.localeName)} – '
+                  '${DateFormatUtils.formatDateShort(_range!.end, l10n.localeName)}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colors.primary,
                     fontWeight: FontWeight.w600,
@@ -401,22 +429,35 @@ class _FilterSheetState extends State<FilterSheet> {
     );
   }
 
-  Widget _buildCategory(FilterCategorySection section) {
+  Widget _buildCategory(FilterCategorySection section, AppLocalizations l10n) {
     return SizedBox(
       width: double.infinity,
       child: DropdownButtonFormField<String?>(
         value: _category,
         isExpanded: true,
-        decoration: const InputDecoration(
-          hintText: 'All Categories',
-          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: InputDecoration(
+          hintText: l10n.categoryAll,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
         ),
         items: [
-          const DropdownMenuItem(child: Text('All Categories')),
+          DropdownMenuItem(child: Text(l10n.categoryAll)),
           ...section.categories.map(
             (c) => DropdownMenuItem(
               value: c.categoryId,
-              child: Text(c.name, overflow: TextOverflow.ellipsis),
+              child: Text(
+                // A default category shows its localized label; a category the
+                // user renamed shows the user's own text.
+                VocabularyLabels.categoryOrNull(
+                      l10n: l10n,
+                      categoryId: c.categoryId,
+                      name: c.name,
+                    ) ??
+                    c.name,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ],
@@ -485,6 +526,7 @@ class FilterButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final hasActive = activeCount > 0;
     return Material(
       // Resting fill is the app's quiet grey — in dark mode the muted surface,
@@ -508,7 +550,7 @@ class FilterButton extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Filters',
+                l10n.labelFilters,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,

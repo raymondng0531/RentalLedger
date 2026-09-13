@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// The common payment methods offered for money moving in or out of the
 /// Central Account.
@@ -31,13 +33,16 @@ class PaymentMethodChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         for (final option in options)
           ChoiceChip(
-            label: Text(option),
+            // The chip's *value* stays the stored method (`Cash`, …); only the
+            // text on the chip is localized.
+            label: Text(VocabularyLabels.paymentMethod(option, l10n)),
             selected: selected == option,
             showCheckmark: false,
             // Matches the CategoryPicker: solid teal when selected, quiet

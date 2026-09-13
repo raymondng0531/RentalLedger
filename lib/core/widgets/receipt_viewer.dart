@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 /// Full-screen, zoomable receipt viewer on a black background.
 ///
 /// Shared by Add Expense and Expense Details so every receipt is viewed
@@ -32,11 +34,15 @@ class ReceiptViewer extends StatelessWidget {
   const ReceiptViewer({
     super.key,
     required this.image,
-    this.title = 'Receipt',
+    this.title,
   });
 
   final Widget image;
-  final String title;
+
+  /// Caller-supplied title. When null the widget falls back to the localized
+  /// "Receipt" — nullable rather than a defaulted literal so that the fallback
+  /// follows the active locale.
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +51,7 @@ class ReceiptViewer extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black, // same ground, continued
         foregroundColor: Colors.white, // required ink on black, both modes
-        title: Text(title),
+        title: Text(title ?? AppLocalizations.of(context).receiptTitle),
       ),
       body: Center(
         child: InteractiveViewer(

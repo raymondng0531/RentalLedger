@@ -10,6 +10,8 @@ import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/app_logo.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../../l10n/generated/app_localizations.dart';
+import '../../domain/auth_error_codes.dart';
 import '../providers/auth_provider.dart';
 
 /// Login screen — email and password authentication.
@@ -39,32 +41,42 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final errorMessage = await ref.read(loginProvider.notifier).login(
+    final failure = await ref.read(loginProvider.notifier).login(
           _emailController.text.trim(),
           _passwordController.text,
         );
 
     if (!mounted) return;
 
-    if (errorMessage == null) {
+    if (failure == null) {
       // Success — GoRouter's auth guard will redirect to dashboard.
       context.go(RouteNames.dashboard);
     } else {
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+        context,
+        localizeAuthError(AppLocalizations.of(context), failure.code),
+      );
     }
   }
 
   /// Handles Google / Apple sign-in.
+  ///
+  /// A cancelled sign-in is recognised by [AuthErrorCodes.cancelled], never by
+  /// the message text. The user dismissed the sheet themselves, so there is
+  /// nothing to report and no snackbar is shown.
   Future<void> _handleSocial(String provider) async {
-    final errorMessage =
+    final failure =
         await ref.read(socialLoginProvider.notifier).loginWith(provider);
 
     if (!mounted) return;
 
-    if (errorMessage == null) {
+    if (failure == null) {
       context.go(RouteNames.dashboard);
-    } else if (errorMessage != 'Sign in cancelled.') {
-      SnackbarUtils.showError(context, errorMessage);
+    } else if (failure.code != AuthErrorCodes.cancelled) {
+      SnackbarUtils.showError(
+        context,
+        localizeAuthError(AppLocalizations.of(context), failure.code),
+      );
     }
   }
 
@@ -77,6 +89,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final loginState = ref.watch(loginProvider);
     final socialState = ref.watch(socialLoginProvider);
     final isLoading = loginState.isLoading;
@@ -106,16 +119,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.authEmailLabel,
+                      prefixIcon: const Icon(Icons.email_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your email';
+                        return l10n.authEmailRequired;
                       }
                       if (!value.trim().contains('@')) {
-                        return 'Please enter a valid email';
+                        return l10n.authEmailInvalid;
                       }
                       return null;
                     },
@@ -129,7 +142,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _handleLogin(),
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: l10n.authPasswordLabel,
                       prefixIcon: const Icon(Icons.lock_outlined),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -143,10 +156,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
+                        return l10n.authPasswordRequired;
                       }
                       if (value.length < AppConstants.passwordMinLength) {
-                        return 'Password must be at least ${AppConstants.passwordMinLength} characters';
+                        return l10n.authPasswordMinLength(
+                            AppConstants.passwordMinLength);
                       }
                       return null;
                     },
@@ -158,7 +172,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () => context.push(RouteNames.forgotPassword),
-                      child: const Text('Forgot Password?'),
+                      child: Text(l10n.authForgotPassword),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -179,7 +193,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               color: colors.onPrimary,
                             ),
                           )
-                        : const Text('Sign In'),
+                        : Text(l10n.authSignIn),
                   ),
                   const SizedBox(height: 24),
 
@@ -190,7 +204,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'or continue with',
+                          l10n.authOrContinueWith,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
@@ -205,7 +219,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   OutlinedButton.icon(
                     onPressed: socialLoading ? null : () => _handleSocial('google'),
                     icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
-                    label: const Text('Continue with Google'),
+                    label: Text(l10n.authContinueWithGoogle),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colors.textPrimary,
                       side: BorderSide(color: colors.divider),
@@ -217,7 +231,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     OutlinedButton.icon(
                       onPressed: socialLoading ? null : () => _handleSocial('apple'),
                       icon: const Icon(Icons.apple_rounded, size: 20),
-                      label: const Text('Continue with Apple'),
+                      label: Text(l10n.authContinueWithApple),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: colors.textPrimary,
                         side: BorderSide(color: colors.divider),
@@ -231,10 +245,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Flexible lets the text wrap on narrow screens instead of overflowing.
-                      const Flexible(child: Text("Don't have an account?")),
+                      Flexible(child: Text(l10n.authNoAccountPrompt)),
                       TextButton(
                         onPressed: () => context.push(RouteNames.register),
-                        child: const Text('Sign Up'),
+                        child: Text(l10n.authSignUp),
                       ),
                     ],
                   ),

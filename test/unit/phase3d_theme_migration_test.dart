@@ -19,6 +19,7 @@ import 'package:rental_ledger/features/members/domain/entities/house_member_enti
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
 import 'package:rental_ledger/features/reports/presentation/pages/reports_page.dart';
 import 'package:rental_ledger/features/reports/presentation/providers/reports_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Phase 3D — History + Reports.
 ///
@@ -92,7 +93,12 @@ Future<void> _pump(
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
-    MaterialApp(theme: theme, home: Scaffold(body: child)),
+    MaterialApp(
+      theme: theme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    ),
   );
   await tester.pumpAndSettle();
 }
@@ -217,7 +223,12 @@ Widget _historyApp(ThemeData theme) => ProviderScope(
     // History resolves actor/payer names from ALL member records.
     allMembersStreamProvider.overrideWith((ref) => Stream.value(_members)),
   ],
-  child: MaterialApp(theme: theme, home: const HistoryPage()),
+  child: MaterialApp(
+    theme: theme,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: const HistoryPage(),
+  ),
 );
 
 /// Bill History: one bill in each derived status, plus an amountless reminder.
@@ -280,7 +291,12 @@ Widget _billHistoryApp(ThemeData theme) => ProviderScope(
     categoriesProvider.overrideWith((ref) async => _categories),
     allMembersStreamProvider.overrideWith((ref) => Stream.value(_members)),
   ],
-  child: MaterialApp(theme: theme, home: const BillHistoryPage()),
+  child: MaterialApp(
+    theme: theme,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: const BillHistoryPage(),
+  ),
 );
 
 // ── Reports fixtures ────────────────────────────────────────────────
@@ -341,7 +357,12 @@ Widget _reportsApp(ThemeData theme, {bool withUncolouredCategory = false}) =>
           ),
         ),
       ],
-      child: MaterialApp(theme: theme, home: const ReportsPage()),
+      child: MaterialApp(
+        theme: theme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const ReportsPage(),
+      ),
     );
 
 PieChartData _pie(WidgetTester tester) =>
@@ -479,6 +500,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: Builder(
               builder: (context) => TextButton(

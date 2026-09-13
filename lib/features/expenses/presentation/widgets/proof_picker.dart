@@ -8,6 +8,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/receipt_viewer.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Receipt / proof image picker for financial transactions.
 ///
@@ -21,14 +22,16 @@ class ProofPicker extends StatefulWidget {
   const ProofPicker({
     super.key,
     required this.onChanged,
-    this.heading = 'Receipt / Proof',
+    this.heading,
   });
 
   /// Called with the selected local path (or `null` when removed).
   final ValueChanged<String?> onChanged;
 
   /// Section heading shown above the picker.
-  final String heading;
+  ///
+  /// Defaults to the localized "Receipt / Proof" when the caller passes none.
+  final String? heading;
 
   @override
   State<ProofPicker> createState() => _ProofPickerState();
@@ -54,7 +57,7 @@ class _ProofPickerState extends State<ProofPicker> {
       if (!mounted) return;
       SnackbarUtils.showError(
         context,
-        'Could not take a photo. Please try again.',
+        AppLocalizations.of(context).expensePhotoError,
       );
     }
   }
@@ -66,19 +69,20 @@ class _ProofPickerState extends State<ProofPicker> {
 
   /// Confirms before removing the proof image.
   Future<void> _confirmRemove() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove Proof'),
-        content: const Text('Are you sure you want to remove this proof?'),
+        title: Text(l10n.expenseRemoveProofTitle),
+        content: Text(l10n.expenseRemoveProofMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
+            child: Text(l10n.actionRemove),
           ),
         ],
       ),
@@ -117,7 +121,8 @@ class _ProofPickerState extends State<ProofPicker> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ReceiptViewer(
-          title: widget.heading,
+          title:
+              widget.heading ?? AppLocalizations.of(context).labelReceiptProof,
           image: kIsWeb
               ? Image.network(
                   _file!.path,
@@ -143,11 +148,12 @@ class _ProofPickerState extends State<ProofPicker> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.heading,
+          widget.heading ?? l10n.labelReceiptProof,
           style: Theme.of(context)
               .textTheme
               .titleSmall
@@ -162,7 +168,7 @@ class _ProofPickerState extends State<ProofPicker> {
                 child: OutlinedButton.icon(
                   onPressed: () => _pickImage(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('Take Photo'),
+                  label: Text(l10n.actionTakePhoto),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -173,7 +179,7 @@ class _ProofPickerState extends State<ProofPicker> {
                 child: OutlinedButton.icon(
                   onPressed: () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Choose Photo'),
+                  label: Text(l10n.actionChoosePhoto),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -200,7 +206,7 @@ class _ProofPickerState extends State<ProofPicker> {
                       onPressed: _showFullscreen,
                       icon: const Icon(Icons.remove_red_eye_outlined,
                           size: 18),
-                      label: const Text('Preview Proof'),
+                      label: Text(l10n.expensePreviewProof),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -209,7 +215,7 @@ class _ProofPickerState extends State<ProofPicker> {
                       onPressed: _confirmRemove,
                       icon: Icon(Icons.close, size: 18, color: colors.error),
                       label: Text(
-                        'Remove',
+                        l10n.actionRemove,
                         style: TextStyle(color: colors.error),
                       ),
                       style: OutlinedButton.styleFrom(

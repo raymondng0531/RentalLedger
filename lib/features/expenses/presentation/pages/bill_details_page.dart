@@ -5,12 +5,14 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../features/expenses/domain/entities/bill_entity.dart';
 import '../../../../features/expenses/domain/entities/category_entity.dart';
 import '../../../../features/expenses/presentation/providers/expense_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Bill Details — real-time finance-style view of a single bill.
 class BillDetailsPage extends ConsumerWidget {
@@ -20,6 +22,7 @@ class BillDetailsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final billsAsync = ref.watch(billsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final categories = categoriesAsync.value ?? const <CategoryEntity>[];
@@ -32,9 +35,9 @@ class BillDetailsPage extends ConsumerWidget {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => Navigator.pop(context),
-                tooltip: 'Back',
+                tooltip: l10n.actionBack,
               ),
-              title: const Text('Bill Details'),
+              title: Text(l10n.billDetailsTitle),
               backgroundColor: colors.surface,
             ),
             body: const Shimmer(child: SkeletonDetailBody()),
@@ -46,13 +49,13 @@ class BillDetailsPage extends ConsumerWidget {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => Navigator.pop(context),
-                tooltip: 'Back',
+                tooltip: l10n.actionBack,
               ),
-              title: const Text('Bill Details'),
+              title: Text(l10n.billDetailsTitle),
               backgroundColor: colors.surface,
             ),
             body: ErrorDisplay(
-              message: 'Could not load bill.',
+              message: l10n.billLoadFailed,
               onRetry: () => ref.invalidate(billsProvider),
             ),
           ),
@@ -66,12 +69,12 @@ class BillDetailsPage extends ConsumerWidget {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => Navigator.pop(context),
-                tooltip: 'Back',
+                tooltip: l10n.actionBack,
               ),
-              title: const Text('Bill Details'),
+              title: Text(l10n.billDetailsTitle),
               backgroundColor: colors.surface,
             ),
-            body: const ErrorDisplay(message: 'Bill not found.'),
+            body: ErrorDisplay(message: l10n.billNotFound),
           );
         }
         return _BillDetailContent(bill: bill, categories: categories);
@@ -90,6 +93,7 @@ class _BillDetailContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final categoryName =
         categories
             .firstWhere(
@@ -103,7 +107,7 @@ class _BillDetailContent extends StatelessWidget {
             .name;
     final isPaid = bill.isPaid;
     final statusColor = isPaid ? colors.success : colors.statusPending;
-    final statusLabel = isPaid ? 'Paid' : 'Upcoming Bill';
+    final statusLabel = isPaid ? l10n.statusPaid : l10n.billStatusUpcoming;
     final amount = bill.amount;
 
     return Scaffold(
@@ -112,9 +116,9 @@ class _BillDetailContent extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Bill Details'),
+        title: Text(l10n.billDetailsTitle),
         backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
@@ -193,8 +197,8 @@ class _BillDetailContent extends StatelessWidget {
                       ),
                       Text(
                         amount != null
-                            ? CurrencyUtils.format(amount)
-                            : 'Reminder',
+                            ? CurrencyUtils.format(amount, localeCode: l10n.localeName)
+                            : l10n.billReminderOnly,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                           color:
@@ -224,23 +228,30 @@ class _BillDetailContent extends StatelessWidget {
                     children: [
                       _Row(
                         icon: Icons.category_outlined,
-                        label: 'Category',
-                        value: categoryName,
+                        label: l10n.labelCategory,
+                        value: VocabularyLabels.category(
+                          l10n: l10n,
+                          categoryId: bill.categoryId,
+                          name: categoryName,
+                        ),
                       ),
                       _Row(
                         icon: Icons.event_available_outlined,
-                        label: 'Due Date',
-                        value: DateFormatUtils.formatDate(bill.dueDate),
+                        label: l10n.labelDueDate,
+                        value: DateFormatUtils.formatDate(bill.dueDate, l10n.localeName),
                       ),
                       _Row(
                         icon: Icons.repeat_rounded,
-                        label: 'Recurring',
-                        value: bill.isRecurring ? 'Yes — rolls monthly' : 'No',
+                        label: l10n.billRecurring,
+                        value:
+                            bill.isRecurring
+                                ? l10n.billRecurringYes
+                                : l10n.actionNo,
                       ),
                       _Row(
                         icon: Icons.calendar_today_outlined,
-                        label: 'Created',
-                        value: DateFormatUtils.formatDate(bill.createdAt),
+                        label: l10n.labelCreated,
+                        value: DateFormatUtils.formatDate(bill.createdAt, l10n.localeName),
                       ),
                     ],
                   ),

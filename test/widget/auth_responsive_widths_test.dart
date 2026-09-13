@@ -7,6 +7,7 @@ import 'package:rental_ledger/features/authentication/presentation/pages/login_p
 import 'package:rental_ledger/features/authentication/presentation/pages/register_page.dart';
 import 'package:rental_ledger/features/members/presentation/pages/create_house_page.dart';
 import 'package:rental_ledger/features/members/presentation/pages/join_house_page.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Sweeps the responsive auth/onboarding pages across the widths the Web/PWA
 /// responsive work targets (phones, tablets, desktops, large monitors) and
@@ -34,7 +35,13 @@ Widget _harness(Widget child) {
         const FirebaseInitResult(false, 'Firebase not available in test'),
       ),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(
+      // Mirrors `app.dart`: every page in the sweep renders AppLogo, whose
+      // tagline is localized, so the tree needs the generated delegates.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 

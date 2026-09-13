@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/bill_entity.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/payment_method_chips.dart';
@@ -76,13 +79,34 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
     } on Failure catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      SnackbarUtils.showError(context, e.message);
+      // The notifier has no BuildContext, so a guard it owns is recognised
+      // here by its stable TYPE and shown localized. A refusal from the data
+      // layer (already paid, insufficient balance, ...) is recognized by its
+      // stable CODE and described with the arguments it carried.
+      final l10n = AppLocalizations.of(context);
+      SnackbarUtils.showError(
+        context,
+        e is PermissionFailure
+            ? l10n.billTreasurerOnlyMarkPaid
+            : FailureMessages.of(e, l10n),
+      );
+    } on AppException catch (e) {
+      // An amount-bearing bill requires its receipt/proof. The notifier tags
+      // that refusal with a stable code (never with text).
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      SnackbarUtils.showError(
+        context,
+        e.code == ExpenseErrorCodes.proofRequired
+            ? AppLocalizations.of(context).billProofRequired
+            : AppLocalizations.of(context).billMarkPaidFailed,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
       SnackbarUtils.showError(
         context,
-        'Could not mark the bill as paid. Please try again.',
+        AppLocalizations.of(context).billMarkPaidFailed,
       );
     }
   }
@@ -92,6 +116,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
     final bill = widget.bill;
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     return Padding(
       // Keep the sheet above the on-screen keyboard.
@@ -127,15 +152,15 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Mark "${bill.title}" as paid?',
+                          l10n.billMarkPaidConfirm(bill.title),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         Text(
                           bill.isRecurring
-                              ? 'Rolls the bill to next month.'
-                              : 'Settles this bill.',
+                              ? l10n.billRollsToNextMonth
+                              : l10n.billSettles,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colors.textSecondary,
                           ),
@@ -145,7 +170,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    CurrencyUtils.format(bill.amount ?? 0),
+                    CurrencyUtils.format(bill.amount ?? 0, localeCode: l10n.localeName),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: colors.statusDirectPayment,
@@ -160,17 +185,17 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                 controller: _periodController,
                 keyboardType: TextInputType.datetime,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Payment covers month',
-                  hintText: 'e.g. 2026-09',
-                  prefixIcon: Icon(Icons.calendar_month_outlined),
+                decoration: InputDecoration(
+                  labelText: l10n.billPaymentCoversMonth,
+                  hintText: l10n.billPaymentCoversMonthHint,
+                  prefixIcon: const Icon(Icons.calendar_month_outlined),
                 ),
               ),
               const SizedBox(height: 16),
 
               // ── Payment method (optional) ──
               Text(
-                'Payment Method',
+                l10n.labelPaymentMethod,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -184,7 +209,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
 
               // ── Proof (required — actual money movement) ──
               ProofPicker(
-                heading: 'Receipt / Proof (required)',
+                heading: l10n.labelReceiptProofRequired,
                 onChanged: _onProofChanged,
               ),
               const SizedBox(height: 20),
@@ -197,7 +222,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                       onPressed: _submitting
                           ? null
                           : () => Navigator.of(context).pop(false),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.actionCancel),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -216,7 +241,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
                                 color: colors.onPrimary,
                               ),
                             )
-                          : const Text('Confirm Payment'),
+                          : Text(l10n.billConfirmPayment),
                     ),
                   ),
                 ],

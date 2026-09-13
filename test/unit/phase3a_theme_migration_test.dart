@@ -12,6 +12,7 @@ import 'package:rental_ledger/core/widgets/skeleton.dart';
 import 'package:rental_ledger/core/widgets/status_badge.dart';
 import 'package:rental_ledger/features/dashboard/presentation/widgets/activity_visuals.dart';
 import 'package:rental_ledger/features/notifications/presentation/utils/notification_icon_utils.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// WCAG contrast ratio, as `(lighter + 0.05) / (darker + 0.05)`.
 double _contrast(Color a, Color b) {
@@ -28,6 +29,9 @@ double _contrast(Color a, Color b) {
 /// a test that re-pumps in the other mode sees the new theme rather than the
 /// old one still mid-animation. (`pumpAndSettle` is not an option here — the
 /// progress indicators animate forever.)
+///
+/// The localization delegates mirror `app.dart`: several of the widgets pumped
+/// through here (BalanceCard, AppLogo) resolve a localized string.
 Future<void> _pumpThemed(
   WidgetTester tester,
   Widget child, {
@@ -38,6 +42,8 @@ Future<void> _pumpThemed(
       theme: brightness == Brightness.light
           ? AppTheme.lightTheme
           : AppTheme.darkTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(body: Center(child: child)),
     ),
   );
@@ -621,7 +627,11 @@ void main() {
       );
     });
 
-    test('chips take the palette too', () {
+    test('chips take the palette too', () async {
+      // The chip helper is pure and still has no `BuildContext`, so the active
+      // locale is passed in explicitly — the palette assertions below are
+      // unaffected by which locale it is.
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       final chips = activityChips(
         'deposit',
         'Deposit',
@@ -630,6 +640,7 @@ void main() {
         null,
         const {},
         colors: AppColors.dark,
+        l10n: l10n,
       );
 
       expect(chips.map((c) => c.color), [

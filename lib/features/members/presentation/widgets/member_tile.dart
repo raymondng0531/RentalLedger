@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/animated_pressable.dart';
 import '../../domain/entities/house_member_entity.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// A tile displaying a house member with avatar, name, role badge,
 /// and optional balance. Wrapped in AnimatedPressable for tactile feedback.
@@ -32,6 +34,7 @@ class MemberTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colors = context.colors;
     // Guard against empty (non-null) names/emails — indexing ''[0] throws.
@@ -80,9 +83,11 @@ class MemberTile extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
+                  // A name is the member's own data and is never translated;
+                  // only the last-resort placeholder is.
                   member.displayName ??
                       _emailName(member.email) ??
-                      'Member',
+                      l10n.labelMember,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -99,7 +104,9 @@ class MemberTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'Treasurer',
+                    // The stored role is the exact string `Treasurer`; only
+                    // its on-screen label is localized, via the shared mapper.
+                    VocabularyLabels.role(member.role, l10n),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -124,7 +131,8 @@ class MemberTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 Text(
-                  'Joined ${DateFormatUtils.formatDateShort(member.joinedAt)}',
+                  l10n.houseJoinedOn(DateFormatUtils.formatDateShort(
+                      member.joinedAt, l10n.localeName)),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colors.textSecondary,
                     fontSize: 11,
@@ -148,7 +156,7 @@ class MemberTile extends StatelessWidget {
                         icon: Icon(Icons.admin_panel_settings_outlined,
                             color: colors.primary, size: 20),
                         onPressed: onMakeTreasurer,
-                        tooltip: 'Make treasurer',
+                        tooltip: l10n.houseMakeTreasurer,
                       ),
                     if (onRemove != null)
                       IconButton(
@@ -156,7 +164,7 @@ class MemberTile extends StatelessWidget {
                         icon: Icon(Icons.remove_circle_outline,
                             color: colors.error, size: 20),
                         onPressed: onRemove,
-                        tooltip: 'Remove member',
+                        tooltip: l10n.houseRemoveMemberTooltip,
                       ),
                   ],
                 )

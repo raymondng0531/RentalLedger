@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/category_picker.dart';
 import '../widgets/payment_method_chips.dart';
@@ -72,10 +74,14 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
 
     if (errorMessage == null) {
       // Pop-up toast that auto-dismisses, then back to dashboard.
-      SnackbarUtils.showSuccess(context, 'Payment recorded');
+      SnackbarUtils.showSuccess(
+          context, AppLocalizations.of(context).directPaymentRecorded);
       context.go(RouteNames.dashboard);
     } else {
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+        context,
+        FailureMessages.forError(errorMessage, AppLocalizations.of(context)),
+      );
     }
   }
 
@@ -85,6 +91,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
     final isLoading = state.isLoading;
     final categoriesAsync = ref.watch(categoriesProvider);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -92,9 +99,9 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Direct Payment'),
+        title: Text(l10n.actionDirectPayment),
         backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
@@ -125,7 +132,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                   const SizedBox(height: 24),
 
                   Text(
-                    'Pay directly from the Central Account.',
+                    l10n.directPaymentSubtitle,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: colors.textSecondary,
                         ),
@@ -136,13 +143,14 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                     controller: _titleController,
                     textCapitalization: TextCapitalization.sentences,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Title',
-                      hintText: 'What was it for?',
-                      prefixIcon: Icon(Icons.receipt_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldTitle,
+                      hintText: l10n.directPaymentTitleHint,
+                      prefixIcon: const Icon(Icons.receipt_outlined),
                     ),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Required' : null,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? l10n.expenseFieldRequired
+                        : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -151,16 +159,18 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'Amount (RM)',
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldAmountRm,
                       hintText: '0.00',
-                      prefixIcon: Icon(Icons.attach_money),
+                      prefixIcon: const Icon(Icons.attach_money),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Required';
+                      if (v == null || v.isEmpty) {
+                        return l10n.expenseFieldRequired;
+                      }
                       final amount = double.tryParse(v);
                       if (amount == null || amount <= 0) {
-                        return 'Enter a valid amount';
+                        return l10n.expenseFieldInvalidAmount;
                       }
                       return null;
                     },
@@ -169,7 +179,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
 
                   // ── Category (optional) ──
                   Text(
-                    'Category',
+                    l10n.labelCategory,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -180,7 +190,8 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                       spacing: 8,
                       children: [CircularProgressIndicator()],
                     ),
-                    error: (_, __) => const Text('Could not load categories'),
+                    error: (_, __) =>
+                        Text(l10n.expenseCategoriesLoadError),
                     data: (categories) => CategoryPicker(
                       categories: categories,
                       selectedId: _selectedCategory,
@@ -192,7 +203,7 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
 
                   // ── Payment method (optional) ──
                   Text(
-                    'Payment Method',
+                    l10n.labelPaymentMethod,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -209,17 +220,17 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                     controller: _periodController,
                     keyboardType: TextInputType.datetime,
                     textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'For month (optional)',
-                      hintText: 'e.g. 2026-09',
-                      prefixIcon: Icon(Icons.calendar_month_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldForMonth,
+                      hintText: l10n.expenseFieldForMonthHint,
+                      prefixIcon: const Icon(Icons.calendar_month_outlined),
                     ),
                   ),
                   const SizedBox(height: 20),
 
                   // ── Proof (required — actual money movement) ──
                   ProofPicker(
-                    heading: 'Receipt / Proof (required)',
+                    heading: l10n.labelReceiptProofRequired,
                     onChanged: _onProofChanged,
                   ),
                   const SizedBox(height: 24),
@@ -239,13 +250,13 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                                 color: colors.onPrimary,
                               ),
                             )
-                          : const Text('Record Payment'),
+                          : Text(l10n.directPaymentRecord),
                     ),
                   ),
                   const SizedBox(height: 8),
                   if (!_hasProof)
                     Text(
-                      'Attach a receipt or proof above to record the payment.',
+                      l10n.directPaymentProofRequiredHint,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colors.textSecondary,
                           ),

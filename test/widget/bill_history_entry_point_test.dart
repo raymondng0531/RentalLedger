@@ -8,6 +8,7 @@ import 'package:rental_ledger/features/authentication/presentation/providers/aut
 import 'package:rental_ledger/features/dashboard/presentation/widgets/upcoming_bills_section.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/bill_entity.dart';
 import 'package:rental_ledger/features/expenses/presentation/providers/expense_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 import 'package:rental_ledger/features/members/domain/entities/house_entity.dart';
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
 
@@ -101,7 +102,11 @@ Future<void> _pump(
         currentHouseProvider.overrideWith((ref) => _house),
         billsProvider.overrideWith((ref) => Stream.value(bills)),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ),
   );
   await tester.pump(); // Stream.value emits on the next microtask → data state.

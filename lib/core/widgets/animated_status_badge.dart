@@ -12,10 +12,17 @@ class AnimatedStatusBadge extends StatelessWidget {
   const AnimatedStatusBadge({
     super.key,
     required this.status,
+    this.label,
     this.size = StatusBadgeSize.small,
   });
 
+  /// The **stored** status value. Also keys the animation, so the badge still
+  /// cross-fades on a real status change and not on a language change.
   final String status;
+
+  /// Localized display text. Defaults to [status] when null.
+  final String? label;
+
   final StatusBadgeSize size;
 
   @override
@@ -38,6 +45,7 @@ class AnimatedStatusBadge extends StatelessWidget {
       child: StatusBadge(
         key: ValueKey(status),
         status: status,
+        label: label,
         size: size,
       ),
     );

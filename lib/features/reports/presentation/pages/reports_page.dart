@@ -9,7 +9,6 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/failure_messages.dart';
-import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/animated_balance.dart';
 import '../../../../core/widgets/animated_entrance.dart';
@@ -20,6 +19,7 @@ import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/reports_provider.dart';
+import '../widgets/export_pdf_button.dart';
 
 /// Reports screen — analytics, category breakdown, and monthly trends.
 class ReportsPage extends ConsumerWidget {
@@ -39,17 +39,11 @@ class ReportsPage extends ConsumerWidget {
         ),
         title: Text(l10n.navReports),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () {
-              // TODO: Export PDF (V1.0 feature).
-              // Compact overlay toast — stays above the bottom action area and
-              // never covers the charts below.
-              SnackbarUtils.showActionToast(
-                  context, l10n.reportPdfComingSoon);
-            },
-            tooltip: l10n.actionExportPdf,
-          ),
+          // Exports the report that is currently on screen. It is handed the
+          // resolved data (null while loading or failed) rather than reading the
+          // provider itself, so the PDF can only ever contain what the reader
+          // is looking at.
+          ExportPdfButton(data: reportsAsync.valueOrNull),
         ],
       ),
       body: ResponsivePage(

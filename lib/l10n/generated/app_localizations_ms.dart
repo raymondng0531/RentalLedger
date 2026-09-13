@@ -1041,9 +1041,6 @@ class AppLocalizationsMs extends AppLocalizations {
   String get actionSignOutConfirm => 'Anda pasti mahu log keluar?';
 
   @override
-  String get reportPdfComingSoon => 'Eksport PDF akan datang tidak lama lagi';
-
-  @override
   String get reportLoadFailed => 'Tidak dapat memuatkan laporan.';
 
   @override
@@ -1659,4 +1656,42 @@ class AppLocalizationsMs extends AppLocalizations {
 
   @override
   String get errorBillCreateFailed => 'Gagal mencipta bil.';
+
+  @override
+  String get labelTotal => 'Jumlah Keseluruhan';
+
+  @override
+  String get reportPdfSubtitle => 'Laporan Kewangan';
+
+  @override
+  String get reportPdfPeriod => 'Tempoh';
+
+  @override
+  String reportPdfGeneratedOn(String date) {
+    return 'Dijana pada $date';
+  }
+
+  @override
+  String get reportPdfSummary => 'Ringkasan';
+
+  @override
+  String get reportPdfTotalExpenses => 'Jumlah Perbelanjaan';
+
+  @override
+  String get reportPdfTotalDeposits => 'Jumlah Deposit';
+
+  @override
+  String get reportPdfNetFlow => 'Aliran Bersih';
+
+  @override
+  String get reportPdfMonth => 'Bulan';
+
+  @override
+  String get reportPdfShare => 'Peratus';
+
+  @override
+  String get reportPdfNoData => 'Tiada data laporan untuk tempoh ini.';
+
+  @override
+  String get reportPdfFailed => 'Tidak dapat menjana PDF. Sila cuba lagi.';
 }

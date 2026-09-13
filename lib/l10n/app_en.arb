@@ -1431,10 +1431,6 @@
   "@actionSignOutConfirm": {
     "description": "Confirmation body in the sign-out dialog, on the Settings and Profile screens."
   },
-  "reportPdfComingSoon": "PDF export coming soon",
-  "@reportPdfComingSoon": {
-    "description": "Toast shown when the Reports PDF-export button is tapped (the feature is not built yet)."
-  },
   "reportLoadFailed": "Could not load reports.",
   "@reportLoadFailed": {
     "description": "Error display on the Reports screen when the report fails to load and no domain failure message is available."
@@ -2299,5 +2295,59 @@
   "errorBillCreateFailed": "Failed to create bill.",
   "@errorBillCreateFailed": {
     "description": "Guard shown when a bill could not be created at all."
+  },
+  "labelTotal": "Total",
+  "@labelTotal": {
+    "description": "Row label for a total line in a summary table."
+  },
+  "reportPdfSubtitle": "Financial Report",
+  "@reportPdfSubtitle": {
+    "description": "Subtitle printed under the product name on an exported PDF report."
+  },
+  "reportPdfPeriod": "Period",
+  "@reportPdfPeriod": {
+    "description": "Label for the reporting period shown on an exported PDF report."
+  },
+  "reportPdfGeneratedOn": "Generated {date}",
+  "@reportPdfGeneratedOn": {
+    "description": "When an exported PDF report was generated. {date} is a formatted date and time.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "14 Sep 2026, 2:30 PM"
+      }
+    }
+  },
+  "reportPdfSummary": "Summary",
+  "@reportPdfSummary": {
+    "description": "Section heading for the summary table on an exported PDF report."
+  },
+  "reportPdfTotalExpenses": "Total Expenses",
+  "@reportPdfTotalExpenses": {
+    "description": "Summary row label for the total of paid expense claims, on an exported PDF report."
+  },
+  "reportPdfTotalDeposits": "Total Deposits",
+  "@reportPdfTotalDeposits": {
+    "description": "Summary row label for the total of deposits, on an exported PDF report."
+  },
+  "reportPdfNetFlow": "Net Flow",
+  "@reportPdfNetFlow": {
+    "description": "Summary row label for deposits minus paid expenses, on an exported PDF report."
+  },
+  "reportPdfMonth": "Month",
+  "@reportPdfMonth": {
+    "description": "Column header for the month name in the monthly trend table of an exported PDF report."
+  },
+  "reportPdfShare": "Share",
+  "@reportPdfShare": {
+    "description": "Column header for a row's percentage share of the total, on an exported PDF report."
+  },
+  "reportPdfNoData": "No report data for this period.",
+  "@reportPdfNoData": {
+    "description": "Shown in an exported PDF report when the selected period has no financial activity."
+  },
+  "reportPdfFailed": "Could not generate the PDF. Please try again.",
+  "@reportPdfFailed": {
+    "description": "Error shown when generating or opening the report PDF failed."
   }
 }

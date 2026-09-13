@@ -325,7 +325,6 @@
   "houseMakeTreasurer": "Jadikan bendahari",
   "actionMenu": "Menu",
   "actionSignOutConfirm": "Anda pasti mahu log keluar?",
-  "reportPdfComingSoon": "Eksport PDF akan datang tidak lama lagi",
   "reportLoadFailed": "Tidak dapat memuatkan laporan.",
   "reportMoneyIn": "Wang Masuk",
   "reportMoneyOut": "Wang Keluar",
@@ -519,5 +518,17 @@
   "labelReceipt": "Resit",
   "errorNoHouse": "Tiada rumah ditemui.",
   "errorNotSignedIn": "Belum log masuk.",
-  "errorBillCreateFailed": "Gagal mencipta bil."
+  "errorBillCreateFailed": "Gagal mencipta bil.",
+  "labelTotal": "Jumlah Keseluruhan",
+  "reportPdfSubtitle": "Laporan Kewangan",
+  "reportPdfPeriod": "Tempoh",
+  "reportPdfGeneratedOn": "Dijana pada {date}",
+  "reportPdfSummary": "Ringkasan",
+  "reportPdfTotalExpenses": "Jumlah Perbelanjaan",
+  "reportPdfTotalDeposits": "Jumlah Deposit",
+  "reportPdfNetFlow": "Aliran Bersih",
+  "reportPdfMonth": "Bulan",
+  "reportPdfShare": "Peratus",
+  "reportPdfNoData": "Tiada data laporan untuk tempoh ini.",
+  "reportPdfFailed": "Tidak dapat menjana PDF. Sila cuba lagi."
 }

@@ -2045,12 +2045,6 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to sign out?'**
   String get actionSignOutConfirm;
 
-  /// Toast shown when the Reports PDF-export button is tapped (the feature is not built yet).
-  ///
-  /// In en, this message translates to:
-  /// **'PDF export coming soon'**
-  String get reportPdfComingSoon;
-
   /// Error display on the Reports screen when the report fails to load and no domain failure message is available.
   ///
   /// In en, this message translates to:
@@ -3214,6 +3208,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to create bill.'**
   String get errorBillCreateFailed;
+
+  /// Row label for a total line in a summary table.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get labelTotal;
+
+  /// Subtitle printed under the product name on an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Financial Report'**
+  String get reportPdfSubtitle;
+
+  /// Label for the reporting period shown on an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Period'**
+  String get reportPdfPeriod;
+
+  /// When an exported PDF report was generated. {date} is a formatted date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated {date}'**
+  String reportPdfGeneratedOn(String date);
+
+  /// Section heading for the summary table on an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get reportPdfSummary;
+
+  /// Summary row label for the total of paid expense claims, on an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Expenses'**
+  String get reportPdfTotalExpenses;
+
+  /// Summary row label for the total of deposits, on an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Deposits'**
+  String get reportPdfTotalDeposits;
+
+  /// Summary row label for deposits minus paid expenses, on an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Net Flow'**
+  String get reportPdfNetFlow;
+
+  /// Column header for the month name in the monthly trend table of an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get reportPdfMonth;
+
+  /// Column header for a row's percentage share of the total, on an exported PDF report.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get reportPdfShare;
+
+  /// Shown in an exported PDF report when the selected period has no financial activity.
+  ///
+  /// In en, this message translates to:
+  /// **'No report data for this period.'**
+  String get reportPdfNoData;
+
+  /// Error shown when generating or opening the report PDF failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not generate the PDF. Please try again.'**
+  String get reportPdfFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/house_entity.dart';
 import '../../domain/entities/house_member_entity.dart';
@@ -176,6 +177,12 @@ class HouseRepositoryImpl implements HouseRepository {
     } on Failure {
       rethrow;
     } catch (e) {
+      // The data layer already recognised the expected rejections and tagged
+      // them with a stable code — carry it through so the UI can explain what
+      // happened in the user's own language instead of showing this sentence.
+      if (e is AppException && e.code != null) {
+        throw FirebaseFailure(e.message, code: e.code, arguments: e.arguments);
+      }
       throw FirebaseFailure('Failed to join house: ${e.toString()}');
     }
   }

@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/firebase_service.dart';
 import '../../../../core/utils/balance_utils.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../features/expenses/data/datasources/expense_remote_datasource.dart';
 import '../../../../features/expenses/domain/entities/bill_entity.dart';
 import '../../../../features/expenses/domain/entities/expense_entity.dart';
@@ -12,6 +14,7 @@ import '../../../../features/expenses/domain/entities/transaction_entity.dart';
 import '../../../../features/expenses/presentation/providers/expense_provider.dart'
     show expenseDataSourceProvider;
 import '../../../../features/members/presentation/providers/house_provider.dart';
+import '../../../../features/settings/presentation/providers/settings_provider.dart';
 
 /// Category spending data for charts.
 class CategorySpending {
@@ -142,16 +145,28 @@ class ReportsData {
 }
 
 /// Period presets for the Reports date filter.
+///
+/// The enum constants are **stable internal keys** — they are what
+/// [ReportFilter.period] stores and what the switch in `_rangeFor` matches on.
+/// The text shown for a preset comes from [labelFor], which takes the locale
+/// explicitly so the chip follows a language change in the same frame.
 enum ReportPeriod {
-  allTime('All time'),
-  thisMonth('This month'),
-  last3Months('Last 3 months'),
-  thisYear('This year'),
-  custom('Custom range');
+  allTime,
+  thisMonth,
+  last3Months,
+  thisYear,
+  custom;
 
-  const ReportPeriod(this.label);
-
-  final String label;
+  /// The display label for this preset, in the given locale.
+  String labelFor(AppLocalizations l10n) {
+    return switch (this) {
+      ReportPeriod.allTime => l10n.reportPeriodAllTime,
+      ReportPeriod.thisMonth => l10n.reportPeriodThisMonth,
+      ReportPeriod.last3Months => l10n.reportPeriodLast3Months,
+      ReportPeriod.thisYear => l10n.reportPeriodThisYear,
+      ReportPeriod.custom => l10n.reportPeriodCustomRange,
+    };
+  }
 }
 
 /// An immutable Reports date filter.
@@ -237,6 +252,18 @@ ReportsWindow? resolveReportWindow(ReportFilter filter, {DateTime? now}) {
   }
 }
 
+/// The locale code the report's month labels are formatted for.
+///
+/// The report is computed inside a provider, which has no `BuildContext`, so
+/// the locale has to reach it as data rather than be read off the widget tree.
+/// It comes from the same single source of truth `MaterialApp` uses
+/// ([AppSettings.language]), which guarantees the trend axis and the tooltip
+/// agree with the rest of the page. Watching it here means a language change
+/// recomputes the labels in the same frame.
+final reportsLocaleCodeProvider = Provider<String>(
+  (ref) => ref.watch(appSettingsProvider.select((settings) => settings.language)),
+);
+
 /// Streams reports data in real-time.
 ///
 /// Watches the house's transactions + expenses via the change stream and
@@ -257,14 +284,18 @@ final reportsProvider = StreamProvider<ReportsData>((ref) {
   // resolved window.
   final window = resolveReportWindow(ref.watch(reportFilterProvider));
 
+  // The month labels the trend carries are formatted text, so the locale is
+  // part of the report's inputs — not something the chart can fix up later.
+  final localeCode = ref.watch(reportsLocaleCodeProvider);
+
   final ds = ref.watch(expenseDataSourceProvider);
   return ds
       .historyChangesStream(house.houseId)
-      .asyncMap((_) => _fetchReports(ds, house.houseId, window));
+      .asyncMap((_) => _fetchReports(ds, house.houseId, window, localeCode));
 });
 
-Future<ReportsData> _fetchReports(
-    ExpenseRemoteDataSource ds, String houseId, ReportsWindow? window) async {
+Future<ReportsData> _fetchReports(ExpenseRemoteDataSource ds, String houseId,
+    ReportsWindow? window, String localeCode) async {
   final now = DateTime.now();
 
   // ── All expenses (for category breakdown + total). ──
@@ -290,6 +321,7 @@ Future<ReportsData> _fetchReports(
     categoryNames: categoryNames,
     window: window,
     now: now,
+    localeCode: localeCode,
   );
 }
 
@@ -315,6 +347,13 @@ Future<ReportsData> _fetchReports(
 /// - Bill counts reflect the house's overall bills regardless of the window.
 ///
 /// When [window] is null every figure is all-time (unchanged behaviour).
+///
+/// [localeCode] is the locale the trend's month labels are rendered in. The
+/// labels are part of the computed data (the axis and the tooltip both read
+/// them straight off [MonthlyComparison.month]), so the locale is an input to
+/// the calculation rather than something the chart can apply afterwards. It
+/// defaults to English so the pure function stays callable without a
+/// localization context; the app always passes the selected language.
 @visibleForTesting
 ReportsData computeReportsData({
   required List<ExpenseEntity> expenses,
@@ -323,6 +362,7 @@ ReportsData computeReportsData({
   required Map<String, String> categoryNames,
   ReportsWindow? window,
   DateTime? now,
+  String localeCode = 'en',
 }) {
   final current = now ?? DateTime.now();
 
@@ -446,7 +486,7 @@ ReportsData computeReportsData({
   if (window == null) {
     for (int m = 1; m <= current.month; m++) {
       monthlyTrend.add(MonthlyComparison(
-        month: _monthAbbr(m),
+        month: _monthAbbr(m, localeCode),
         moneyIn: monthlyIn[_monthSerial(current.year, m)] ?? 0,
         moneyOut: monthlyOut[_monthSerial(current.year, m)] ?? 0,
       ));
@@ -461,7 +501,9 @@ ReportsData computeReportsData({
       final year = serial ~/ 12;
       final month = (serial % 12) + 1;
       monthlyTrend.add(MonthlyComparison(
-        month: spansYears ? _trendMonthLabel(year, month) : _monthAbbr(month),
+        month: spansYears
+            ? _trendMonthLabel(year, month, localeCode)
+            : _monthAbbr(month, localeCode),
         moneyIn: monthlyIn[serial] ?? 0,
         moneyOut: monthlyOut[serial] ?? 0,
       ));
@@ -517,10 +559,14 @@ ReportsData computeReportsData({
   );
 }
 
-String _monthAbbr(int m) {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return months[m - 1];
-}
+/// The abbreviated month name for [month] (1–12) in [localeCode].
+///
+/// The locale is always supplied — never left to `Intl.defaultLocale`, which is
+/// process-global mutable state that would leak the reader's language into
+/// every other formatter in the process. The year is arbitrary: a `MMM` pattern
+/// renders the month name only.
+String _monthAbbr(int m, String localeCode) =>
+    DateFormat('MMM', localeCode).format(DateTime(2000, m));
 
 /// (year, month) → a monotonic serial (`year * 12 + month - 1`) so months can
 /// be bucketed and iterated across year boundaries (Dec 2025 → Jan 2026).
@@ -528,8 +574,8 @@ int _monthSerial(int year, int month) => year * 12 + (month - 1);
 
 /// Month label carrying a two-digit year, for trends spanning years
 /// ("Aug 26" for August 2026).
-String _trendMonthLabel(int year, int month) =>
-    '${_monthAbbr(month)} ${(year % 100).toString().padLeft(2, '0')}';
+String _trendMonthLabel(int year, int month, String localeCode) =>
+    '${_monthAbbr(month, localeCode)} ${(year % 100).toString().padLeft(2, '0')}';
 
 int? _categoryColor(String cat) {
   const colors = {

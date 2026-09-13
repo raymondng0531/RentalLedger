@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../../members/domain/entities/house_member_entity.dart';
 import '../../../members/presentation/providers/house_provider.dart';
@@ -30,6 +32,11 @@ class DepositPage extends ConsumerStatefulWidget {
 }
 
 /// Common purposes for a Central Account contribution / top-up.
+///
+/// These are the **stored** values — they are written to Firestore verbatim and
+/// displayed as-is on the transaction detail page, so they are never
+/// translated. Only the label the dropdown shows is localized, via
+/// [_purposeLabel].
 const List<String> _depositPurposes = [
   'Monthly Rental',
   'House Contribution',
@@ -37,6 +44,26 @@ const List<String> _depositPurposes = [
   'Utilities',
   'Other',
 ];
+
+/// Localized label for a stored deposit purpose (see [_depositPurposes]).
+///
+/// An unrecognised purpose is shown exactly as stored.
+String _purposeLabel(String stored, AppLocalizations l10n) {
+  switch (stored) {
+    case 'Monthly Rental':
+      return l10n.depositPurposeMonthlyRental;
+    case 'House Contribution':
+      return l10n.depositPurposeHouseContribution;
+    case 'General Top-up':
+      return l10n.depositPurposeGeneralTopUp;
+    case 'Utilities':
+      return l10n.depositPurposeUtilities;
+    case 'Other':
+      return l10n.depositPurposeOther;
+    default:
+      return stored;
+  }
+}
 
 class _DepositPageState extends ConsumerState<DepositPage> {
   final _formKey = GlobalKey<FormState>();
@@ -87,15 +114,19 @@ class _DepositPageState extends ConsumerState<DepositPage> {
 
     if (errorMessage == null) {
       // Pop-up toast that auto-dismisses, then back to dashboard.
-      SnackbarUtils.showSuccess(context, 'Deposit recorded');
+      SnackbarUtils.showSuccess(
+          context, AppLocalizations.of(context).depositRecorded);
       context.go(RouteNames.dashboard);
     } else {
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+        context,
+        FailureMessages.forError(errorMessage, AppLocalizations.of(context)),
+      );
     }
   }
 
-  String _memberLabel(HouseMemberEntity m) =>
-      (m.displayName?.isNotEmpty ?? false) ? m.displayName! : 'Member';
+  String _memberLabel(HouseMemberEntity m, AppLocalizations l10n) =>
+      (m.displayName?.isNotEmpty ?? false) ? m.displayName! : l10n.labelMember;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +135,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
     final membersAsync = ref.watch(membersStreamProvider);
     final currentUser = ref.watch(currentUserProvider);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     final members = membersAsync.value ?? const <HouseMemberEntity>[];
     final memberUids = {for (final m in members) m.userId};
@@ -126,9 +158,9 @@ class _DepositPageState extends ConsumerState<DepositPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Record Deposit'),
+        title: Text(l10n.depositRecordTitle),
         backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
@@ -160,7 +192,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   const SizedBox(height: 24),
 
                   Text(
-                    'Add money to the Central Account.',
+                    l10n.depositSubtitle,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: colors.textSecondary,
                         ),
@@ -173,16 +205,18 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Amount (RM)',
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldAmountRm,
                       hintText: '0.00',
-                      prefixIcon: Icon(Icons.attach_money),
+                      prefixIcon: const Icon(Icons.attach_money),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Required';
+                      if (v == null || v.isEmpty) {
+                        return l10n.expenseFieldRequired;
+                      }
                       final amount = double.tryParse(v);
                       if (amount == null || amount <= 0) {
-                        return 'Enter a valid amount';
+                        return l10n.expenseFieldInvalidAmount;
                       }
                       return null;
                     },
@@ -193,16 +227,16 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   DropdownButtonFormField<String>(
                     value: dropdownValue,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Paid by',
-                      prefixIcon: Icon(Icons.person_outline),
+                    decoration: InputDecoration(
+                      labelText: l10n.labelPaidBy,
+                      prefixIcon: const Icon(Icons.person_outline),
                     ),
                     items: [
                       for (final m in members)
                         DropdownMenuItem(
                           value: m.userId,
                           child: Text(
-                            _memberLabel(m),
+                            _memberLabel(m, l10n),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -215,14 +249,17 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   DropdownButtonFormField<String>(
                     value: _purpose,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Purpose (optional)',
-                      hintText: 'e.g. Monthly Rental',
-                      prefixIcon: Icon(Icons.label_outline),
+                    decoration: InputDecoration(
+                      labelText: l10n.depositPurposeLabel,
+                      hintText: l10n.depositPurposeHint,
+                      prefixIcon: const Icon(Icons.label_outline),
                     ),
                     items: [
+                      // The item's *value* stays the stored purpose; only the
+                      // text shown for it is localized.
                       for (final p in _depositPurposes)
-                        DropdownMenuItem(value: p, child: Text(p)),
+                        DropdownMenuItem(
+                            value: p, child: Text(_purposeLabel(p, l10n))),
                     ],
                     onChanged: (v) => setState(() => _purpose = v),
                   ),
@@ -230,7 +267,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
 
                   // ── Payment method (optional) ──
                   Text(
-                    'Payment Method',
+                    l10n.labelPaymentMethod,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -247,17 +284,17 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                     controller: _periodController,
                     keyboardType: TextInputType.datetime,
                     textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'For month (optional)',
-                      hintText: 'e.g. 2026-09',
-                      prefixIcon: Icon(Icons.calendar_month_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.expenseFieldForMonth,
+                      hintText: l10n.expenseFieldForMonthHint,
+                      prefixIcon: const Icon(Icons.calendar_month_outlined),
                     ),
                   ),
                   const SizedBox(height: 20),
 
                   // ── Proof (required — actual money movement) ──
                   ProofPicker(
-                    heading: 'Receipt / Proof (required)',
+                    heading: l10n.labelReceiptProofRequired,
                     onChanged: _onProofChanged,
                   ),
                   const SizedBox(height: 24),
@@ -267,10 +304,10 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                     controller: _notesController,
                     textCapitalization: TextCapitalization.sentences,
                     textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
-                      hintText: 'e.g. Sep rent for Ahmad & Mei',
-                      prefixIcon: Icon(Icons.note_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.depositNotesLabel,
+                      hintText: l10n.depositNotesHint,
+                      prefixIcon: const Icon(Icons.note_outlined),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -290,13 +327,13 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                                 color: colors.onPrimary,
                               ),
                             )
-                          : const Text('Record Deposit'),
+                          : Text(l10n.depositRecordTitle),
                     ),
                   ),
                   const SizedBox(height: 8),
                   if (!_hasProof)
                     Text(
-                      'Attach a receipt or proof above to record the deposit.',
+                      l10n.depositProofRequiredHint,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colors.textSecondary,
                           ),

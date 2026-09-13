@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_ledger/features/authentication/domain/entities/user_entity.dart';
 import 'package:rental_ledger/features/authentication/presentation/providers/auth_provider.dart';
@@ -7,7 +8,9 @@ import 'package:rental_ledger/features/expenses/domain/entities/expense_entity.d
 import 'package:rental_ledger/features/expenses/domain/repositories/expense_repository.dart';
 import 'package:rental_ledger/features/expenses/presentation/providers/expense_provider.dart';
 import 'package:rental_ledger/features/members/domain/entities/house_entity.dart';
+import 'package:rental_ledger/core/utils/failure_messages.dart';
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Guards the V1.0 "Delete Pending Expense" permission model (FR-010):
 ///
@@ -21,6 +24,12 @@ import 'package:rental_ledger/features/members/presentation/providers/house_prov
 /// to prove the delete is actually invoked.
 const _permissionNotOwner = 'You can only delete your own expense.';
 const _permissionNotPending = 'Only pending expenses can be deleted.';
+
+/// The sign-in guard as the member reads it. The notifier now returns the
+/// stable code rather than the sentence, so the assertion below pins both.
+const _notAuthenticated = 'Not authenticated.';
+
+late AppLocalizations _en;
 
 final _now = DateTime(2026, 9);
 
@@ -131,6 +140,12 @@ ProviderContainer _containerFor(
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    _en = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   group('Delete Expense — owner + Pending only', () {
     test('owner deletes their own Pending expense (repo.deleteExpense called)',
         () async {
@@ -186,7 +201,8 @@ void main() {
           .read(deleteExpenseProvider.notifier)
           .delete(_expense());
 
-      expect(error, 'Not authenticated.');
+      expect(error, FailureCodes.notSignedIn);
+      expect(FailureMessages.forError(error, _en), _notAuthenticated);
       expect(repo.deletedIds, isEmpty);
     });
   });

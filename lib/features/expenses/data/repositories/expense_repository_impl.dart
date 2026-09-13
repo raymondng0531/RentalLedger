@@ -1,4 +1,5 @@
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/errors/failure_codes.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/expense_entity.dart';
@@ -107,12 +108,23 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   /// edge-case rules require them to be told.
   Failure _actionFailure(Object error, String fallbackPrefix) {
     if (error is ConflictException) {
-      return FirebaseFailure(error.message, code: error.code);
+      return FirebaseFailure(
+        error.message,
+        code: error.code,
+        arguments: error.arguments,
+      );
     }
     if (error is ValidationException) {
-      return FirebaseFailure(error.message, code: 'insufficient-balance');
+      return FirebaseFailure(
+        error.message,
+        code: error.code ?? FailureCodes.insufficientBalance,
+        arguments: error.arguments,
+      );
     }
-    return FirebaseFailure('$fallbackPrefix: ${error.toString()}');
+    return FirebaseFailure(
+      '$fallbackPrefix: ${error.toString()}',
+      code: FailureCodes.actionFailed,
+    );
   }
 
   @override

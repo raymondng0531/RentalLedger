@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme/app_theme.dart';
 import 'router/app_router.dart';
 import '../features/settings/presentation/providers/settings_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 /// Root widget for Rental Ledger.
 ///
@@ -22,6 +23,12 @@ class RentalLedgerApp extends ConsumerWidget {
     final themeMode = ref.watch(
       appSettingsProvider.select((settings) => settings.themeMode),
     );
+    // Same single source of truth for language: `AppSettings.language` is
+    // hydrated from local storage before `runApp`, so the first frame already
+    // carries the persisted choice.
+    final language = ref.watch(
+      appSettingsProvider.select((settings) => settings.language),
+    );
 
     return MaterialApp.router(
       title: 'Rental Ledger',
@@ -38,7 +45,14 @@ class RentalLedgerApp extends ConsumerWidget {
       routerConfig: router,
 
       // ── Localization ──
-      locale: const Locale('ms', 'MY'),
+      // The selected language, not a fixed constant. `supportedLocales` is
+      // generated from the ARB files, so it is exactly [en, ms]; an
+      // unrecognised stored value falls back to the first entry (English) via
+      // Flutter's standard locale resolution, and `PreferencesService` already
+      // normalises anything unknown to 'en' on read.
+      locale: Locale(language),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 }

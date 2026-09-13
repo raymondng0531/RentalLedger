@@ -12,6 +12,7 @@ import 'package:rental_ledger/features/members/domain/entities/house_member_enti
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
 import 'package:rental_ledger/features/reports/presentation/pages/reports_page.dart';
 import 'package:rental_ledger/features/reports/presentation/providers/reports_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Sweeps the Phase 2B responsive pages (Expenses, Add Expense, History,
 /// Reports) across the widths the Web/PWA responsive work targets (phones,
@@ -150,7 +151,11 @@ Future<void> _pumpPage(
   await tester.pumpWidget(
     ProviderScope(
       overrides: overrides,
-      child: MaterialApp(home: page),
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: page,
+      ),
     ),
   );
   await tester.pump(); // Stream.value emits on the next microtask → data state.

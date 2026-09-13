@@ -1,6 +1,15 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:rental_ledger/features/history/presentation/providers/history_provider.dart';
 import 'package:rental_ledger/features/history/presentation/utils/history_grouping.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
+
+/// The month header is localized, so the grouping functions take a locale.
+///
+/// Every case here runs in English — the wording this suite asserted before the
+/// migration. The Malay header is covered in `phase4_dates_test.dart`.
+late AppLocalizations _en;
 
 HistoryEvent _event(String id, DateTime date, {String? title}) => HistoryEvent(
       id: id,
@@ -11,6 +20,14 @@ HistoryEvent _event(String id, DateTime date, {String? title}) => HistoryEvent(
     );
 
 void main() {
+  setUpAll(() async {
+    // The `ms` date symbols are not compiled into intl, so they have to be
+    // loaded explicitly. Harmless for English, and it keeps this suite honest
+    // if a future case adds a Malay header.
+    await initializeDateFormatting();
+    _en = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   group('groupEventsByMonth', () {
     test('groups a newest-first feed into calendar months, newest month first',
         () {
@@ -20,7 +37,7 @@ void main() {
         _event('c', DateTime(2026, 7, 20)),
         _event('d', DateTime(2026, 7)),
         _event('e', DateTime(2026, 6, 10)),
-      ]);
+      ], _en);
 
       expect(sections.map((s) => s.label), ['AUGUST 2026', 'JULY 2026', 'JUNE 2026']);
       expect(sections.map((s) => s.year), [2026, 2026, 2026]);
@@ -32,7 +49,7 @@ void main() {
         _event('a', DateTime(2026, 8, 20)),
         _event('b', DateTime(2026, 8, 10)),
         _event('c', DateTime(2026, 8)),
-      ]);
+      ], _en);
 
       expect(sections, hasLength(1));
       expect(sections.single.events.map((e) => e.id), ['a', 'b', 'c']);
@@ -42,7 +59,7 @@ void main() {
       final sections = groupEventsByMonth([
         _event('jan', DateTime(2026, 1, 15)),
         _event('dec', DateTime(2025, 12, 20)),
-      ]);
+      ], _en);
 
       expect(sections, hasLength(2));
       expect(sections[0].label, 'JANUARY 2026');
@@ -50,7 +67,7 @@ void main() {
     });
 
     test('returns no sections for an empty feed (no empty month headers)', () {
-      expect(groupEventsByMonth([]), isEmpty);
+      expect(groupEventsByMonth([], _en), isEmpty);
     });
 
     test('repeated months merge into a single section (no duplicate headers)',
@@ -59,7 +76,7 @@ void main() {
         _event('a', DateTime(2026, 8, 10)),
         _event('b', DateTime(2026, 8)),
         _event('c', DateTime(2026, 8, 12)),
-      ]);
+      ], _en);
 
       expect(sections, hasLength(1));
       expect(sections.single.events, hasLength(3));
@@ -72,7 +89,7 @@ void main() {
         _event('a', DateTime(2026, 8, 15)),
         _event('b', DateTime(2026, 7, 20)),
         _event('c', DateTime(2026, 7)),
-      ]);
+      ], _en);
       final rows = buildHistoryRows(sections);
 
       expect(rows, hasLength(5)); // 2 headers + 3 events
@@ -90,7 +107,7 @@ void main() {
         _event('e1', DateTime(2026, 8, 15)),
         _event('e2', DateTime(2026, 7, 20)),
         _event('e3', DateTime(2026, 7)),
-      ]));
+      ], _en));
 
       final keys = rows.map((r) => r.key).toSet();
       expect(keys.length, rows.length, reason: 'every row key must be unique');
@@ -119,7 +136,7 @@ void main() {
       final filtered = feed
           .where((e) => (e.title ?? '').toLowerCase().contains(query))
           .toList();
-      final sections = groupEventsByMonth(filtered);
+      final sections = groupEventsByMonth(filtered, _en);
 
       // Only August and July still have matches — no empty June header.
       expect(sections.map((s) => s.label), ['AUGUST 2026', 'JULY 2026']);
@@ -132,6 +149,7 @@ void main() {
         [_event('a1', DateTime(2026, 8, 15), title: 'Rent')]
             .where((e) => (e.title ?? '').contains('zzz'))
             .toList(),
+        _en,
       );
       expect(sections, isEmpty);
     });
@@ -139,8 +157,8 @@ void main() {
 
   group('monthYearHeader', () {
     test('formats and uppercases the month + year', () {
-      expect(monthYearHeader(DateTime(2026, 8, 3)), 'AUGUST 2026');
-      expect(monthYearHeader(DateTime(2025, 12, 31)), 'DECEMBER 2025');
+      expect(monthYearHeader(DateTime(2026, 8, 3), _en), 'AUGUST 2026');
+      expect(monthYearHeader(DateTime(2025, 12, 31), _en), 'DECEMBER 2025');
     });
   });
 }

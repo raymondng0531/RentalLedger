@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
+
 /// The app's shared date-period vocabulary, and the one place that turns a
 /// period choice into an actual date range.
 ///
@@ -25,6 +27,11 @@ class FilterPeriods {
   const FilterPeriods._();
 
   /// The preset keys, in display order.
+  ///
+  /// These are **stable internal keys**: they are what a screen stores for the
+  /// user's choice and what the switch in [resolve] matches on. They are not
+  /// display text and must never be translated — the label for a key comes from
+  /// [labelFor].
   static const List<String> presets = [
     'today',
     'yesterday',
@@ -33,17 +40,6 @@ class FilterPeriods {
     '90d',
     'month',
     'lastmonth',
-  ];
-
-  /// The labels shown for [presets], index-for-index.
-  static const List<String> labels = [
-    'Today',
-    'Yesterday',
-    'Last 7 Days',
-    'Last 30 Days',
-    'Last 90 Days',
-    'This Month',
-    'Last Month',
   ];
 
   /// The key the sheet stores when the user picks an explicit date range.
@@ -117,11 +113,27 @@ class FilterPeriods {
     return !date.isBefore(start) && date.isBefore(end);
   }
 
-  /// The human label for a period choice, as shown on the active-filter chips.
-  static String labelFor(String? preset) {
-    if (preset == null) return 'All';
-    if (preset == custom) return 'Custom Range';
-    final index = presets.indexOf(preset);
-    return index == -1 ? 'All' : labels[index];
+  /// The human label for a period choice, as shown on the active-filter chips
+  /// and on the option tiles in the filter sheet.
+  ///
+  /// Takes the locale explicitly rather than reading it from anywhere global, so
+  /// the label follows a language change in the same frame as everything else.
+  /// The [preset] keys themselves are untouched — only the text shown for them
+  /// changes.
+  static String labelFor(String? preset, AppLocalizations l10n) {
+    return switch (preset) {
+      null => l10n.periodAll,
+      custom => l10n.periodCustomRange,
+      'today' => l10n.timeToday,
+      'yesterday' => l10n.timeYesterday,
+      '7d' => l10n.periodLast7Days,
+      '30d' => l10n.periodLast30Days,
+      '90d' => l10n.periodLast90Days,
+      'month' => l10n.periodThisMonth,
+      'lastmonth' => l10n.periodLastMonth,
+      // Anything unrecognised means no filtering, which is what the original
+      // `indexOf`-then-`-1` fallback did.
+      _ => l10n.periodAll,
+    };
   }
 }

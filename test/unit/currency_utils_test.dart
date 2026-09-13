@@ -2,6 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_ledger/core/utils/currency_utils.dart';
 
 void main() {
+  // The symbol is process-global, so pin it to the shipped default rather than
+  // relying on no other test in this file having changed it. Locale-aware
+  // number/currency behaviour is covered in `phase4_currency_test.dart`.
+  setUp(() => CurrencyUtils.setCurrencyCode('MYR'));
+
   group('CurrencyUtils.format', () {
     test('formats positive amounts with RM symbol', () {
       expect(CurrencyUtils.format(2847.62), 'RM 2,847.62');

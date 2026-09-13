@@ -6,13 +6,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_ledger/features/reports/presentation/pages/reports_page.dart';
 import 'package:rental_ledger/features/reports/presentation/providers/reports_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 Widget _buildReports(ReportsData data) {
   return ProviderScope(
     overrides: [
       reportsProvider.overrideWith((ref) => Stream.value(data)),
     ],
-    child: const MaterialApp(home: ReportsPage()),
+    // Mirrors `app.dart`: the period chips are localized, so the harness
+    // must supply the same delegates the real app does.
+    child: const MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ReportsPage(),
+    ),
   );
 }
 

@@ -8,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/implicit_animated_list.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
@@ -15,6 +16,7 @@ import '../../../../features/expenses/domain/entities/bill_entity.dart';
 import '../../../../features/expenses/presentation/providers/expense_provider.dart';
 import '../../../../features/expenses/presentation/widgets/bill_mark_paid_sheet.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Upcoming Bills — the house's recurring/due bills, newest-first, with the
 /// Treasurer's Add Bill/Edit/Delete/Mark Paid controls and members' Remind
@@ -27,6 +29,7 @@ class UpcomingBillsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final billsAsync = ref.watch(billsProvider);
     final house = ref.watch(currentHouseProvider);
     final user = ref.watch(currentUserProvider);
@@ -47,7 +50,7 @@ class UpcomingBillsSection extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Upcoming Bills',
+                  l10n.billUpcomingBills,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -59,14 +62,14 @@ class UpcomingBillsSection extends ConsumerWidget {
               TextButton(
                 onPressed: () => context.push(RouteNames.billHistory),
                 style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                child: const Text('See all'),
+                child: Text(l10n.actionSeeAll),
               ),
               // Only the Treasurer can add bills.
               if (isTreasurer)
                 TextButton.icon(
                   onPressed: () => _showAddBillDialog(context, ref),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add Bill'),
+                  label: Text(l10n.billAdd),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
@@ -92,7 +95,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Could not load bills. Pull to refresh.',
+                        l10n.billListLoadFailed,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colors.textSecondary,
                         ),
@@ -118,10 +121,8 @@ class UpcomingBillsSection extends ConsumerWidget {
                       Icons.event_repeat_outlined,
                       color: colors.textHint,
                     ),
-                    title: const Text('No upcoming bills'),
-                    subtitle: const Text(
-                      'Add recurring bills to track them here.',
-                    ),
+                    title: Text(l10n.billNoneUpcoming),
+                    subtitle: Text(l10n.billNoneUpcomingHint),
                     trailing: Icon(Icons.add, color: colors.primary),
                     onTap: () => _showAddBillDialog(context, ref),
                   ),
@@ -140,6 +141,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 padding: EdgeInsets.zero,
                 itemBuilder: (context, bill) {
+                  final l10n = AppLocalizations.of(context);
                   // Countdown colors: green >7d, orange 3-7d, red due/overdue.
                   final urgency = bill.urgency;
                   final dueColor = switch (urgency) {
@@ -210,7 +212,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                                       ],
                                     ),
                                     Text(
-                                      bill.countdownLabel,
+                                      bill.countdownLabel(l10n),
                                       style: theme.textTheme.bodySmall
                                           ?.copyWith(
                                             color: dueColor,
@@ -222,8 +224,8 @@ class UpcomingBillsSection extends ConsumerWidget {
                               ),
                               Text(
                                 bill.hasAmount
-                                    ? CurrencyUtils.format(bill.amount!)
-                                    : 'Reminder',
+                                    ? CurrencyUtils.format(bill.amount!, localeCode: l10n.localeName)
+                                    : l10n.billReminderOnly,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: bill.hasAmount
@@ -245,7 +247,12 @@ class UpcomingBillsSection extends ConsumerWidget {
                                     children: [
                                       Flexible(
                                         child: Text(
-                                          'Due ${DateFormatUtils.formatDateShort(bill.dueDate)}',
+                                          l10n.billDueOn(
+                                            DateFormatUtils.formatDateShort(
+                                              bill.dueDate,
+                                              l10n.localeName,
+                                            ),
+                                          ),
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
                                                 color: colors.textSecondary,
@@ -278,7 +285,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                                           ref,
                                           bill,
                                         ),
-                                    tooltip: 'Edit bill',
+                                    tooltip: l10n.billEditTooltip,
                                     visualDensity: VisualDensity.compact,
                                   ),
                                   IconButton(
@@ -293,7 +300,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                                           ref,
                                           bill,
                                         ),
-                                    tooltip: 'Delete bill',
+                                    tooltip: l10n.billDeleteTooltip,
                                     visualDensity: VisualDensity.compact,
                                   ),
                                 ],
@@ -317,8 +324,8 @@ class UpcomingBillsSection extends ConsumerWidget {
                                   ),
                                   label: Text(
                                     bill.reminderEnabled
-                                        ? 'Reminder On'
-                                        : 'Set Reminder',
+                                        ? l10n.billReminderOn
+                                        : l10n.billSetReminder,
                                     style: const TextStyle(fontSize: 12),
                                   ),
                                   style: OutlinedButton.styleFrom(
@@ -347,7 +354,9 @@ class UpcomingBillsSection extends ConsumerWidget {
                                             size: 16,
                                           ),
                                           label: Text(
-                                            isPaid ? 'Paid' : 'Mark Paid',
+                                            isPaid
+                                                ? l10n.statusPaid
+                                                : l10n.billMarkPaid,
                                             style: const TextStyle(
                                               fontSize: 12,
                                             ),
@@ -369,9 +378,9 @@ class UpcomingBillsSection extends ConsumerWidget {
                                             Icons.notifications_active_outlined,
                                             size: 16,
                                           ),
-                                          label: const Text(
-                                            'Remind Treasurer',
-                                            style: TextStyle(fontSize: 12),
+                                          label: Text(
+                                            l10n.actionRemindTreasurer,
+                                            style: const TextStyle(fontSize: 12),
                                           ),
                                           style: OutlinedButton.styleFrom(
                                             padding: const EdgeInsets.symmetric(
@@ -411,7 +420,10 @@ class UpcomingBillsSection extends ConsumerWidget {
   ) async {
     await ref.read(billActionsProvider.notifier).remindTreasurer(bill);
     if (context.mounted) {
-      SnackbarUtils.showSuccess(context, 'Reminder sent to Treasurer');
+      SnackbarUtils.showSuccess(
+        context,
+        AppLocalizations.of(context).actionReminderSent,
+      );
     }
   }
 
@@ -437,7 +449,10 @@ class UpcomingBillsSection extends ConsumerWidget {
         builder: (_) => BillMarkPaidSheet(bill: bill),
       );
       if (paid == true && context.mounted) {
-        SnackbarUtils.showSuccess(context, 'Bill marked as paid');
+        SnackbarUtils.showSuccess(
+          context,
+          AppLocalizations.of(context).billMarkedPaid,
+        );
       }
       return;
     }
@@ -448,20 +463,22 @@ class UpcomingBillsSection extends ConsumerWidget {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            title: Text('Mark "${bill.title}" as paid?'),
+            title: Text(
+              AppLocalizations.of(ctx).billMarkPaidConfirm(bill.title),
+            ),
             content: Text(
               bill.isRecurring
-                  ? 'This will roll the bill to next month.'
-                  : 'This bill will be marked as paid.',
+                  ? AppLocalizations.of(ctx).billRollNextMonth
+                  : AppLocalizations.of(ctx).billWillBeMarkedPaid,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(ctx).actionCancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Mark Paid'),
+                child: Text(AppLocalizations.of(ctx).billMarkPaid),
               ),
             ],
           ),
@@ -470,18 +487,24 @@ class UpcomingBillsSection extends ConsumerWidget {
       try {
         await ref.read(billActionsProvider.notifier).markPaid(bill);
         if (context.mounted) {
-          SnackbarUtils.showSuccess(context, 'Bill marked as paid');
+          SnackbarUtils.showSuccess(
+            context,
+            AppLocalizations.of(context).billMarkedPaid,
+          );
         }
       } on Failure catch (e) {
         // Surfaces the refusal as-is: "already marked paid" (a second tap) and
         // "insufficient balance" both need to reach the Treasurer rather than
         // failing silently.
-        if (context.mounted) SnackbarUtils.showError(context, e.message);
+        if (context.mounted) {
+          final l10n = AppLocalizations.of(context);
+          SnackbarUtils.showError(context, FailureMessages.of(e, l10n));
+        }
       } catch (_) {
         if (context.mounted) {
           SnackbarUtils.showError(
             context,
-            'Could not mark the bill as paid. Please try again.',
+            AppLocalizations.of(context).billMarkPaidFailed,
           );
         }
       }
@@ -498,12 +521,12 @@ class UpcomingBillsSection extends ConsumerWidget {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            title: const Text('Delete Bill?'),
+            title: Text(AppLocalizations.of(ctx).billDeleteTitle),
             content: Text(bill.title),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(ctx).actionCancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
@@ -513,7 +536,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: context.colors.error,
                 ),
-                child: const Text('Delete'),
+                child: Text(AppLocalizations.of(ctx).actionDelete),
               ),
             ],
           ),
@@ -521,7 +544,10 @@ class UpcomingBillsSection extends ConsumerWidget {
     if (confirmed == true) {
       await ref.read(billActionsProvider.notifier).deleteBill(bill.billId);
       if (context.mounted) {
-        SnackbarUtils.showSuccess(context, 'Bill deleted');
+        SnackbarUtils.showSuccess(
+          context,
+          AppLocalizations.of(context).billDeleted,
+        );
       }
     }
   }
@@ -533,6 +559,7 @@ class UpcomingBillsSection extends ConsumerWidget {
     BillEntity bill,
   ) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final titleController = TextEditingController(text: bill.title);
     final amountController = TextEditingController(
       text: bill.amount?.toStringAsFixed(2) ?? '',
@@ -544,7 +571,7 @@ class UpcomingBillsSection extends ConsumerWidget {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            title: const Text('Edit Bill'),
+            title: Text(l10n.billEditTitle),
             content: StatefulBuilder(
               builder:
                   (ctx, setState) => Column(
@@ -552,17 +579,17 @@ class UpcomingBillsSection extends ConsumerWidget {
                     children: [
                       TextField(
                         controller: titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Bill name',
+                        decoration: InputDecoration(
+                          labelText: l10n.billName,
                         ),
                         textCapitalization: TextCapitalization.sentences,
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: amountController,
-                        decoration: const InputDecoration(
-                          labelText: 'Amount (RM) — optional',
-                          hintText: 'Leave blank for reminder only',
+                        decoration: InputDecoration(
+                          labelText: l10n.billAmountRmOptional,
+                          hintText: l10n.billAmountHint,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -600,7 +627,12 @@ class UpcomingBillsSection extends ConsumerWidget {
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                'Due: ${DateFormatUtils.formatDate(dueDate)}',
+                                l10n.billDueDateLabel(
+                                  DateFormatUtils.formatDate(
+                                    dueDate,
+                                    l10n.localeName,
+                                  ),
+                                ),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -615,13 +647,13 @@ class UpcomingBillsSection extends ConsumerWidget {
                       SwitchListTile(
                         value: isRecurring,
                         onChanged: (v) => setState(() => isRecurring = v),
-                        title: const Text(
-                          'Repeat every month',
-                          style: TextStyle(fontSize: 14),
+                        title: Text(
+                          l10n.billRepeatMonthly,
+                          style: const TextStyle(fontSize: 14),
                         ),
-                        subtitle: const Text(
-                          'Auto-create the next bill each month',
-                          style: TextStyle(fontSize: 12),
+                        subtitle: Text(
+                          l10n.billRepeatMonthlyHint,
+                          style: const TextStyle(fontSize: 12),
                         ),
                         contentPadding: EdgeInsets.zero,
                         activeTrackColor: colors.primary,
@@ -632,7 +664,7 @@ class UpcomingBillsSection extends ConsumerWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(ctx).actionCancel),
               ),
               FilledButton(
                 onPressed: () async {
@@ -649,10 +681,13 @@ class UpcomingBillsSection extends ConsumerWidget {
                         isRecurring: isRecurring,
                       );
                   if (context.mounted) {
-                    SnackbarUtils.showSuccess(context, 'Bill updated');
+                    SnackbarUtils.showSuccess(
+                      context,
+                      AppLocalizations.of(context).billUpdated,
+                    );
                   }
                 },
-                child: const Text('Save'),
+                child: Text(AppLocalizations.of(ctx).actionSave),
               ),
             ],
           ),
@@ -661,6 +696,7 @@ class UpcomingBillsSection extends ConsumerWidget {
 
   void _showAddBillDialog(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final titleController = TextEditingController();
     final amountController = TextEditingController();
     DateTime dueDate = DateTime.now().add(const Duration(days: 7));
@@ -670,7 +706,7 @@ class UpcomingBillsSection extends ConsumerWidget {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            title: const Text('Add Bill'),
+            title: Text(l10n.billAdd),
             content: StatefulBuilder(
               builder:
                   (ctx, setState) => Column(
@@ -678,8 +714,8 @@ class UpcomingBillsSection extends ConsumerWidget {
                     children: [
                       TextField(
                         controller: titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Bill name',
+                        decoration: InputDecoration(
+                          labelText: l10n.billName,
                         ),
                         textCapitalization: TextCapitalization.sentences,
                       ),
@@ -687,9 +723,9 @@ class UpcomingBillsSection extends ConsumerWidget {
                       // Amount is optional — can act as a reminder only.
                       TextField(
                         controller: amountController,
-                        decoration: const InputDecoration(
-                          labelText: 'Amount (RM) — optional',
-                          hintText: 'Leave blank for reminder only',
+                        decoration: InputDecoration(
+                          labelText: l10n.billAmountRmOptional,
+                          hintText: l10n.billAmountHint,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -730,7 +766,12 @@ class UpcomingBillsSection extends ConsumerWidget {
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                'Due: ${DateFormatUtils.formatDate(dueDate)}',
+                                l10n.billDueDateLabel(
+                                  DateFormatUtils.formatDate(
+                                    dueDate,
+                                    l10n.localeName,
+                                  ),
+                                ),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -747,13 +788,13 @@ class UpcomingBillsSection extends ConsumerWidget {
                       SwitchListTile(
                         value: isRecurring,
                         onChanged: (v) => setState(() => isRecurring = v),
-                        title: const Text(
-                          'Repeat every month',
-                          style: TextStyle(fontSize: 14),
+                        title: Text(
+                          l10n.billRepeatMonthly,
+                          style: const TextStyle(fontSize: 14),
                         ),
-                        subtitle: const Text(
-                          'Auto-create the next bill each month',
-                          style: TextStyle(fontSize: 12),
+                        subtitle: Text(
+                          l10n.billRepeatMonthlyHint,
+                          style: const TextStyle(fontSize: 12),
                         ),
                         contentPadding: EdgeInsets.zero,
                         activeTrackColor: colors.primary,
@@ -764,7 +805,7 @@ class UpcomingBillsSection extends ConsumerWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(ctx).actionCancel),
               ),
               FilledButton(
                 onPressed: () async {
@@ -780,7 +821,7 @@ class UpcomingBillsSection extends ConsumerWidget {
                         isRecurring: isRecurring,
                       );
                 },
-                child: const Text('Add'),
+                child: Text(AppLocalizations.of(ctx).actionAdd),
               ),
             ],
           ),

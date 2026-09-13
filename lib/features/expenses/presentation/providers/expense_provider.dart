@@ -4,9 +4,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/errors/failure_codes.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/firebase_service.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/ledger_submission_key.dart';
 import '../../../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
@@ -19,6 +21,44 @@ import '../../domain/entities/bill_entity.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/expense_entity.dart';
 import '../../domain/repositories/expense_repository.dart';
+
+/// Stable, non-localized codes for the failures these notifiers raise.
+///
+/// The notifiers have no `BuildContext`, so they never build display text:
+/// they attach one of these codes to the failure they throw and the calling
+/// widget maps the code to a localized message. Never compare against the
+/// human-readable message — it is English and only a fallback.
+class ExpenseErrorCodes {
+  const ExpenseErrorCodes._();
+
+  /// An amount-bearing bill was marked paid without its receipt/proof.
+  static const String proofRequired = 'bill/proof-required';
+}
+
+/// What a notifier hands back to the screen for [error].
+///
+/// A stable code is returned whenever the presentation layer knows how to
+/// describe it: the screen — which is the only layer holding an
+/// `AppLocalizations` — turns that code into the user's own language. Anything
+/// else keeps its own message, which is the documented English fallback for a
+/// condition that has no code yet.
+///
+/// A code is only ever handed up when [FailureMessages.canDescribe] accepts it,
+/// so a raw slug can never reach the screen even if a caller forgets to map it.
+String _describe(Object error) {
+  final code = switch (error) {
+    Failure(:final code) => code,
+    AppException(:final code) => code,
+    _ => null,
+  };
+  if (code != null && FailureMessages.canDescribe(code)) return code;
+
+  return switch (error) {
+    Failure(:final message) => message,
+    AppException(:final message) => message,
+    _ => FailureCodes.unexpected,
+  };
+}
 
 // ───── Shared Data Source Provider ─────
 
@@ -140,8 +180,8 @@ class CreateExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
       final house = ref.read(currentHouseProvider);
       final userId = _currentUserId;
 
-      if (house == null) return 'No house found.';
-      if (userId == null) return 'Not authenticated.';
+      if (house == null) return FailureCodes.noHouse;
+      if (userId == null) return FailureCodes.notSignedIn;
 
       final repo = ref.read(expenseRepositoryProvider);
       // Upload receipt first if we have a local file.
@@ -178,10 +218,10 @@ class CreateExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return FailureCodes.unexpected;
     } finally {
       _submitting = false;
     }
@@ -211,10 +251,10 @@ class ApproveExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return FailureCodes.unexpected;
     }
   }
 
@@ -243,10 +283,10 @@ class RejectExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return FailureCodes.unexpected;
     }
   }
 
@@ -274,10 +314,10 @@ class MarkPaidNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return FailureCodes.unexpected;
     }
   }
 
@@ -303,7 +343,7 @@ class DeleteExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final user = ref.read(currentUserProvider);
-      if (user == null) return 'Not authenticated.';
+      if (user == null) return FailureCodes.notSignedIn;
 
       if (expense.purchasedBy != user.uid) {
         throw const PermissionFailure(
@@ -328,10 +368,10 @@ class DeleteExpenseNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return FailureCodes.unexpected;
     }
   }
 
@@ -379,7 +419,7 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final house = ref.read(currentHouseProvider);
-      if (house == null) return 'No house found.';
+      if (house == null) return FailureCodes.noHouse;
 
       // Deposits move money into the Central Account — Treasurer-only.
       if (!_isCurrentUserTreasurer(ref)) {
@@ -426,15 +466,15 @@ class DepositNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } on AppException catch (e) {
       // e.g. a receipt upload failure — surface the real reason so the user can
       // retry (the pending proof is only cleared after a successful upload).
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return FailureCodes.unexpected;
     }
   }
 
@@ -477,7 +517,7 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final house = ref.read(currentHouseProvider);
-      if (house == null) return 'No house found.';
+      if (house == null) return FailureCodes.noHouse;
 
       // Direct payments move money out of the Central Account — Treasurer-only.
       if (!_isCurrentUserTreasurer(ref)) {
@@ -523,15 +563,15 @@ class DirectPaymentNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } on Failure catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } on AppException catch (e) {
       // e.g. a receipt upload failure — surface the real reason so the user can
       // retry (the pending proof is only cleared after a successful upload).
       state = AsyncValue.error(e, StackTrace.current);
-      return e.message;
+      return _describe(e);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'An unexpected error occurred.';
+      return FailureCodes.unexpected;
     }
   }
 
@@ -568,7 +608,7 @@ class CreateBillNotifier extends AutoDisposeAsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final house = ref.read(currentHouseProvider);
-      if (house == null) return 'No house found.';
+      if (house == null) return FailureCodes.noHouse;
 
       final ds = ref.read(expenseLedgerProvider);
       await ds.createBill(
@@ -584,7 +624,7 @@ class CreateBillNotifier extends AutoDisposeAsyncNotifier<void> {
       return null;
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      return 'Failed to create bill.';
+      return FailureCodes.billCreateFailed;
     }
   }
 }
@@ -644,6 +684,7 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
       if (proofPath == null) {
         throw const AppFirebaseException(
           'A receipt or proof image is required to mark this bill as paid.',
+          code: ExpenseErrorCodes.proofRequired,
         );
       }
       receiptUrl = await ds.uploadReceipt(
@@ -667,7 +708,7 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
       throw FirebaseFailure(e.message, code: e.code);
     } on ValidationException catch (e) {
       // The Central Account cannot cover this payment.
-      throw FirebaseFailure(e.message, code: 'insufficient-balance');
+      throw FirebaseFailure(e.message, code: FailureCodes.insufficientBalance);
     }
     ref.invalidate(billsProvider);
   }
@@ -710,7 +751,11 @@ class BillActionsNotifier extends AutoDisposeAsyncNotifier<void> {
     await notif.createNotification(
       userId: house.treasurerId,
       title: 'Payment Reminder: ${bill.title}',
-      body: 'Due ${DateFormatUtils.formatDateShort(bill.dueDate)} · '
+      // `storageLocale`, not the reader's locale: this string is written to
+      // Firestore and deliberately not localized, so it must read the same for
+      // every member of the house and stay stable if a member switches
+      // language. See DateFormatUtils.storageLocale.
+      body: 'Due ${DateFormatUtils.formatDateShort(bill.dueDate, DateFormatUtils.storageLocale)} · '
           'from ${house.houseName} · sent by ${user.displayName}',
       type: FirestoreConstants.notificationPaymentCompleted,
       relatedId: bill.billId,

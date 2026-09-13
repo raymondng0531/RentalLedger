@@ -8,6 +8,7 @@ import 'package:rental_ledger/features/expenses/domain/entities/expense_entity.d
 import 'package:rental_ledger/features/expenses/presentation/widgets/category_picker.dart';
 import 'package:rental_ledger/features/expenses/presentation/widgets/expense_card.dart';
 import 'package:rental_ledger/features/expenses/presentation/widgets/payment_method_chips.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Phase 3C — Expenses.
 ///
@@ -51,9 +52,17 @@ Color _over(Color fill, Color ground) => Color.alphaBlend(fill, ground);
 /// animation has to be run out before anything is asserted — and
 /// `pumpAndSettle` is unusable here because several of these widgets contain
 /// indefinitely-repeating animations.
+///
+/// The localization delegates mirror `app.dart`: the receipt viewer resolves a
+/// localized default title.
 Future<void> _pump(WidgetTester tester, Widget child, ThemeData theme) async {
   await tester.pumpWidget(
-    MaterialApp(theme: theme, home: Scaffold(body: child)),
+    MaterialApp(
+      theme: theme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    ),
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
@@ -66,7 +75,14 @@ Future<void> _pumpBare(
   Widget child,
   ThemeData theme,
 ) async {
-  await tester.pumpWidget(MaterialApp(theme: theme, home: child));
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: theme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
+  );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }

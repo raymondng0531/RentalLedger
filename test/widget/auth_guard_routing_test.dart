@@ -16,6 +16,7 @@ import 'package:rental_ledger/features/members/data/models/house_member_model.da
 import 'package:rental_ledger/features/members/data/models/house_model.dart';
 import 'package:rental_ledger/features/members/data/repositories/house_repository_impl.dart';
 import 'package:rental_ledger/features/members/domain/entities/house_member_entity.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Startup, end to end: the real [SplashPage], the real [AuthGuard], and the
 /// real [HouseRepositoryImpl], wired exactly as `AppRouter` wires them.
@@ -283,11 +284,18 @@ class _Startup {
   late final GoRouter router;
 
   /// The app root: the router inside the scope the splash page reads auth from.
+  ///
+  /// The localization delegates mirror `app.dart` — the real splash page this
+  /// harness routes to renders AppLogo, whose tagline is localized.
   Widget get app => ProviderScope(
         overrides: [
           authRepositoryProvider.overrideWithValue(_FakeAuth(auth)),
         ],
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
       );
 
   /// What `houseCoordinatorProvider` does when a session appears.

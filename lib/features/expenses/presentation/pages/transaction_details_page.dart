@@ -5,6 +5,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/receipt_viewer.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../features/history/presentation/providers/history_provider.dart';
@@ -12,6 +13,7 @@ import '../../../../features/members/domain/entities/house_member_entity.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
 import '../providers/expense_provider.dart' show categoriesProvider;
 import '../widgets/receipt_image.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Deposit Details — read-only finance-style view of a Deposit event.
 class DepositDetailsPage extends StatelessWidget {
@@ -20,9 +22,14 @@ class DepositDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _TransactionDetailsView(
       event: event,
-      title: 'Deposit Details',
+      title: l10n.depositDetailsTitle,
+      // Shown in place of the record's own title when it carries none — the
+      // transaction type, NOT the app-bar title with " Details" trimmed off
+      // (a localized string must never be used for control flow).
+      fallbackTitle: l10n.txnTypeDeposit,
       icon: Icons.savings_outlined,
       color: context.colors.success,
     );
@@ -36,9 +43,11 @@ class DirectPaymentDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _TransactionDetailsView(
       event: event,
-      title: 'Direct Payment Details',
+      title: l10n.directPaymentDetailsTitle,
+      fallbackTitle: l10n.txnTypeDirectPayment,
       icon: Icons.credit_card_rounded,
       color: context.colors.statusDirectPayment,
     );
@@ -50,12 +59,19 @@ class _TransactionDetailsView extends ConsumerWidget {
   const _TransactionDetailsView({
     required this.event,
     required this.title,
+    required this.fallbackTitle,
     required this.icon,
     required this.color,
   });
 
   final HistoryEvent event;
   final String title;
+
+  /// Used in place of the record's own title when it carries none (the
+  /// transaction type's localized name). Kept as its own field so the header
+  /// never has to derive it from [title] with string surgery.
+  final String fallbackTitle;
+
   final IconData icon;
   final Color color;
 
@@ -67,11 +83,12 @@ class _TransactionDetailsView extends ConsumerWidget {
   /// [ReceiptViewer] draws its own fixed black ground in every mode, so white
   /// is the correct ink there and `context.colors` does not apply.
   void _openReceipt(BuildContext context, String url) {
+    final l10n = AppLocalizations.of(context);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder:
             (_) => ReceiptViewer(
-              title: 'Receipt / Proof',
+              title: l10n.labelReceiptProof,
               image: Image.network(
                 url,
                 fit: BoxFit.contain,
@@ -79,19 +96,19 @@ class _TransactionDetailsView extends ConsumerWidget {
                     ? child
                     : const Center(child: CircularProgressIndicator()),
                 errorBuilder:
-                    (_, __, ___) => const Center(
+                    (_, __, ___) => Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.image_not_supported_outlined,
                             color: Colors.white54,
                             size: 48,
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
-                            'Failed to load receipt',
-                            style: TextStyle(color: Colors.white54),
+                            l10n.errorFailedToLoadReceipt,
+                            style: const TextStyle(color: Colors.white54),
                           ),
                         ],
                       ),
@@ -104,6 +121,7 @@ class _TransactionDetailsView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colors = context.colors;
     // All records (active + inactive former members): a transaction detail
@@ -116,15 +134,15 @@ class _TransactionDetailsView extends ConsumerWidget {
         m.userId:
             (m.displayName?.isNotEmpty == true
                 ? m.displayName!
-                : 'Unknown Member'),
+                : l10n.commonUnknownMember),
     };
     final performedBy =
         event.userId == null
             ? null
-            : (nameMap[event.userId] ?? 'Unknown Member');
+            : (nameMap[event.userId] ?? l10n.commonUnknownMember);
     final paidBy = event.paidByUserId == null
         ? null
-        : (nameMap[event.paidByUserId] ?? 'Unknown Member');
+        : (nameMap[event.paidByUserId] ?? l10n.commonUnknownMember);
 
     // Category name for direct payments that carry one.
     final categories = ref.watch(categoriesProvider).value ?? const [];
@@ -135,7 +153,8 @@ class _TransactionDetailsView extends ConsumerWidget {
     final amountColor = isInflow ? colors.success : colors.error;
     final sign = isInflow ? '+' : '-';
     final dateLine =
-        '${DateFormatUtils.formatDateShort(event.date)} • ${DateFormatUtils.formatTime(event.date)}';
+        '${DateFormatUtils.formatDateShort(event.date, l10n.localeName)} • '
+        '${DateFormatUtils.formatTime(event.date, l10n.localeName)}';
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -143,7 +162,7 @@ class _TransactionDetailsView extends ConsumerWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
         title: Text(title),
         backgroundColor: colors.surface,
@@ -184,7 +203,7 @@ class _TransactionDetailsView extends ConsumerWidget {
                             Text(
                               (event.title?.isNotEmpty ?? false)
                                   ? event.title!
-                                  : title.replaceAll(' Details', ''),
+                                  : fallbackTitle,
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
@@ -193,7 +212,9 @@ class _TransactionDetailsView extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              performedBy != null ? 'by $performedBy' : '',
+                              performedBy != null
+                                  ? l10n.txnByPerson(performedBy)
+                                  : '',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colors.textSecondary,
                               ),
@@ -202,7 +223,7 @@ class _TransactionDetailsView extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        '$sign${CurrencyUtils.format(event.amount.abs())}',
+                        '$sign${CurrencyUtils.format(event.amount.abs(), localeCode: l10n.localeName)}',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: amountColor,
@@ -229,51 +250,59 @@ class _TransactionDetailsView extends ConsumerWidget {
                     children: [
                       _InfoRow(
                         icon: Icons.calendar_today_outlined,
-                        label: 'Date',
+                        label: l10n.labelDate,
                         value: dateLine,
                       ),
                       if (paidBy != null)
                         _InfoRow(
                           icon: Icons.person_pin_outlined,
-                          label: 'Paid By',
+                          label: l10n.labelPaidBy,
                           value: paidBy,
                         ),
                       _InfoRow(
                         icon: Icons.person_outlined,
-                        label: 'Performed By',
+                        label: l10n.labelPerformedBy,
                         value: performedBy ?? '—',
                       ),
                       if (event.paymentMethod != null)
                         _InfoRow(
                           icon: Icons.payments_outlined,
-                          label: 'Payment Method',
-                          value: event.paymentMethod!,
+                          label: l10n.labelPaymentMethod,
+                          value: VocabularyLabels.paymentMethod(
+                            event.paymentMethod,
+                            l10n,
+                          ),
                         ),
                       if (event.periodLabel != null)
                         _InfoRow(
                           icon: Icons.calendar_month_outlined,
-                          label: 'Covers Month',
+                          label: l10n.txnCoversMonth,
                           value: event.periodLabel!,
                         ),
                       if (event.purpose != null)
                         _InfoRow(
                           icon: Icons.label_outline,
-                          label: 'Purpose',
+                          label: l10n.labelPurpose,
                           value: event.purpose!,
                         ),
                       if (categoryName != null)
                         _InfoRow(
                           icon: Icons.category_outlined,
-                          label: 'Category',
-                          value: categoryName,
+                          label: l10n.labelCategory,
+                          value: VocabularyLabels.category(
+                            l10n: l10n,
+                            categoryId: event.categoryId,
+                            name: categoryName,
+                          ),
                         ),
                       _InfoRow(
                         icon: Icons.account_balance_wallet_outlined,
-                        label: 'Payment Source',
-                        value:
-                            event.paymentSource == 'personal'
-                                ? 'Personal'
-                                : 'Central Account',
+                        label: l10n.labelPaymentSource,
+                        // Keyed on the STORED source value.
+                        value: VocabularyLabels.paymentSource(
+                          event.paymentSource,
+                          l10n,
+                        ),
                       ),
                     ],
                   ),
@@ -296,7 +325,7 @@ class _TransactionDetailsView extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Receipt / Proof',
+                          l10n.labelReceiptProof,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -326,7 +355,7 @@ class _TransactionDetailsView extends ConsumerWidget {
                               Icons.remove_red_eye_outlined,
                               size: 18,
                             ),
-                            label: const Text('View Receipt'),
+                            label: Text(l10n.actionViewReceipt),
                           ),
                         ),
                       ],

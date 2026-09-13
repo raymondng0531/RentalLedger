@@ -12,6 +12,7 @@ import 'package:rental_ledger/features/notifications/presentation/pages/notifica
 import 'package:rental_ledger/features/notifications/presentation/providers/notification_provider.dart';
 import 'package:rental_ledger/features/settings/presentation/pages/profile_page.dart';
 import 'package:rental_ledger/features/settings/presentation/pages/settings_page.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Sweeps the Phase 2C responsive pages (Member List, Settings, Profile,
 /// Notifications) across the widths the Web/PWA responsive work targets
@@ -140,7 +141,13 @@ Future<void> _pumpPage(
   await tester.pumpWidget(
     ProviderScope(
       overrides: overrides,
-      child: MaterialApp(home: page),
+      child: MaterialApp(
+        // Mirrors `app.dart`: a screen that reads AppLocalizations needs the
+        // generated delegates in the tree, exactly as it has them in the app.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: page,
+      ),
     ),
   );
   await tester.pump(); // Stream.value emits on the next microtask → data state.

@@ -7,7 +7,9 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/member_name_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/activity_card.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
@@ -22,6 +24,7 @@ import '../../../members/presentation/providers/house_provider.dart';
 import '../providers/bill_history_provider.dart';
 import '../utils/bill_history.dart';
 import '../utils/filter_periods.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../utils/history_grouping.dart';
 import '../widgets/filter_widgets.dart';
 import '../widgets/history_month_header.dart';
@@ -66,13 +69,6 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
   String? _datePreset;
   DateTimeRange? _customRange;
 
-  /// The filter section heading, and the key its selection comes back under.
-  ///
-  /// "Recorded by" is the only honest wording: the underlying field is the
-  /// transaction's `performedBy`, i.e. whoever entered the payment. Calling it
-  /// "Member" or "Paid by" would assert a relationship the data does not hold.
-  static const _memberSection = 'Recorded by';
-
   @override
   void dispose() {
     _searchController.dispose();
@@ -94,30 +90,40 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
     List<CategoryEntity> categories,
     List<HouseMemberEntity> members,
   ) async {
+    final l10n = AppLocalizations.of(context);
+    // The sheet keys each section's selection by its label, so the label and
+    // the key have to be the same string — the localized one, taken once and
+    // reused on both sides.
+    final statusSection = l10n.labelStatus;
+    final memberSection = l10n.labelRecordedBy;
+
     await showFilterSheet(
       context,
       // Status leads: for a bill, paid/overdue/upcoming is the primary axis.
       sections: [
         FilterOptionsSection(
-          label: 'Status',
+          label: statusSection,
           group: FilterOptionGroup(
             multiSelect: true,
             selected: {for (final s in _statuses) s.key},
             options: [
               for (final s in BillHistoryStatus.values)
-                FilterOption(value: s.key, label: s.label),
+                FilterOption(
+                  value: s.key,
+                  label: billHistoryStatusLabel(s, l10n),
+                ),
             ],
           ),
         ),
         FilterPeriodSection(preset: _datePreset, range: _customRange),
         FilterCategorySection(category: _categoryId, categories: categories),
         FilterOptionsSection(
-          label: _memberSection,
+          label: memberSection,
           group: FilterOptionGroup(
             selected: {if (_memberUserId != null) _memberUserId!},
             options: [
               for (final m in members)
-                FilterOption(value: m.userId, label: _memberLabel(m)),
+                FilterOption(value: m.userId, label: _memberLabel(m, l10n)),
             ],
           ),
         ),
@@ -128,14 +134,14 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
             ..clear()
             ..addAll(
               result
-                  .select('Status')
+                  .select(statusSection)
                   .map(BillHistoryStatus.fromKey)
                   .whereType<BillHistoryStatus>(),
             );
           _categoryId = result.category;
           _datePreset = result.preset;
           _customRange = result.range;
-          _memberUserId = result.single(_memberSection);
+          _memberUserId = result.single(memberSection);
         });
       },
     );
@@ -155,6 +161,7 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final billHistoryAsync = ref.watch(billHistoryProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     // All records (active + inactive): a settled bill's recorder may since have
@@ -169,13 +176,13 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
       membersAsync.value ?? const <HouseMemberEntity>[],
     );
     // Fallback order: displayName → "Unknown Member". Never a Firebase UID.
-    final nameMap = {for (final m in members) m.userId: _memberLabel(m)};
+    final nameMap = {for (final m in members) m.userId: _memberLabel(m, l10n)};
 
     return Scaffold(
       appBar: AppBar(
         // No drawer: this is a pushed sub-page, so the AppBar's automatic back
         // button is the way out, matching every other detail route.
-        title: const Text('Bill History'),
+        title: Text(l10n.navBillHistory),
       ),
       body: ResponsivePage(
         // maxWidth omitted — defaults to AppContentWidth.detail (800), the same
@@ -195,7 +202,7 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
                 onChanged:
                     (v) => setState(() => _searchQuery = v.toLowerCase()),
                 decoration: InputDecoration(
-                  hintText: 'Search by bill title...',
+                  hintText: l10n.billHistorySearchHint,
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon:
                       _searchQuery.isNotEmpty
@@ -233,7 +240,7 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
                     const SizedBox(width: 8),
                     TextButton(
                       onPressed: _resetFilters,
-                      child: const Text('Clear all'),
+                      child: Text(l10n.actionClearAll),
                     ),
                   ],
                 ],
@@ -255,31 +262,40 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
                   children: [
                     for (final status in _statuses)
                       SummaryChip(
-                        label: status.label,
+                        label: billHistoryStatusLabel(status, l10n),
                         onDeleted:
                             () => setState(() => _statuses.remove(status)),
                       ),
                     if (_categoryId != null)
                       SummaryChip(
-                        label: 'Category: ${categoryMap[_categoryId] ?? _categoryId}',
+                        // The stored category name is shown through the shared
+                        // vocabulary mapping, so a default keeps its localized
+                        // label while a category the user renamed stays their
+                        // own text.
+                        label: '${l10n.labelCategory}: '
+                            '${VocabularyLabels.categoryOrNull(
+                              l10n: l10n,
+                              categoryId: _categoryId,
+                              name: categoryMap[_categoryId],
+                            ) ?? ''}',
                         onDeleted: () => setState(() => _categoryId = null),
                       ),
                     if (_memberUserId != null)
                       SummaryChip(
-                        label:
-                            'Recorded by: ${nameMap[_memberUserId] ?? 'Unknown Member'}',
+                        label: '${l10n.labelRecordedBy}: '
+                            '${nameMap[_memberUserId] ?? l10n.commonUnknownMember}',
                         onDeleted: () => setState(() => _memberUserId = null),
                       ),
                     if (_datePreset != null && _customRange == null)
                       SummaryChip(
-                        label: FilterPeriods.labelFor(_datePreset!),
+                        label: FilterPeriods.labelFor(_datePreset!, l10n),
                         onDeleted: () => setState(() => _datePreset = null),
                       ),
                     if (_customRange != null)
                       SummaryChip(
                         label:
-                            '${DateFormatUtils.formatDateShort(_customRange!.start)} – '
-                            '${DateFormatUtils.formatDateShort(_customRange!.end)}',
+                            '${DateFormatUtils.formatDateShort(_customRange!.start, l10n.localeName)} – '
+                            '${DateFormatUtils.formatDateShort(_customRange!.end, l10n.localeName)}',
                         onDeleted: () => setState(() => _customRange = null),
                       ),
                     if (_searchQuery.isNotEmpty)
@@ -304,8 +320,8 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
                     (e, _) => ErrorDisplay(
                       message:
                           e is Failure
-                              ? e.message
-                              : 'Could not load bill history.',
+                              ? FailureMessages.of(e, l10n)
+                              : l10n.billHistoryLoadFailed,
                       onRetry: () => refreshBillHistory(ref),
                     ),
                 data:
@@ -327,10 +343,11 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
     Map<String, String> categoryMap,
     Map<String, String> nameMap,
   ) {
+    final l10n = AppLocalizations.of(context);
     if (entries.isEmpty) {
       return EmptyState(
-        title: _hasActiveFilters ? 'No results found' : 'No bills yet',
-        description: _emptyDescription(),
+        title: _hasActiveFilters ? l10n.emptyNoResults : l10n.billHistoryEmpty,
+        description: _emptyDescription(l10n),
         icon:
             _hasActiveFilters
                 ? Icons.search_off_rounded
@@ -342,7 +359,7 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
     // is filed under its own date (payment date when paid, due date otherwise),
     // which is also the date the Period filter selected it by — so a row can
     // never appear under a month it was not filtered against.
-    final sections = groupItemsByMonth(entries, (e) => e.filterDate);
+    final sections = groupItemsByMonth(entries, (e) => e.filterDate, l10n);
     final rows = <_BillHistoryRow>[];
     for (final section in sections) {
       rows.add(_MonthRow(section.label, section.year, section.month));
@@ -373,16 +390,14 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
   /// only a bill with a recorded payment can name a recorder — so the user is
   /// told that, instead of being told to "adjust the filters" as though a
   /// different choice would have matched.
-  String? _emptyDescription() {
+  String? _emptyDescription(AppLocalizations l10n) {
     if (!_hasActiveFilters) {
-      return 'Bills added to this house will appear here.';
+      return l10n.billHistoryEmptyDescription;
     }
     if (_memberUserId != null) {
-      return 'Bills name a member only when a payment was recorded against '
-          'them, so this filter hides upcoming bills and bills settled '
-          'without a payment record.';
+      return l10n.billHistoryMemberFilterEmpty;
     }
-    return 'Try adjusting your search or filters.';
+    return l10n.historyNoResultsHint;
   }
 
   /// Opens the EXISTING bill detail route — the "existing bill reference" the
@@ -396,10 +411,10 @@ class _BillHistoryPageState extends ConsumerState<BillHistoryPage> {
 ///
 /// Never a Firebase UID. Resolving an unresolvable member to "Unknown Member"
 /// is the pre-existing, house-wide behaviour.
-String _memberLabel(HouseMemberEntity member) =>
+String _memberLabel(HouseMemberEntity member, AppLocalizations l10n) =>
     (member.displayName?.isNotEmpty == true)
         ? member.displayName!
-        : 'Unknown Member';
+        : l10n.commonUnknownMember;
 
 // ─────────────────────────────────────────────────────────────
 // Rows
@@ -462,6 +477,7 @@ class _BillHistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final payment = entry.latestPayment;
     final (IconData icon, Color color) = _visual(entry.status, colors: colors);
     final categoryName =
@@ -470,14 +486,16 @@ class _BillHistoryTile extends StatelessWidget {
     // Due date first and always: §1's due date is a property of the bill, while
     // the payment line below it only exists once something was recorded.
     final subtitle = <String>[
-      'Due ${DateFormatUtils.formatDateShort(entry.dueDate)}',
+      l10n.billDueOn(
+        DateFormatUtils.formatDateShort(entry.dueDate, l10n.localeName),
+      ),
       if (payment != null) ...[
         if (payment.recordedByUserId != null)
           shortMemberName(
-            nameMap[payment.recordedByUserId] ?? 'Unknown Member',
+            nameMap[payment.recordedByUserId] ?? l10n.commonUnknownMember,
           ),
-        '${DateFormatUtils.formatDateShort(payment.date)} '
-            '${DateFormatUtils.formatTime(payment.date)}',
+        '${DateFormatUtils.formatDateShort(payment.date, l10n.localeName)} '
+            '${DateFormatUtils.formatTime(payment.date, l10n.localeName)}',
       ],
     ].join(' • ');
 
@@ -485,12 +503,12 @@ class _BillHistoryTile extends StatelessWidget {
       title: entry.title,
       subtitle: subtitle,
       amount: entry.amount ?? 0,
-      amountLabel: entry.hasAmount ? null : 'Reminder',
+      amountLabel: entry.hasAmount ? null : l10n.billReminderOnly,
       amountSign: '',
       amountColor: entry.hasAmount ? null : colors.textSecondary,
       icon: icon,
       iconColor: color,
-      chips: _buildChips(payment, categoryName, colors),
+      chips: _buildChips(payment, categoryName, colors, l10n),
       onTap: onTap,
     );
   }
@@ -500,10 +518,13 @@ class _BillHistoryTile extends StatelessWidget {
     BillHistoryPayment? payment,
     String? categoryName,
     AppColors colors,
+    AppLocalizations l10n,
   ) {
     final chips = <Widget>[
       ActivityChip(
-        label: entry.status.label,
+        // Status is a derived value (paid / overdue / upcoming), so the label
+        // is chosen from the value and never from any text.
+        label: billHistoryStatusLabel(entry.status, l10n),
         color: _visual(entry.status, colors: colors).$2,
       ),
     ];
@@ -514,16 +535,25 @@ class _BillHistoryTile extends StatelessWidget {
 
     final method = payment?.paymentMethod;
     if (method != null && method.trim().isNotEmpty) {
-      // Same colour History gives a payment-method chip.
-      chips.add(ActivityChip(label: method, color: colors.statusApproved));
+      // The STORED payment method ("Cash", "Bank Transfer", …) is what is
+      // branched on; only the chip's wording is localized.
+      chips.add(
+        ActivityChip(
+          label: VocabularyLabels.paymentMethod(method, l10n),
+          color: colors.statusApproved,
+        ),
+      );
     }
 
     final period = payment?.periodLabel;
     if (period != null && period.trim().isNotEmpty) {
-      // "Covers <month>" — the label the transaction detail page uses for this
-      // same field, so the vocabulary matches.
+      // "Covers <month>" — the same field the transaction detail page names,
+      // so the vocabulary matches. The stored period is shown verbatim.
       chips.add(
-        ActivityChip(label: 'Covers $period', color: colors.textSecondary),
+        ActivityChip(
+          label: l10n.billHistoryCoversPeriod(period),
+          color: colors.textSecondary,
+        ),
       );
     }
 
@@ -533,7 +563,7 @@ class _BillHistoryTile extends StatelessWidget {
     if (entry.payments.length > 1) {
       chips.add(
         ActivityChip(
-          label: '${entry.payments.length} payments',
+          label: l10n.billHistoryPaymentCount(entry.payments.length),
           color: colors.textSecondary,
         ),
       );
@@ -541,7 +571,7 @@ class _BillHistoryTile extends StatelessWidget {
 
     final receiptUrl = payment?.receiptUrl;
     if (receiptUrl != null && receiptUrl.trim().isNotEmpty) {
-      chips.add(_ReceiptChip(receiptUrl: receiptUrl));
+      chips.add(_ReceiptChip(receiptUrl: receiptUrl, l10n: l10n));
     }
 
     return chips;
@@ -554,9 +584,10 @@ class _BillHistoryTile extends StatelessWidget {
 /// so a bill payment's proof is shown the same way an expense receipt or a
 /// direct payment's proof already is.
 class _ReceiptChip extends StatelessWidget {
-  const _ReceiptChip({required this.receiptUrl});
+  const _ReceiptChip({required this.receiptUrl, required this.l10n});
 
   final String receiptUrl;
+  final AppLocalizations l10n;
 
   /// The `Colors.white54` error glyph below is deliberately NOT themed:
   /// [ReceiptViewer] paints its own fixed black ground in every mode, so white
@@ -566,7 +597,7 @@ class _ReceiptChip extends StatelessWidget {
       MaterialPageRoute(
         builder:
             (_) => ReceiptViewer(
-              title: 'Receipt / Proof',
+              title: l10n.labelReceiptProof,
               image: Image.network(
                 receiptUrl,
                 fit: BoxFit.contain,
@@ -595,7 +626,7 @@ class _ReceiptChip extends StatelessWidget {
       onTap: () => _open(context),
       borderRadius: BorderRadius.circular(7),
       child: ActivityChip(
-        label: 'Receipt',
+        label: AppLocalizations.of(context).labelReceipt,
         color: context.colors.statusApproved,
       ),
     );

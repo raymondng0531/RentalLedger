@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rental_ledger/core/errors/failures.dart';
+import 'package:rental_ledger/core/utils/failure_messages.dart';
 import 'package:rental_ledger/core/widgets/skeleton.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/bill_entity.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/category_entity.dart';
@@ -14,6 +15,7 @@ import 'package:rental_ledger/features/history/presentation/utils/bill_history.d
 import 'package:rental_ledger/features/history/presentation/widgets/filter_widgets.dart';
 import 'package:rental_ledger/features/members/domain/entities/house_member_entity.dart';
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Page-level cover for Bill History: the month grouping it reuses from
 /// History, its filter sheet, its three async states, its drill-through to the
@@ -188,7 +190,13 @@ Future<void> _pump(
         allMembersStreamProvider.overrideWith((ref) => Stream.value(_members)),
         ...extra,
       ],
-      child: const MaterialApp(home: BillHistoryPage()),
+      // Mirrors `app.dart`: the page's error state renders the shared
+      // ErrorDisplay, whose retry button is localized.
+      child: const MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BillHistoryPage(),
+      ),
     ),
   );
 
@@ -409,15 +417,21 @@ void main() {
     });
 
     testWidgets('error shows the failure message and a retry', (tester) async {
+      // A coded failure is described by its code, so the member reads the
+      // sentence that code stands for — never the English the data layer put
+      // in the exception for a developer.
       await _pump(
         tester,
         state: const AsyncValue.error(
-          FirebaseFailure('Could not load bill history.'),
+          FirebaseFailure('Could not load bill history.',
+              code: FailureCodes.loadFailed),
           StackTrace.empty,
         ),
       );
 
-      expect(find.text('Could not load bill history.'), findsOneWidget);
+      expect(find.text('We could not load this. Please try again.'),
+          findsOneWidget);
+      expect(find.text('Could not load bill history.'), findsNothing);
       expect(find.text('Try Again'), findsOneWidget);
     });
 
@@ -435,7 +449,13 @@ void main() {
         ],
       );
 
-      expect(find.text('Could not load.'), findsOneWidget);
+      // The failure carries no code, so there is no sentence of its own to
+      // show. The page must still fail loudly and in the reader's language —
+      // it may not fall through to the empty state, and it may not leak the
+      // raw `Could not load.` the data layer wrote for a log.
+      expect(find.text('Could not load.'), findsNothing);
+      expect(find.text('Something went wrong. Please try again.'),
+          findsOneWidget);
       expect(find.text('Try Again'), findsOneWidget);
     });
 
@@ -685,7 +705,11 @@ void main() {
               (ref) => Stream.value(_members),
             ),
           ],
-          child: MaterialApp.router(routerConfig: router),
+          child: MaterialApp.router(
+            routerConfig: router,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
         ),
       );
       await tester.pumpAndSettle();

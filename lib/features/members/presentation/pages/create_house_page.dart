@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_logo.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/house_provider.dart';
 
 /// Create House screen — form to set up a new household.
@@ -35,9 +36,10 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
   Future<void> _handleCreate() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final l10n = AppLocalizations.of(context);
     final user = ref.read(currentUserProvider);
     if (user == null) {
-      SnackbarUtils.showError(context, 'Not authenticated.');
+      SnackbarUtils.showError(context, l10n.houseErrorNotAuthenticated);
       return;
     }
 
@@ -51,12 +53,14 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
     if (errorMessage == null) {
       context.go(RouteNames.dashboard);
     } else {
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+          context, HouseErrorCodes.messageFor(errorMessage, l10n));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(createHouseProvider);
     final isLoading = state.isLoading;
 
@@ -72,9 +76,9 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Create House'),
+        title: Text(l10n.houseCreateTitle),
         // Matches the body it sits on, as it did at #FFFFFF in V1.0.
         backgroundColor: context.colors.surface,
       ),
@@ -93,14 +97,14 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
 
                   // ── Title ──
                   Text(
-                    'Create Your House',
+                    l10n.houseCreateHeading,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Set up your shared household account.',
+                    l10n.houseCreateSubtitle,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -113,14 +117,14 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _handleCreate(),
-                    decoration: const InputDecoration(
-                      labelText: 'House Name',
-                      hintText: 'e.g. Jalan Ampang Homestead',
-                      prefixIcon: Icon(Icons.home_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.labelHouseName,
+                      hintText: l10n.houseNameHint,
+                      prefixIcon: const Icon(Icons.home_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a house name';
+                        return l10n.houseNameRequired;
                       }
                       return null;
                     },
@@ -141,7 +145,7 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'You will become the Treasurer of this house.',
+                            l10n.houseCreateTreasurerNotice,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: context.colors.textSecondary,
                                 ),
@@ -167,7 +171,7 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
                               color: context.colors.onPrimary,
                             ),
                           )
-                        : const Text('Create House'),
+                        : Text(l10n.houseCreateTitle),
                   ),
                   const SizedBox(height: 16),
 
@@ -176,10 +180,10 @@ class _CreateHousePageState extends ConsumerState<CreateHousePage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Flexible lets the text wrap on narrow screens instead of overflowing.
-                      const Flexible(child: Text('Already have a house?')),
+                      Flexible(child: Text(l10n.houseCreateAlreadyHave)),
                       TextButton(
                         onPressed: () => context.push(RouteNames.joinHouse),
-                        child: const Text('Join with Code'),
+                        child: Text(l10n.houseJoinWithCode),
                       ),
                     ],
                   ),

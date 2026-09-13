@@ -11,6 +11,7 @@ import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/spring_sheet.dart';
 import '../../../../features/authentication/presentation/providers/auth_provider.dart';
 import '../../../../features/members/presentation/providers/house_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/settings_provider.dart';
 
 /// Settings screen — all app preferences in one place.
@@ -26,15 +27,16 @@ class SettingsPage extends ConsumerWidget {
     final house = ref.watch(currentHouseProvider);
     final profile = ref.watch(profileProvider);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Settings'),
+        title: Text(l10n.navSettings),
       ),
       body: ResponsivePage(
         // maxWidth omitted — defaults to AppContentWidth.detail (800).
@@ -73,7 +75,7 @@ class SettingsPage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          profile?.displayName ?? 'User',
+                          profile?.displayName ?? l10n.settingsUser,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -90,7 +92,7 @@ class SettingsPage extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () => context.push(RouteNames.profile),
-                    tooltip: 'Edit Profile',
+                    tooltip: l10n.settingsEditProfile,
                   ),
                 ],
               ),
@@ -99,33 +101,34 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // ── House Section ──
-            _SectionHeader(title: 'House'),
+            _SectionHeader(title: l10n.labelHouse),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Column(
                 children: [
                   ListTile(
                     leading: const Icon(Icons.home_outlined),
-                    title: const Text('House Name'),
-                    subtitle: Text(house?.houseName ?? 'Not set'),
+                    title: Text(l10n.labelHouseName),
+                    subtitle: Text(house?.houseName ?? l10n.labelNotSet),
                   ),
                   if (house != null) ...[
                     const Divider(height: 1, indent: 56),
                     ListTile(
                       leading: const Icon(Icons.vpn_key_outlined),
-                      title: const Text('Invite Code'),
+                      title: Text(l10n.settingsInviteCode),
                       subtitle: Text(house.inviteCode),
                       trailing: const Icon(Icons.copy_rounded, size: 18),
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: house.inviteCode));
-                        SnackbarUtils.showSuccess(context, 'Invite code copied');
+                        SnackbarUtils.showSuccess(
+                            context, l10n.settingsInviteCodeCopied);
                       },
                     ),
                   ],
                   const Divider(height: 1, indent: 56),
                   ListTile(
                     leading: const Icon(Icons.people_outlined),
-                    title: const Text('Members'),
+                    title: Text(l10n.labelMembers),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(RouteNames.members),
                   ),
@@ -136,14 +139,14 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // ── Account Section ──
-            _SectionHeader(title: 'Account'),
+            _SectionHeader(title: l10n.settingsAccount),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Column(
                 children: [
                   ListTile(
                     leading: const Icon(Icons.person_outlined),
-                    title: const Text('Edit Profile'),
+                    title: Text(l10n.settingsEditProfile),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(RouteNames.profile),
                   ),
@@ -160,13 +163,13 @@ class SettingsPage extends ConsumerWidget {
             // already persists (system / light / dark) — and the subtitle now
             // reports the *stored* choice, so the control reflects what
             // `appSettingsProvider` actually holds.
-            _SectionHeader(title: 'Appearance'),
+            _SectionHeader(title: l10n.settingsAppearance),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: ListTile(
                 leading: const Icon(Icons.dark_mode_outlined),
-                title: const Text('Theme'),
-                subtitle: Text(themeModeLabel(settings.themeMode)),
+                title: Text(l10n.settingsTheme),
+                subtitle: Text(themeModeLabel(settings.themeMode, l10n)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showThemePicker(context, ref, settings),
               ),
@@ -175,13 +178,13 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // ── Notifications Section ──
-            _SectionHeader(title: 'Notifications'),
+            _SectionHeader(title: l10n.navNotifications),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: SwitchListTile(
                 secondary: const Icon(Icons.notifications_outlined),
-                title: const Text('Push Notifications'),
-                subtitle: const Text('Receive alerts for expense updates'),
+                title: Text(l10n.settingsPushNotifications),
+                subtitle: Text(l10n.settingsNotificationsSubtitle),
                 value: settings.notificationsEnabled,
                 onChanged: (v) =>
                     ref.read(appSettingsProvider.notifier).setNotificationsEnabled(v),
@@ -191,22 +194,30 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // ── Preferences Section ──
-            _SectionHeader(title: 'Preferences'),
+            _SectionHeader(title: l10n.settingsPreferences),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Column(
                 children: [
                   ListTile(
                     leading: const Icon(Icons.language_outlined),
-                    title: const Text('Language'),
-                    subtitle: Text(settings.language == 'ms' ? 'Bahasa Melayu' : 'English'),
+                    title: Text(l10n.languageSectionTitle),
+                    // Keyed off the *selected* language, not the ambient one:
+                    // a language is listed in its own language, so someone who
+                    // switched by accident can still find their way back.
+                    subtitle: Text(
+                      settings.language == 'ms'
+                          ? l10n.languageMalay
+                          : l10n.languageEnglish,
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showLanguagePicker(context, ref, settings),
                   ),
                   const Divider(height: 1, indent: 56),
                   ListTile(
                     leading: const Icon(Icons.attach_money_outlined),
-                    title: const Text('Currency'),
+                    title: Text(l10n.settingsCurrency),
+                    // The stored currency code is shown exactly as stored.
                     subtitle: Text(settings.currency),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showCurrencyPicker(context, ref, settings),
@@ -218,28 +229,29 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // ── Help Section ──
-            _SectionHeader(title: 'Support'),
+            _SectionHeader(title: l10n.labelSupport),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Column(
                 children: [
                   ListTile(
                     leading: const Icon(Icons.help_outline),
-                    title: const Text('Help Center'),
+                    title: Text(l10n.settingsHelpCenter),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showHelpDialog(context),
                   ),
                   const Divider(height: 1, indent: 56),
                   ListTile(
                     leading: const Icon(Icons.description_outlined),
-                    title: const Text('About'),
-                    subtitle: const Text('Version 1.0.0'),
+                    title: Text(l10n.labelAbout),
+                    subtitle: Text(l10n.settingsVersion('1.0.0')),
                     onTap: () {
                       showAboutDialog(
                         context: context,
+                        // The product name is not translated.
                         applicationName: 'Rental Ledger',
                         applicationVersion: '1.0.0',
-                        applicationLegalese: 'A household finance management app.',
+                        applicationLegalese: l10n.settingsAboutLegalese,
                       );
                     },
                   ),
@@ -254,7 +266,7 @@ class SettingsPage extends ConsumerWidget {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: ListTile(
                 leading: Icon(Icons.logout_rounded, color: context.colors.error),
-                title: const Text('Sign Out'),
+                title: Text(l10n.actionSignOut),
                 titleTextStyle: TextStyle(
                   color: context.colors.error,
                   fontWeight: FontWeight.w500,
@@ -262,20 +274,23 @@ class SettingsPage extends ConsumerWidget {
                 onTap: () async {
                   final confirmed = await showDialog<bool>(
                     context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Sign Out'),
-                      content: const Text('Are you sure you want to sign out?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Sign Out'),
-                        ),
-                      ],
-                    ),
+                    builder: (ctx) {
+                      final dialogL10n = AppLocalizations.of(ctx);
+                      return AlertDialog(
+                        title: Text(dialogL10n.actionSignOut),
+                        content: Text(dialogL10n.actionSignOutConfirm),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(dialogL10n.actionCancel),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(dialogL10n.actionSignOut),
+                          ),
+                        ],
+                      );
+                    },
                   );
                   if (confirmed == true) {
                     await ref.read(logoutProvider.notifier).logout();
@@ -307,126 +322,138 @@ class SettingsPage extends ConsumerWidget {
   ) {
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => SpringSheet(
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Appearance',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-              const Divider(height: 1),
-              for (final mode in ThemeMode.values)
-                ListTile(
-                  title: Text(themeModeLabel(mode)),
-                  subtitle: mode == ThemeMode.system
-                      ? const Text('Follow your device or browser')
-                      : null,
-                  trailing: settings.themeMode == mode
-                      ? Icon(Icons.check, color: context.colors.primary)
-                      : null,
-                  onTap: () {
-                    ref.read(appSettingsProvider.notifier).setThemeMode(mode);
-                    Navigator.pop(ctx);
-                  },
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return SpringSheet(
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(l10n.settingsAppearance,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
-              const SizedBox(height: 16),
-            ],
+                const Divider(height: 1),
+                for (final mode in ThemeMode.values)
+                  ListTile(
+                    title: Text(themeModeLabel(mode, l10n)),
+                    subtitle: mode == ThemeMode.system
+                        ? Text(l10n.settingsThemeSystemHint)
+                        : null,
+                    trailing: settings.themeMode == mode
+                        ? Icon(Icons.check, color: context.colors.primary)
+                        : null,
+                    onTap: () {
+                      ref.read(appSettingsProvider.notifier).setThemeMode(mode);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   void _showHelpDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Help Center'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Rental Ledger',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            SizedBox(height: 8),
-            Text('Track shared household expenses with ease.'),
-            SizedBox(height: 16),
-            _HelpItem(
-              icon: Icons.receipt_long_outlined,
-              title: 'Submit Expenses',
-              description: 'Tap + to add a new expense claim with receipt.',
-            ),
-            _HelpItem(
-              icon: Icons.check_circle_outline,
-              title: 'Treasurer Approval',
-              description: 'The Treasurer reviews and approves expenses.',
-            ),
-            _HelpItem(
-              icon: Icons.wallet_outlined,
-              title: 'Reimbursements',
-              description: 'Once approved and paid, you get reimbursed.',
-            ),
-            _HelpItem(
-              icon: Icons.vpn_key_outlined,
-              title: 'Invite Housemates',
-              description: 'Share your invite code from the Members screen.',
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.settingsHelpCenter),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                // The product name is never translated.
+                'Rental Ledger',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(l10n.settingsHelpIntro),
+              const SizedBox(height: 16),
+              _HelpItem(
+                icon: Icons.receipt_long_outlined,
+                title: l10n.settingsHelpSubmitExpenses,
+                description: l10n.settingsHelpSubmitExpensesDesc,
+              ),
+              _HelpItem(
+                icon: Icons.check_circle_outline,
+                title: l10n.settingsHelpTreasurerApproval,
+                description: l10n.settingsHelpTreasurerApprovalDesc,
+              ),
+              _HelpItem(
+                icon: Icons.wallet_outlined,
+                title: l10n.settingsHelpReimbursements,
+                description: l10n.settingsHelpReimbursementsDesc,
+              ),
+              _HelpItem(
+                icon: Icons.vpn_key_outlined,
+                title: l10n.settingsHelpInviteHousemates,
+                description: l10n.settingsHelpInviteHousematesDesc,
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.actionGotIt),
             ),
           ],
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   void _showLanguagePicker(BuildContext context, WidgetRef ref, AppSettings settings) {
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => SpringSheet(
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Language',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                title: const Text('Bahasa Melayu'),
-                trailing: settings.language == 'ms'
-                    ? Icon(Icons.check, color: context.colors.primary)
-                    : null,
-                onTap: () {
-                  ref.read(appSettingsProvider.notifier).setLanguage('ms');
-                  Navigator.pop(ctx);
-                },
-              ),
-              ListTile(
-                title: const Text('English'),
-                trailing: settings.language == 'en'
-                    ? Icon(Icons.check, color: context.colors.primary)
-                    : null,
-                onTap: () {
-                  ref.read(appSettingsProvider.notifier).setLanguage('en');
-                  Navigator.pop(ctx);
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return SpringSheet(
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(l10n.languageSectionTitle,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: Text(l10n.languageMalay),
+                  trailing: settings.language == 'ms'
+                      ? Icon(Icons.check, color: context.colors.primary)
+                      : null,
+                  onTap: () {
+                    ref.read(appSettingsProvider.notifier).setLanguage('ms');
+                    Navigator.pop(ctx);
+                  },
+                ),
+                ListTile(
+                  title: Text(l10n.languageEnglish),
+                  trailing: settings.language == 'en'
+                      ? Icon(Icons.check, color: context.colors.primary)
+                      : null,
+                  onTap: () {
+                    ref.read(appSettingsProvider.notifier).setLanguage('en');
+                    Navigator.pop(ctx);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -438,12 +465,16 @@ class SettingsPage extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Currency',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(AppLocalizations.of(ctx).settingsCurrency,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const Divider(height: 1),
+              // Each entry is a currency CODE with its symbol — a stored value
+              // and a proper noun, so it is shown exactly as stored in both
+              // locales and never translated.
               ListTile(
                 title: const Text('MYR (RM)'),
                 trailing: settings.currency == 'MYR'
@@ -506,10 +537,14 @@ class _SectionHeader extends StatelessWidget {
 ///
 /// Top-level rather than private so a test can pin the exact wording the
 /// Appearance row shows for each stored [ThemeMode].
-String themeModeLabel(ThemeMode mode) => switch (mode) {
-      ThemeMode.system => 'System default',
-      ThemeMode.light => 'Light',
-      ThemeMode.dark => 'Dark',
+///
+/// [l10n] carries the selected language, so the label follows a runtime
+/// language switch; it stays optional so the wording remains pinnable (in the
+/// app's baseline language) without a localization context.
+String themeModeLabel(ThemeMode mode, [AppLocalizations? l10n]) => switch (mode) {
+      ThemeMode.system => l10n?.settingsThemeSystem ?? 'System default',
+      ThemeMode.light => l10n?.settingsThemeLight ?? 'Light',
+      ThemeMode.dark => l10n?.settingsThemeDark ?? 'Dark',
     };
 
 class _HelpItem extends StatelessWidget {

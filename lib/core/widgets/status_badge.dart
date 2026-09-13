@@ -14,10 +14,24 @@ class StatusBadge extends StatelessWidget {
   const StatusBadge({
     super.key,
     required this.status,
+    this.label,
     this.size = StatusBadgeSize.small,
   });
 
+  /// The **stored** status value (e.g. `pending`, `approved`). Drives the
+  /// colour lookup in [resolve], which is keyed on the stored vocabulary and
+  /// must keep matching it exactly.
   final String status;
+
+  /// The text to display. When null the badge falls back to rendering
+  /// [status] itself, which is the pre-localization behaviour every existing
+  /// caller and test relies on.
+  ///
+  /// Localized callers pass their localized label here rather than in
+  /// [status], so that translating the display text can never change which
+  /// colour the badge resolves to.
+  final String? label;
+
   final StatusBadgeSize size;
 
   /// Returns the color for a given status string, from the **light** palette.
@@ -76,7 +90,7 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        status,
+        label ?? status,
         style: TextStyle(
           color: color,
           fontSize: fontSize,

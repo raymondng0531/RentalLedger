@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 /// Error display widget with message and retry button.
 ///
 /// Never exposes technical error details — always shows
@@ -7,16 +9,20 @@ import 'package:flutter/material.dart';
 class ErrorDisplay extends StatelessWidget {
   const ErrorDisplay({
     super.key,
-    this.message = 'Something went wrong. Please try again.',
+    this.message,
     this.onRetry,
   });
 
-  final String message;
+  /// Caller-supplied message. When null the widget falls back to the localized
+  /// generic message — nullable rather than a defaulted literal so that the
+  /// fallback follows the active locale instead of being fixed at construction.
+  final String? message;
   final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Center(
       child: Padding(
@@ -42,7 +48,7 @@ class ErrorDisplay extends StatelessWidget {
 
             // ── Message ──
             Text(
-              message,
+              message ?? l10n.errorGenericMessage,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -55,7 +61,7 @@ class ErrorDisplay extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try Again'),
+                label: Text(l10n.actionTryAgain),
               ),
             ],
           ],

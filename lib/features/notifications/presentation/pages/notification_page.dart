@@ -15,6 +15,7 @@ import '../../../../core/widgets/skeleton.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../utils/notification_icon_utils.dart';
 import '../providers/notification_provider.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Notifications screen — list of system notifications grouped by time.
 ///
@@ -25,6 +26,7 @@ class NotificationPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final notificationsAsync = ref.watch(notificationsStreamProvider);
 
     return Scaffold(
@@ -32,9 +34,9 @@ class NotificationPage extends ConsumerWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Notifications'),
+        title: Text(l10n.navNotifications),
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all_outlined),
@@ -46,9 +48,9 @@ class NotificationPage extends ConsumerWidget {
                 // refresh, no provider invalidation.
                 ref.read(notificationDataSourceProvider).markAllAsRead(user.uid);
               }
-              SnackbarUtils.showSuccess(context, 'All marked as read');
+              SnackbarUtils.showSuccess(context, l10n.notifAllMarkedRead);
             },
-            tooltip: 'Mark all as read',
+            tooltip: l10n.actionMarkAllRead,
           ),
         ],
       ),
@@ -57,7 +59,7 @@ class NotificationPage extends ConsumerWidget {
         child: notificationsAsync.when(
           loading: () => const Shimmer(child: SkeletonListBody(itemCount: 8)),
           error: (e, _) => ErrorDisplay(
-            message: 'Could not load notifications.',
+            message: l10n.notifLoadFailed,
             onRetry: () => ref.invalidate(notificationsStreamProvider),
           ),
           data: (notifications) => _buildList(context, ref, notifications),
@@ -68,11 +70,11 @@ class NotificationPage extends ConsumerWidget {
 
   Widget _buildList(
       BuildContext context, WidgetRef ref, List<NotificationEntity> items) {
+    final l10n = AppLocalizations.of(context);
     if (items.isEmpty) {
       return EmptyState(
-        title: 'No notifications yet',
-        description:
-            'Updates about expenses, payments, and approvals will appear here.',
+        title: l10n.emptyNoNotifications,
+        description: l10n.notifEmptyDescription,
         icon: Icons.notifications_none_rounded,
       );
     }
@@ -101,11 +103,13 @@ class NotificationPage extends ConsumerWidget {
           _buildNotificationGroup(
             context,
             ref,
-            'Today, ${DateFormatUtils.formatDateShort(now)}',
+            '${l10n.timeToday}, ${DateFormatUtils.formatDateShort(now, l10n.localeName)}',
             today,
           ),
-        if (thisWeek.isNotEmpty) _buildNotificationGroup(context, ref, 'This Week', thisWeek),
-        if (earlier.isNotEmpty) _buildNotificationGroup(context, ref, 'Earlier', earlier),
+        if (thisWeek.isNotEmpty)
+          _buildNotificationGroup(context, ref, l10n.timeThisWeek, thisWeek),
+        if (earlier.isNotEmpty)
+          _buildNotificationGroup(context, ref, l10n.timeEarlier, earlier),
       ],
     );
   }
@@ -175,6 +179,7 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final iconData = notificationIconFor(notification.type, colors: colors);
     // The unread wash is a primary tint at a fixed 8/255 — the shipped V1.0
     // recipe, kept verbatim because alpha compositing already scales with the
@@ -249,9 +254,9 @@ class _NotificationTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${DateFormatUtils.formatRelative(notification.createdAt)}'
+                      '${DateFormatUtils.formatRelative(notification.createdAt, l10n)}'
                       ' · '
-                      '${DateFormatUtils.formatDateTime(notification.createdAt)}',
+                      '${DateFormatUtils.formatDateTime(notification.createdAt, l10n.localeName)}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colors.textHint,
                         fontSize: 11,

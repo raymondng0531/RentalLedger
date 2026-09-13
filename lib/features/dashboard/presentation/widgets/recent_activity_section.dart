@@ -8,6 +8,7 @@ import '../../../../core/utils/date_utils.dart';
 import '../../../../core/widgets/activity_card.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/implicit_animated_list.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/activity_item.dart';
 import 'activity_visuals.dart';
 
@@ -31,6 +32,7 @@ class RecentActivitySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     // Keep the dashboard a lightweight overview — the latest 5 only.
     // The ImplicitAnimatedList diffs by key, so a new item slides in at the
@@ -48,7 +50,7 @@ class RecentActivitySection extends StatelessWidget {
             AppConstants.spacingSm,
           ),
           child: Text(
-            'Recent Activity',
+            l10n.dashboardRecentActivity,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -56,10 +58,9 @@ class RecentActivitySection extends StatelessWidget {
         ),
 
         if (recent.isEmpty)
-          const EmptyState(
-            title: 'No activity yet',
-            description:
-                'Transactions, expenses, and deposits will appear here.',
+          EmptyState(
+            title: l10n.emptyNoActivity,
+            description: l10n.dashboardRecentActivityEmptyDescription,
             icon: Icons.receipt_long_outlined,
           )
         else ...[
@@ -83,7 +84,7 @@ class RecentActivitySection extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: () => context.push(RouteNames.history),
                 icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: const Text('See All Activity'),
+                label: Text(l10n.actionSeeAllActivity),
               ),
             ),
           ),
@@ -97,6 +98,7 @@ class RecentActivitySection extends StatelessWidget {
   ActivityCard _activityCard(BuildContext context, ActivityItem item) {
     final type = item.type;
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     // Titles must describe the action, not the backend event name.
     var title = item.title;
@@ -106,16 +108,21 @@ class RecentActivitySection extends StatelessWidget {
       title = title.replaceFirst(RegExp(r'^Bill:\s*'), '');
     }
     title = title.trim();
-    if (title.isEmpty) title = activityFallbackTitle(type);
+    if (title.isEmpty) title = activityFallbackTitle(type, l10n);
 
-    // Member name: strip the datasource's "by " prefix, then shorten.
+    // Member name: strip the datasource's "by " prefix, then shorten. The
+    // prefix and the "a member" placeholder are the datasource's own stable
+    // English markers, so the comparison stays literal; only the label that
+    // replaces them is localized.
     final member =
         (item.subtitle ?? '').replaceFirst(RegExp(r'^by\s*'), '').trim();
     final memberName =
-        (member.isEmpty || member == 'a member') ? 'Unknown Member' : member;
+        (member.isEmpty || member == 'a member')
+            ? l10n.commonUnknownMember
+            : member;
     final dateLine =
-        '${DateFormatUtils.formatDateShort(item.date)} • '
-        '${DateFormatUtils.formatTime(item.date)}';
+        '${DateFormatUtils.formatDateShort(item.date, l10n.localeName)} • '
+        '${DateFormatUtils.formatTime(item.date, l10n.localeName)}';
     final subtitle = '${shortMemberName(memberName)} • $dateLine';
 
     final isBill = type == 'payment' && item.title.startsWith('Bill: ');
@@ -145,6 +152,7 @@ class RecentActivitySection extends StatelessWidget {
         item.paymentSource,
         categoryMap,
         colors: colors,
+        l10n: l10n,
       ),
     );
   }

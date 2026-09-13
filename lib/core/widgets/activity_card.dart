@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/currency_utils.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// A single activity card — the shared visual language for the Dashboard's
 /// Recent Activity and the History timeline.
@@ -68,6 +69,7 @@ class ActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(
         horizontal: AppConstants.pagePadding,
@@ -126,7 +128,7 @@ class ActivityCard extends StatelessWidget {
                   // Stronger amount, matching the Dashboard summary cards.
                   Text(
                     amountLabel ??
-                        '$amountSign${CurrencyUtils.format(amount.abs())}',
+                        '$amountSign${CurrencyUtils.format(amount.abs(), localeCode: l10n.localeName)}',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: amountColor,

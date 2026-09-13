@@ -11,6 +11,7 @@ import 'package:rental_ledger/features/authentication/presentation/pages/registe
 import 'package:rental_ledger/features/dashboard/domain/entities/activity_item.dart';
 import 'package:rental_ledger/features/dashboard/presentation/widgets/pending_items_section.dart';
 import 'package:rental_ledger/features/dashboard/presentation/widgets/summary_card.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Phase 3B — App Shell + Authentication + Dashboard.
 ///
@@ -48,13 +49,21 @@ Future<void> _pumpThemed(
   ThemeData theme,
 ) async {
   await tester.pumpWidget(
-    MaterialApp(theme: theme, home: Scaffold(body: child)),
+    MaterialApp(
+      theme: theme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    ),
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }
 
 /// The auth pages build a `Scaffold` themselves, so they are the `home`.
+///
+/// Delegates mirror `app.dart` — AppLogo's tagline is localized, and the auth
+/// pages render it.
 Future<void> _pumpPage(
   WidgetTester tester,
   Widget page,
@@ -70,7 +79,12 @@ Future<void> _pumpPage(
           const FirebaseInitResult(false, 'Firebase not available in test'),
         ),
       ],
-      child: MaterialApp(theme: theme, home: page),
+      child: MaterialApp(
+        theme: theme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: page,
+      ),
     ),
   );
   await tester.pump();

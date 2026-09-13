@@ -8,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/animated_checkmark.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/auth_provider.dart';
 
 /// In-app password reset page (web).
@@ -80,6 +81,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final async = ref.watch(resetPasswordProvider);
     final data = async.value;
     final status = data?.status;
@@ -91,9 +93,13 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
       case ResetPasswordStatus.submitting:
         body = _buildForm(isSubmitting: true);
       case ResetPasswordStatus.failed:
-        body = _buildForm(isSubmitting: false, errorMessage: data?.message);
+        body = _buildForm(
+          isSubmitting: false,
+          errorMessage: data?.message,
+          errorCode: data?.code,
+        );
       case ResetPasswordStatus.linkInvalid:
-        body = _buildLinkProblem(data?.message);
+        body = _buildLinkProblem(data?.message, data?.code);
       case ResetPasswordStatus.success:
         body = _buildSuccess();
       case ResetPasswordStatus.verifying:
@@ -106,7 +112,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
-        title: const Text('Reset Password'),
+        title: Text(l10n.authResetPasswordTitle),
         backgroundColor: colors.surface,
         // Was a literal `Colors.black`. That is the one light-mode value in
         // this phase that could not be reproduced exactly — and it had to
@@ -131,15 +137,16 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   }
 
   Widget _buildVerifying() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 96),
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 96),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(strokeWidth: 3),
-            SizedBox(height: 20),
-            Text('Verifying your reset link…'),
+            const CircularProgressIndicator(strokeWidth: 3),
+            const SizedBox(height: 20),
+            Text(l10n.authVerifyingLink),
           ],
         ),
       ),
@@ -148,9 +155,13 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
   /// Missing / invalid / expired action code — never show a form for an
   /// unverified link.
-  Widget _buildLinkProblem(String? message) {
-    final detail = message ??
-        'This reset link is invalid or has expired.\nPlease request a new one.';
+  Widget _buildLinkProblem(String? message, String? code) {
+    final l10n = AppLocalizations.of(context);
+    // A code wins over the fallback message: it is the stable contract the data
+    // layer attaches, and it is the only one of the two that can be localized.
+    final detail = code != null
+        ? localizeAuthError(l10n, code)
+        : (message ?? l10n.authResetLinkInvalidBody);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -175,7 +186,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
         ),
         const SizedBox(height: 28),
         Text(
-          'Reset link not valid',
+          l10n.authResetLinkInvalidTitle,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
@@ -196,7 +207,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
           child: FilledButton.icon(
             onPressed: () => context.go(RouteNames.forgotPassword),
             icon: const Icon(Icons.send_rounded, size: 18),
-            label: const Text('Request a New Link'),
+            label: Text(l10n.authRequestNewLink),
             style: FilledButton.styleFrom(
               textStyle: const TextStyle(
                 fontSize: 16,
@@ -209,14 +220,19 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
         Center(
           child: TextButton(
             onPressed: () => context.go(RouteNames.login),
-            child: const Text('Back to Sign In'),
+            child: Text(l10n.authBackToSignIn),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildForm({required bool isSubmitting, String? errorMessage}) {
+  Widget _buildForm({
+    required bool isSubmitting,
+    String? errorMessage,
+    String? errorCode,
+  }) {
+    final l10n = AppLocalizations.of(context);
     return Form(
       key: _formKey,
       child: Column(
@@ -243,15 +259,14 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
           ),
           const SizedBox(height: 28),
           Text(
-            'Set a new password',
+            l10n.authSetNewPasswordTitle,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
           const SizedBox(height: 10),
           Text(
-            'Enter a new password for your account. '
-            'It must be at least ${AppConstants.passwordMinLength} characters.',
+            l10n.authSetNewPasswordBody(AppConstants.passwordMinLength),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
@@ -259,7 +274,11 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
           ),
           if (errorMessage != null) ...[
             const SizedBox(height: 20),
-            _buildErrorBanner(errorMessage),
+            _buildErrorBanner(
+              errorCode != null
+                  ? localizeAuthError(l10n, errorCode)
+                  : errorMessage,
+            ),
           ],
           const SizedBox(height: 28),
 
@@ -270,7 +289,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
             enabled: !isSubmitting,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-              labelText: 'New password',
+              labelText: l10n.authNewPasswordLabel,
               prefixIcon: const Icon(Icons.lock_outline_rounded),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -280,16 +299,18 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                 ),
                 onPressed: () =>
                     setState(() => _obscureNew = !_obscureNew),
-                tooltip: _obscureNew ? 'Show password' : 'Hide password',
+                tooltip: _obscureNew
+                    ? l10n.actionShowPassword
+                    : l10n.actionHidePassword,
               ),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please enter a new password';
+                return l10n.authNewPasswordRequired;
               }
               if (value.length < AppConstants.passwordMinLength) {
-                return 'Password must be at least '
-                    '${AppConstants.passwordMinLength} characters';
+                return l10n.authPasswordMinLength(
+                    AppConstants.passwordMinLength);
               }
               return null;
             },
@@ -306,7 +327,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
               if (!isSubmitting) _handleSubmit();
             },
             decoration: InputDecoration(
-              labelText: 'Confirm new password',
+              labelText: l10n.authConfirmNewPasswordLabel,
               prefixIcon: const Icon(Icons.lock_rounded),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -316,16 +337,17 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                 ),
                 onPressed: () =>
                     setState(() => _obscureConfirm = !_obscureConfirm),
-                tooltip:
-                    _obscureConfirm ? 'Show password' : 'Hide password',
+                tooltip: _obscureConfirm
+                    ? l10n.actionShowPassword
+                    : l10n.actionHidePassword,
               ),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please confirm your new password';
+                return l10n.authConfirmNewPasswordRequired;
               }
               if (value != _passwordController.text) {
-                return 'Passwords do not match';
+                return l10n.authPasswordsDoNotMatch;
               }
               return null;
             },
@@ -349,7 +371,9 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                       ),
                     )
                   : const Icon(Icons.check_rounded, size: 18),
-              label: Text(isSubmitting ? 'Resetting…' : 'Reset Password'),
+              label: Text(isSubmitting
+                  ? l10n.authResetting
+                  : l10n.authResetPasswordTitle),
               style: FilledButton.styleFrom(
                 textStyle: const TextStyle(
                   fontSize: 16,
@@ -366,7 +390,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
               onPressed: isSubmitting
                   ? null
                   : () => context.go(RouteNames.login),
-              child: const Text('Back to Sign In'),
+              child: Text(l10n.authBackToSignIn),
             ),
           ),
         ],
@@ -403,21 +427,21 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   }
 
   Widget _buildSuccess() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         const SizedBox(height: 48),
         const Center(child: AnimatedCheckmark()),
         const SizedBox(height: 24),
         Text(
-          'Password Updated!',
+          l10n.authPasswordUpdatedTitle,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
         ),
         const SizedBox(height: 12),
         Text(
-          'Your password has been changed. '
-          'You can now sign in with your new password.',
+          l10n.authPasswordUpdatedBody,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -426,7 +450,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
         const SizedBox(height: 32),
         FilledButton(
           onPressed: () => context.go(RouteNames.login),
-          child: const Text('Back to Sign In'),
+          child: Text(l10n.authBackToSignIn),
         ),
       ],
     );

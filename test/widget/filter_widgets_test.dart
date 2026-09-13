@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/category_entity.dart';
 import 'package:rental_ledger/features/history/presentation/utils/filter_periods.dart';
 import 'package:rental_ledger/features/history/presentation/widgets/filter_widgets.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Characterisation cover for the shared filter UI.
 ///
@@ -85,6 +86,10 @@ Future<_Sheet> _pumpSheet(
   final applied = <FilterSheetResult>[];
   await tester.pumpWidget(
     MaterialApp(
+      // The period section renders localized preset labels, so the tree needs
+      // the generated delegates.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: FilterSheet(sections: sections, onApply: applied.add),
       ),
@@ -142,6 +147,8 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: FilterButton(activeCount: 0, onTap: () {})),
         ),
       );
@@ -153,6 +160,8 @@ void main() {
     testWidgets('shows the active-filter count as a badge', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: FilterButton(activeCount: 3, onTap: () {})),
         ),
       );
@@ -165,6 +174,8 @@ void main() {
       var taps = 0;
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: FilterButton(activeCount: 0, onTap: () => taps++),
           ),
@@ -234,11 +245,25 @@ void main() {
     ) async {
       await _pumpSheet(tester, _historySections());
 
-      for (final i in [0, 1, 2, 3, 4, 5, 6]) {
+      // Pinned to the shipped English wording rather than read back from
+      // FilterPeriods, so a preset that lost its label — or silently changed
+      // it — fails here instead of agreeing with itself.
+      const expected = [
+        'Today',
+        'Yesterday',
+        'Last 7 Days',
+        'Last 30 Days',
+        'Last 90 Days',
+        'This Month',
+        'Last Month',
+      ];
+      expect(expected, hasLength(FilterPeriods.presets.length));
+
+      for (var i = 0; i < FilterPeriods.presets.length; i++) {
         expect(
-          _option('Period', FilterPeriods.labels[i]),
+          _option('Period', expected[i]),
           findsOneWidget,
-          reason: FilterPeriods.labels[i],
+          reason: 'preset "${FilterPeriods.presets[i]}" → "${expected[i]}"',
         );
       }
       expect(_option('Period', 'Custom Range'), findsOneWidget);

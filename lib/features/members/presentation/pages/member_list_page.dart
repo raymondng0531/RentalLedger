@@ -7,12 +7,14 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/animated_entrance.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../authentication/domain/entities/user_entity.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../domain/entities/house_entity.dart';
@@ -40,6 +42,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final house = ref.watch(currentHouseProvider);
     final membersAsync = ref.watch(membersStreamProvider);
     final user = ref.watch(currentUserProvider);
@@ -53,9 +56,9 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: Text(house?.houseName ?? 'Members'),
+        title: Text(house?.houseName ?? l10n.labelMembers),
       ),
       body: Stack(
         children: [
@@ -65,8 +68,8 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               loading: () => const Shimmer(child: SkeletonListBody(itemCount: 5)),
               error: (error, _) => ErrorDisplay(
                 message: error is Failure
-                    ? error.message
-                    : 'Could not load members.',
+                    ? FailureMessages.of(error, l10n)
+                    : l10n.houseMembersLoadFailed,
                 onRetry: () => ref.invalidate(membersStreamProvider),
               ),
               data: (members) => _buildMemberList(
@@ -105,21 +108,19 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
   ) async {
     if (_isBusy) return;
 
-    final label = _memberLabel(member);
+    final l10n = AppLocalizations.of(context);
+    final label = _memberLabel(member, l10n);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove Member'),
+        title: Text(l10n.houseRemoveMemberTitle),
         content: Text(
-          'Remove $label from ${house.houseName}?\n\n'
-          'They will no longer be part of this house or be able to access '
-          'its data. Their account and all past expense and transaction '
-          'history will be kept.',
+          l10n.houseRemoveMemberBody(label, house.houseName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           FilledButton(
             // Destructive confirm: the semantic error fill with the palette's
@@ -132,7 +133,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               foregroundColor: context.colors.onAccent,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Remove'),
+            child: Text(l10n.actionRemove),
           ),
         ],
       ),
@@ -145,9 +146,10 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     setState(() => _isBusy = false);
 
     if (error == null) {
-      SnackbarUtils.showSuccess(context, '$label removed from the house.');
+      SnackbarUtils.showSuccess(context, l10n.houseMemberRemoved(label));
     } else {
-      SnackbarUtils.showError(context, error);
+      SnackbarUtils.showError(
+          context, HouseErrorCodes.messageFor(error, l10n));
     }
   }
 
@@ -165,25 +167,23 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     final viewer = ref.read(currentUserProvider);
     if (viewer == null) return;
 
-    final label = _memberLabel(target);
+    final l10n = AppLocalizations.of(context);
+    final label = _memberLabel(target, l10n);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Transfer Ownership'),
+        title: Text(l10n.houseTransferTitle),
         content: Text(
-          'Make $label the new Treasurer of ${house.houseName}?\n\n'
-          'You will become a regular Member and will no longer be able to '
-          'approve expenses, record deposits or manage the house until '
-          'ownership is transferred back to you.',
+          l10n.houseTransferBody(label, house.houseName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Transfer'),
+            child: Text(l10n.houseTransferConfirm),
           ),
         ],
       ),
@@ -198,9 +198,10 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     setState(() => _isBusy = false);
 
     if (error == null) {
-      SnackbarUtils.showSuccess(context, '$label is now the Treasurer.');
+      SnackbarUtils.showSuccess(context, l10n.houseTransferDone(label));
     } else {
-      SnackbarUtils.showError(context, error);
+      SnackbarUtils.showError(
+          context, HouseErrorCodes.messageFor(error, l10n));
     }
   }
 
@@ -209,6 +210,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     HouseEntity house,
     List<HouseMemberEntity> others,
   ) {
+    final l10n = AppLocalizations.of(context);
     return showModalBottomSheet<HouseMemberEntity>(
       context: context,
       showDragHandle: true,
@@ -220,7 +222,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
               child: Text(
-                'Transfer to…',
+                l10n.houseTransferSheetTitle,
                 style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -229,10 +231,10 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
             for (final m in others)
               ListTile(
                 leading: CircleAvatar(
-                  child: Text(_memberLabel(m)[0].toUpperCase()),
+                  child: Text(_memberLabel(m, l10n)[0].toUpperCase()),
                 ),
-                title: Text(_memberLabel(m)),
-                subtitle: const Text('Make this member the Treasurer'),
+                title: Text(_memberLabel(m, l10n)),
+                subtitle: Text(l10n.houseTransferSheetSubtitle),
                 onTap: () => Navigator.of(sheetContext).pop(m),
               ),
             const SizedBox(height: 8),
@@ -256,20 +258,18 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     final viewer = ref.read(currentUserProvider);
     if (viewer == null) return;
 
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Leave House'),
+        title: Text(l10n.houseLeaveTitle),
         content: Text(
-          'Leave ${house.houseName}?\n\n'
-          'You will no longer be able to view this house or submit expenses '
-          'until you are invited back. Your account and all past records are '
-          'kept.',
+          l10n.houseLeaveBody(house.houseName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           FilledButton(
             // Destructive confirm: the semantic error fill with the palette's
@@ -282,7 +282,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               foregroundColor: context.colors.onAccent,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Leave'),
+            child: Text(l10n.houseLeaveConfirm),
           ),
         ],
       ),
@@ -297,22 +297,26 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     setState(() => _isBusy = false);
 
     if (error == null) {
-      SnackbarUtils.showSuccess(context, 'You left ${house.houseName}.');
+      SnackbarUtils.showSuccess(context, l10n.houseLeaveDone(house.houseName));
       // The repository cleared the active house; the router's house guard
       // redirects to the Create / Join onboarding screen automatically.
     } else {
-      SnackbarUtils.showError(context, error);
+      SnackbarUtils.showError(
+          context, HouseErrorCodes.messageFor(error, l10n));
     }
   }
 
-  String _memberLabel(HouseMemberEntity member) {
+  /// The name to show for [member]: their own display name, else their email,
+  /// else the localized "This member" placeholder. Never translated — a name
+  /// is the member's own data.
+  String _memberLabel(HouseMemberEntity member, AppLocalizations l10n) {
     if (member.displayName != null && member.displayName!.isNotEmpty) {
       return member.displayName!;
     }
     if (member.email != null && member.email!.isNotEmpty) {
       return member.email!;
     }
-    return 'This member';
+    return l10n.houseThisMember;
   }
 
   Widget _buildMemberList(
@@ -323,10 +327,12 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     UserEntity? user,
     bool isViewerTreasurer,
   ) {
+    final l10n = AppLocalizations.of(context);
+
     if (members.isEmpty) {
-      return const EmptyState(
-        title: 'No members yet',
-        description: 'Share your invite code to add housemates.',
+      return EmptyState(
+        title: l10n.emptyNoMembers,
+        description: l10n.houseNoMembersDescription,
         icon: Icons.people_outlined,
       );
     }
@@ -346,7 +352,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
           // The Treasurer tile never offers a remove action — the house
           // Treasurer can only leave after transferring ownership.
           if (treasurer.isNotEmpty) ...[
-            _buildSectionHeader(context, 'Treasurer'),
+            _buildSectionHeader(context, l10n.labelTreasurer),
             ...staggeredEntrance(
               context,
               treasurer,
@@ -362,7 +368,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
           // house_members record — the membersStreamProvider the page watches
           // filters on isActive == true, so the list refreshes on its own.
           if (regulars.isNotEmpty) ...[
-            _buildSectionHeader(context, 'Members'),
+            _buildSectionHeader(context, l10n.labelMembers),
             ...staggeredEntrance(
               context,
               regulars,
@@ -419,6 +425,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
     List<HouseMemberEntity> members,
     bool isTreasurer,
   ) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final others = members.where((m) => m.userId != user.uid).toList();
 
@@ -432,7 +439,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Your membership',
+                l10n.houseYourMembership,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -441,11 +448,8 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               if (isTreasurer) ...[
                 Text(
                   others.isEmpty
-                      ? 'You are the Treasurer and currently the only member. '
-                          'Another member must join before ownership can be '
-                          'transferred.'
-                      : 'You are the Treasurer. Transfer ownership to another '
-                          'member before you can leave this house.',
+                      ? l10n.houseTreasurerOnlyMember
+                      : l10n.houseTreasurerCanTransfer,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: context.colors.textSecondary,
                   ),
@@ -456,12 +460,11 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                       ? null
                       : () => _startTransfer(context, house, others),
                   icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
-                  label: const Text('Transfer ownership'),
+                  label: Text(l10n.houseTransferOwnership),
                 ),
               ] else ...[
                 Text(
-                  'You are a Member. You can leave this house at any time; '
-                  'your account and past records are kept.',
+                  l10n.houseMemberCanLeave,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: context.colors.textSecondary,
                   ),
@@ -476,7 +479,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                   ),
                   onPressed: () => _confirmLeave(house),
                   icon: const Icon(Icons.logout_rounded, size: 18),
-                  label: const Text('Leave house'),
+                  label: Text(l10n.houseLeaveHouse),
                 ),
               ],
             ],
@@ -512,6 +515,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
 
   Widget _buildInviteCodeSection(
       BuildContext context, WidgetRef ref, HouseEntity house) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return Padding(
@@ -524,7 +528,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Invite Code',
+                l10n.houseInviteCode,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -552,7 +556,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Share this code with housemates to join.',
+                l10n.houseInviteShareHint,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: context.colors.textSecondary,
                 ),
@@ -566,15 +570,17 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         await Clipboard.setData(
+                          // The code is the user's own data: copied verbatim,
+                          // never translated or re-cased.
                           ClipboardData(text: house.inviteCode),
                         );
                         if (context.mounted) {
                           SnackbarUtils.showSuccess(
-                              context, 'Invite code copied!');
+                              context, l10n.houseInviteCodeCopied);
                         }
                       },
                       icon: const Icon(Icons.copy_rounded, size: 18),
-                      label: const Text('Copy'),
+                      label: Text(l10n.actionCopy),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -587,7 +593,7 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
                         onPressed: () =>
                             _shareInviteCode(buttonContext, house.inviteCode),
                         icon: const Icon(Icons.ios_share_rounded, size: 18),
-                        label: const Text('Share'),
+                        label: Text(l10n.actionShare),
                       ),
                     ),
                   ),
@@ -608,12 +614,16 @@ class _MemberListPageState extends ConsumerState<MemberListPage> {
   /// origin is required on iPadOS (the share sheet is a popover and throws
   /// without it) and on Flutter Web; Android and iPhone ignore it.
   Future<void> _shareInviteCode(BuildContext context, String code) async {
+    final l10n = AppLocalizations.of(context);
     final box = context.findRenderObject() as RenderBox?;
     final origin =
         box == null ? null : box.localToGlobal(Offset.zero) & box.size;
     await Share.share(
-      'Join my house on Rental Ledger!\n\nInvite Code: $code',
-      subject: 'Rental Ledger Invite',
+      // `code` is the user's own invite code — inserted verbatim, never
+      // translated, re-cased or reformatted. "Rental Ledger" is the product
+      // name and keeps its shipped spelling in every locale.
+      l10n.houseShareMessage(code),
+      subject: l10n.houseShareSubject,
       sharePositionOrigin: origin,
     );
   }

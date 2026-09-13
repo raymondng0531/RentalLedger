@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/errors/failure_codes.dart';
 import '../../../../core/utils/member_name_utils.dart';
 import '../../../../core/utils/member_profile_sync_utils.dart';
 import '../../domain/entities/house_member_entity.dart';
@@ -215,17 +216,31 @@ class HouseRemoteDataSource {
       rethrow;
     } on FirebaseFunctionsException catch (e) {
       // Surface the server's own message for the expected rejections; treat
-      // anything else as an unexpected failure.
+      // anything else as an unexpected failure. Each rejection also carries a
+      // stable [FailureCodes] value: the message here is the English
+      // explanation a log should show, while the code is what the UI renders
+      // in the user's own language.
       switch (e.code) {
         case 'not-found':
-          throw const AppFirebaseException('Invalid invite code.');
+          throw const AppFirebaseException(
+            'Invalid invite code.',
+            code: FailureCodes.houseInvalidCode,
+          );
         case 'already-exists':
           throw const AppFirebaseException(
-              'You are already a member of this house.');
+            'You are already a member of this house.',
+            code: FailureCodes.houseAlreadyMember,
+          );
         case 'unauthenticated':
-          throw const AppFirebaseException('Please sign in again.');
+          throw const AppFirebaseException(
+            'Please sign in again.',
+            code: FailureCodes.authentication,
+          );
         case 'invalid-argument':
-          throw const AppFirebaseException('Enter a valid invite code.');
+          throw const AppFirebaseException(
+            'Enter a valid invite code.',
+            code: FailureCodes.houseInvalidCode,
+          );
         default:
           throw const AppFirebaseException('Failed to join house.');
       }

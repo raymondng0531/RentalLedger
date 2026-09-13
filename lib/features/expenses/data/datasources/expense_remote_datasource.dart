@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/errors/failure_codes.dart';
 import '../../../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../domain/entities/bill_entity.dart';
 import '../../domain/entities/category_entity.dart';
@@ -233,7 +234,14 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
         targetStatus: targetStatus,
       );
       if (refusal != null) {
-        throw ConflictException(refusal, code: 'expense-$targetStatus-conflict');
+        // The refusal text is the developer-facing explanation; [code] is what
+        // the UI turns into the user's language.
+        throw ConflictException(
+          refusal,
+          code: targetStatus == expenseStatusPaid
+              ? FailureCodes.notAwaitingReimbursement
+              : FailureCodes.alreadyReviewed,
+        );
       }
 
       tx.update(ref, fields);
@@ -351,7 +359,10 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
           targetStatus: expenseStatusPaid,
         );
         if (refusal != null) {
-          throw ConflictException(refusal, code: 'expense-paid-conflict');
+          throw ConflictException(
+            refusal,
+            code: FailureCodes.notAwaitingReimbursement,
+          );
         }
 
         final model = ExpenseModel.fromFirestore(snapshot);
@@ -373,7 +384,14 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
           amount: amount,
         );
         if (balanceRefusal != null) {
-          throw ValidationException(balanceRefusal);
+          throw ValidationException(
+            balanceRefusal,
+            code: FailureCodes.insufficientBalance,
+            arguments: {
+              FailureCodes.argAmount: amount,
+              FailureCodes.argBalance: balance,
+            },
+          );
         }
 
         final txId = _uuid.v4();
@@ -533,7 +551,16 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
               balance: balance,
               amount: amount,
             );
-            if (refusal != null) throw ValidationException(refusal);
+            if (refusal != null) {
+              throw ValidationException(
+                refusal,
+                code: FailureCodes.insufficientBalance,
+                arguments: {
+                  FailureCodes.argAmount: amount,
+                  FailureCodes.argBalance: balance,
+                },
+              );
+            }
           }
 
           _writeLedgerRow(
@@ -879,7 +906,7 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
         if (!snapshot.exists) {
           throw const ConflictException(
             'This bill no longer exists. Refresh to see the current list.',
-            code: 'bill-missing',
+            code: FailureCodes.recordMissing,
           );
         }
 
@@ -890,7 +917,7 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
           expectedDueDate: bill.dueDate,
         );
         if (refusal != null) {
-          throw ConflictException(refusal, code: 'bill-already-paid');
+          throw ConflictException(refusal, code: FailureCodes.billAlreadyPaid);
         }
 
         // Money leaving the account must be affordable, exactly as for a
@@ -907,7 +934,14 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
             amount: bill.amount!,
           );
           if (balanceRefusal != null) {
-            throw ValidationException(balanceRefusal);
+            throw ValidationException(
+              balanceRefusal,
+              code: FailureCodes.insufficientBalance,
+              arguments: {
+                FailureCodes.argAmount: bill.amount,
+                FailureCodes.argBalance: balance,
+              },
+            );
           }
         }
 

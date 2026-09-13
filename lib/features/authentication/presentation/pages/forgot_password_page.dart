@@ -9,6 +9,7 @@ import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/animated_checkmark.dart';
 import '../../../../core/widgets/breakpoints.dart';
 import '../../../../core/widgets/responsive_page.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/auth_provider.dart';
 
 /// Forgot Password screen — sends a password reset email.
@@ -33,23 +34,27 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   Future<void> _handleReset() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final errorMessage =
+    final failure =
         await ref.read(forgotPasswordProvider.notifier).sendResetEmail(
               _emailController.text.trim(),
             );
 
     if (!mounted) return;
 
-    if (errorMessage == null) {
+    if (failure == null) {
       setState(() => _emailSent = true);
     } else {
-      SnackbarUtils.showError(context, errorMessage);
+      SnackbarUtils.showError(
+        context,
+        localizeAuthError(AppLocalizations.of(context), failure.code),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(forgotPasswordProvider);
     final isLoading = state.isLoading;
 
@@ -63,9 +68,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
-          tooltip: 'Back',
+          tooltip: l10n.actionBack,
         ),
-        title: const Text('Reset Password'),
+        title: Text(l10n.authResetPasswordTitle),
         backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
@@ -81,6 +86,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   }
 
   Widget _buildForm(bool isLoading) {
+    final l10n = AppLocalizations.of(context);
     return Form(
       key: _formKey,
       child: Column(
@@ -111,7 +117,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
           // ── Title ──
           Text(
-            'Reset your password',
+            l10n.authResetYourPasswordTitle,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -120,7 +126,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
           // ── Instructions ──
           Text(
-            'Enter your email and we\'ll send you a secure link to reset your password.',
+            l10n.authResetInstructions,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
@@ -134,17 +140,17 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _handleReset(),
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              hintText: 'you@example.com',
-              prefixIcon: Icon(Icons.email_outlined),
+            decoration: InputDecoration(
+              labelText: l10n.authEmailLabel,
+              hintText: l10n.authEmailHint,
+              prefixIcon: const Icon(Icons.email_outlined),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Please enter your email';
+                return l10n.authEmailRequired;
               }
               if (!value.trim().contains('@')) {
-                return 'Please enter a valid email';
+                return l10n.authEmailInvalid;
               }
               return null;
             },
@@ -168,7 +174,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                       ),
                     )
                   : const Icon(Icons.send_rounded, size: 18),
-              label: Text(isLoading ? 'Sending...' : 'Send Reset Link'),
+              label: Text(isLoading ? l10n.authSending : l10n.authSendResetLink),
               style: FilledButton.styleFrom(
                 textStyle: const TextStyle(
                   fontSize: 16,
@@ -184,7 +190,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           Center(
             child: TextButton(
               onPressed: () => context.go(RouteNames.login),
-              child: const Text('Back to Sign In'),
+              child: Text(l10n.authBackToSignIn),
             ),
           ),
         ],
@@ -193,6 +199,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   }
 
   Widget _buildSuccessView() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         const SizedBox(height: 48),
@@ -204,7 +211,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         const SizedBox(height: 24),
 
         Text(
-          'Email Sent!',
+          l10n.authEmailSentTitle,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -212,8 +219,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         const SizedBox(height: 12),
 
         Text(
-          'Check your inbox for the password reset link. '
-          'It may take a few minutes to arrive.',
+          l10n.authEmailSentBody,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -223,7 +229,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
         FilledButton(
           onPressed: () => context.go(RouteNames.login),
-          child: const Text('Back to Sign In'),
+          child: Text(l10n.authBackToSignIn),
         ),
       ],
     );

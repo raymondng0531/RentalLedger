@@ -7,6 +7,7 @@ import 'package:rental_ledger/features/members/domain/entities/house_entity.dart
 import 'package:rental_ledger/features/members/domain/entities/house_member_entity.dart';
 import 'package:rental_ledger/features/members/presentation/pages/member_list_page.dart';
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
+import 'package:rental_ledger/l10n/generated/app_localizations.dart';
 
 /// Guards Phase 4 of the V1.0 member lifecycle UI: the viewer's own
 /// membership card (Treasurer → "Transfer ownership" / Member → "Leave house")
@@ -128,7 +129,11 @@ Future<void> _pump(
         transfer: transfer,
         leave: leave,
       ),
-      child: const MaterialApp(home: MemberListPage()),
+      child: const MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MemberListPage(),
+      ),
     ),
   );
   await tester.pump(); // Stream.value emits on the next microtask → data state.

@@ -19,6 +19,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../expenses/domain/entities/bill_entity.dart';
 import '../providers/history_provider.dart';
 import 'filter_periods.dart';
@@ -44,7 +45,12 @@ enum BillHistoryStatus {
   /// Stable value used by the filter sheet and the active-filter chips.
   final String key;
 
-  /// What the user reads.
+  /// The status's English name.
+  ///
+  /// Display goes through [billHistoryStatusLabel], which returns this state's
+  /// name in the active locale; the field itself stays a stable English
+  /// identifier so it can be asserted and logged without depending on the
+  /// reader's language.
   final String label;
 
   static BillHistoryStatus? fromKey(String key) {
@@ -52,6 +58,21 @@ enum BillHistoryStatus {
       if (s.key == key) return s;
     }
     return null;
+  }
+}
+
+/// What the user reads for a derived bill status, in the active locale.
+///
+/// The status is a derived VALUE, not a stored one, so the label is chosen from
+/// the status itself and never from the text.
+String billHistoryStatusLabel(BillHistoryStatus status, AppLocalizations l10n) {
+  switch (status) {
+    case BillHistoryStatus.paid:
+      return l10n.statusPaid;
+    case BillHistoryStatus.overdue:
+      return l10n.statusOverdue;
+    case BillHistoryStatus.upcoming:
+      return l10n.statusUpcoming;
   }
 }
 

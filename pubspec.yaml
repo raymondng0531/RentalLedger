@@ -10,6 +10,12 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Localization: provides MaterialLocalizations/CupertinoLocalizations/
+  # WidgetsLocalizations for the locales the app supports. Pins intl to
+  # 0.19.0, so the intl constraint below must stay compatible.
+  flutter_localizations:
+    sdk: flutter
+
   # State Management
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
@@ -28,7 +34,9 @@ dependencies:
   cloud_functions: ^5.6.0
 
   # Utilities
-  intl: ^0.20.2
+  # Held at 0.19.x: flutter_localizations (above) depends on intl 0.19.0
+  # exactly, so ^0.20.2 cannot resolve alongside it.
+  intl: ^0.19.0
   # Local, device-scoped preferences (appearance, and later language). On Web
   # this is browser localStorage — no Firestore, no rules, no backend. Kept
   # separate from Isar, which is still a placeholder for V1.2 offline support.
@@ -64,6 +72,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Runs `flutter gen-l10n` (configured by l10n.yaml) as part of pub get/build,
+  # so the generated AppLocalizations is always in step with the ARB files.
+  generate: true
 
   assets:
     - assets/images/

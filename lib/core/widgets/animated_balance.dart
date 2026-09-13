@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/currency_utils.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Animated count-up for plain integer values (e.g. "5 bills paid").
 ///
@@ -61,13 +62,14 @@ class AnimatedBalance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: balance),
       duration: AppDurations.standard,
       curve: AppEasing.easeOut,
       builder: (context, value, child) {
         return Text(
-          CurrencyUtils.format(value),
+          CurrencyUtils.format(value, localeCode: l10n.localeName),
           style: style,
           maxLines: maxLines,
           overflow: overflow,

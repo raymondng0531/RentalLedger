@@ -8,7 +8,9 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
 import '../../../../core/widgets/animated_balance.dart';
 import '../../../../core/widgets/animated_entrance.dart';
 import '../../../../core/widgets/breakpoints.dart';
@@ -16,6 +18,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_display.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/reports_provider.dart';
 
 /// Reports screen — analytics, category breakdown, and monthly trends.
@@ -25,15 +28,16 @@ class ReportsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportsAsync = ref.watch(reportsProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded),
           onPressed: () => Scaffold.of(context).openDrawer(),
-          tooltip: 'Menu',
+          tooltip: l10n.actionMenu,
         ),
-        title: const Text('Reports'),
+        title: Text(l10n.navReports),
         actions: [
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
@@ -41,9 +45,10 @@ class ReportsPage extends ConsumerWidget {
               // TODO: Export PDF (V1.0 feature).
               // Compact overlay toast — stays above the bottom action area and
               // never covers the charts below.
-              SnackbarUtils.showActionToast(context, 'PDF export coming soon');
+              SnackbarUtils.showActionToast(
+                  context, l10n.reportPdfComingSoon);
             },
-            tooltip: 'Export PDF',
+            tooltip: l10n.actionExportPdf,
           ),
         ],
       ),
@@ -116,7 +121,9 @@ class ReportsPage extends ConsumerWidget {
             ),
           ),
           error: (e, _) => ErrorDisplay(
-            message: e is Failure ? e.message : 'Could not load reports.',
+            message: e is Failure
+                ? FailureMessages.of(e, l10n)
+                : l10n.reportLoadFailed,
             onRetry: () => ref.invalidate(reportsProvider),
           ),
           data: (data) => _ReportsContent(data: data),
@@ -192,6 +199,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
   /// category breakdown → monthly trend.
   List<Widget> _buildContent(bool windowed) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     // Entrance animations: summary boxes first, insights stagger, then the
     // two chart cards. Keep them subtle (fade + small slide-up, ~400ms).
     const entrance = Duration(milliseconds: 400);
@@ -206,7 +214,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
             child: AnimatedEntrance(
               duration: entrance,
               child: _SummaryBox(
-                label: 'Money In',
+                label: l10n.reportMoneyIn,
                 amount: data.moneyIn,
                 color: colors.success,
               ),
@@ -218,7 +226,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
               delay: const Duration(milliseconds: 60),
               duration: entrance,
               child: _SummaryBox(
-                label: 'Money Out',
+                label: l10n.reportMoneyOut,
                 amount: data.moneyOut,
                 color: colors.error,
               ),
@@ -230,7 +238,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
               delay: const Duration(milliseconds: 120),
               duration: entrance,
               child: _SummaryBox(
-                label: windowed ? 'Net' : 'Current Balance',
+                label: windowed ? l10n.labelNet : l10n.reportCurrentBalance,
                 amount: data.balance,
                 color: data.balance >= 0 ? colors.primary : colors.error,
               ),
@@ -247,19 +255,19 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
       const SizedBox(height: 28),
 
       // ── Insights ──
-      const _SectionTitle('Insights'),
+      _SectionTitle(l10n.reportInsights),
       _InsightsGrid(data: data),
 
       // ── Where the Money Goes (only when money actually went out) ──
       if (data.moneyOutBreakdown.total > 0) ...[
         const SizedBox(height: 28),
-        const _SectionTitle('Where the Money Goes'),
+        _SectionTitle(l10n.reportWhereMoneyGoes),
         _MoneyOutCard(data: data),
       ],
 
       // ── Category Breakdown ──
       const SizedBox(height: 28),
-      const _SectionTitle('Category Breakdown'),
+      _SectionTitle(l10n.reportCategoryBreakdown),
       AnimatedEntrance(
         delay: const Duration(milliseconds: 200),
         duration: entrance,
@@ -273,7 +281,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
 
       // ── Monthly Trend ──
       const SizedBox(height: 28),
-      const _SectionTitle('Monthly Trend'),
+      _SectionTitle(l10n.reportMonthlyTrend),
       AnimatedEntrance(
         delay: const Duration(milliseconds: 260),
         duration: entrance,
@@ -285,21 +293,20 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
   }
 
   Widget _buildEmptyState(bool windowed) {
+    final l10n = AppLocalizations.of(context);
     if (!windowed) {
-      return const EmptyState(
-        title: 'No reports yet',
-        description:
-            'Deposits and expenses will appear here as they are recorded.',
+      return EmptyState(
+        title: l10n.reportEmptyTitle,
+        description: l10n.reportEmptyDescription,
         icon: Icons.bar_chart_outlined,
       );
     }
     // A filter with no matching activity: offer a one-tap way back to all time.
     return EmptyState(
-      title: 'Nothing in this period',
-      description: 'No deposits, expense claims, or reimbursements fell '
-          'inside the selected period.',
+      title: l10n.reportEmptyPeriodTitle,
+      description: l10n.reportEmptyPeriodDescription,
       icon: Icons.event_busy_outlined,
-      actionLabel: 'Show all time',
+      actionLabel: l10n.reportShowAllTime,
       onActionTap: () => _applyFilter(ReportPeriod.allTime),
     );
   }
@@ -316,6 +323,7 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
   Future<void> _pickCustomRange() async {
     final now = DateTime.now();
     final current = ref.read(reportFilterProvider);
+    final l10n = AppLocalizations.of(context);
 
     // Re-open the previously chosen range when it is already the active filter.
     DateTimeRange? initial;
@@ -333,8 +341,8 @@ class _ReportsContentState extends ConsumerState<_ReportsContent> {
       firstDate: DateTime(now.year - 3),
       lastDate: now.add(const Duration(days: 1)),
       initialDateRange: initial,
-      helpText: 'Choose a report period',
-      saveText: 'Apply',
+      helpText: l10n.reportChoosePeriod,
+      saveText: l10n.actionApply,
     );
     if (picked == null || !mounted) return;
 
@@ -425,7 +433,14 @@ class _InsightsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final highestName = data.highestCategoryName;
+    final l10n = AppLocalizations.of(context);
+    // The stored category name, shown through the shared vocabulary helper so
+    // a seeded default reads in the selected language while a category the
+    // user renamed keeps their own words.
+    final highestName = VocabularyLabels.categoryOrNull(
+      l10n: l10n,
+      name: data.highestCategoryName,
+    );
 
     // Each card shares the exact same layout so every number sits in the same
     // position; they just fade/slide in with a small stagger.
@@ -441,7 +456,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         0,
         _InsightCard(
-          title: 'Highest Expense Category',
+          title: l10n.reportHighestExpenseCategory,
           subtitle: highestName,
           amount: highestName == null ? null : data.highestCategoryAmount,
           icon: Icons.category_outlined,
@@ -451,7 +466,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         1,
         _InsightCard(
-          title: 'Largest Expense Claim',
+          title: l10n.reportLargestExpenseClaim,
           amount: data.largestExpense,
           icon: Icons.receipt_long_outlined,
           color: colors.error,
@@ -460,7 +475,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         2,
         _InsightCard(
-          title: 'Expense Reimbursements',
+          title: l10n.reportExpenseReimbursements,
           amount: data.totalExpenses,
           icon: Icons.payments_outlined,
           color: colors.warning,
@@ -469,7 +484,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         3,
         _InsightCard(
-          title: 'Pending Reimbursements',
+          title: l10n.reportPendingReimbursements,
           amount: data.pendingReimbursements,
           icon: Icons.hourglass_bottom_rounded,
           color: colors.statusPending,
@@ -478,7 +493,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         4,
         _InsightCard(
-          title: 'Average Monthly Expense',
+          title: l10n.reportAverageMonthlyExpense,
           amount: data.averageMonthlyExpense,
           icon: Icons.calculate_outlined,
           color: colors.primary,
@@ -487,7 +502,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         5,
         _InsightCard(
-          title: 'Average Deposit',
+          title: l10n.reportAverageDeposit,
           amount: data.avgDeposit,
           icon: Icons.savings_outlined,
           color: colors.success,
@@ -496,7 +511,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         6,
         _InsightCard(
-          title: 'Largest Deposit',
+          title: l10n.reportLargestDeposit,
           amount: data.largestDeposit,
           icon: Icons.trending_up_rounded,
           color: colors.primary,
@@ -505,7 +520,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         7,
         _InsightCard(
-          title: 'Bills Paid',
+          title: l10n.reportBillsPaid,
           count: data.billsPaid,
           icon: Icons.fact_check_outlined,
           color: colors.success,
@@ -514,7 +529,7 @@ class _InsightsGrid extends StatelessWidget {
       staggered(
         8,
         _InsightCard(
-          title: 'Bills Pending',
+          title: l10n.reportBillsPending,
           count: data.billsPending,
           icon: Icons.schedule_rounded,
           color: colors.warning,
@@ -645,6 +660,7 @@ class _AllTimeBalanceNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -656,8 +672,9 @@ class _AllTimeBalanceNote extends StatelessWidget {
         const SizedBox(width: 6),
         Flexible(
           child: Text(
-            'Central Account balance (all time): '
-            '${CurrencyUtils.format(amount)}',
+            l10n.reportCentralBalanceAllTime(
+              CurrencyUtils.format(amount, localeCode: l10n.localeName),
+            ),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colors.textSecondary,
@@ -685,6 +702,7 @@ class _ReportsFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SizedBox(
       height: 36,
       child: ListView(
@@ -694,7 +712,7 @@ class _ReportsFilterBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
-                label: Text(period.label),
+                label: Text(period.labelFor(l10n)),
                 selected: filter.period == period,
                 showCheckmark: false,
                 visualDensity: VisualDensity.compact,
@@ -721,6 +739,7 @@ class _MoneyOutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final breakdown = data.moneyOutBreakdown;
     final total = breakdown.total;
 
@@ -728,27 +747,27 @@ class _MoneyOutCard extends StatelessWidget {
     // actually moved is shown.
     final buckets = <({String label, double amount, Color color})>[
       (
-        label: 'Expense reimbursements',
+        label: l10n.reportMoneyOutReimbursements,
         amount: breakdown.expenseReimbursements,
         color: colors.statusApproved,
       ),
       (
-        label: 'Direct payments',
+        label: l10n.reportMoneyOutDirectPayments,
         amount: breakdown.directPayments,
         color: colors.warning,
       ),
       (
-        label: 'Bill payments',
+        label: l10n.reportMoneyOutBillPayments,
         amount: breakdown.billPayments,
         color: colors.primary,
       ),
       (
-        label: 'Adjustments',
+        label: l10n.reportMoneyOutAdjustments,
         amount: breakdown.negativeAdjustments,
         color: colors.error,
       ),
       (
-        label: 'Other',
+        label: l10n.reportMoneyOutOther,
         amount: breakdown.other,
         color: colors.textSecondary,
       ),
@@ -767,7 +786,9 @@ class _MoneyOutCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'From ${CurrencyUtils.format(total)} of Money Out',
+              l10n.reportMoneyOutFrom(
+                CurrencyUtils.format(total, localeCode: l10n.localeName),
+              ),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colors.textSecondary,
                 fontWeight: FontWeight.w500,
@@ -820,7 +841,7 @@ class _MoneyOutCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      CurrencyUtils.format(b.amount),
+                      CurrencyUtils.format(b.amount, localeCode: l10n.localeName),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -932,6 +953,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final breakdown = widget.data.categoryBreakdown;
     final total =
         breakdown.fold<double>(0, (sum, c) => sum + c.amount);
@@ -941,6 +963,11 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
             selectedIndex < breakdown.length)
         ? breakdown[selectedIndex]
         : null;
+    // The category's display name: a seeded default reads in the selected
+    // language, a category the user renamed keeps their own text.
+    final selectedLabel = selected == null
+        ? null
+        : VocabularyLabels.category(l10n: l10n, name: selected.name);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -1042,7 +1069,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  selected.name,
+                                  selectedLabel!,
                                   style: Theme.of(context)
                                       .textTheme
                                       .titleSmall
@@ -1050,7 +1077,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                                 ),
                               ),
                               Text(
-                                CurrencyUtils.format(selected.amount),
+                                CurrencyUtils.format(selected.amount, localeCode: l10n.localeName),
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleSmall
@@ -1077,7 +1104,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           child: Text(
-                            'Tap a slice to see details',
+                            l10n.reportTapSliceHint,
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
@@ -1100,7 +1127,7 @@ class _CategoryBreakdownCardState extends State<_CategoryBreakdownCard>
                     curve: AppEasing.easeOut,
                   ).transform(_controller.value);
                   return _LegendRow(
-                    name: c.name,
+                    name: VocabularyLabels.category(l10n: l10n, name: c.name),
                     amount: c.amount,
                     percent: percent,
                     color: _categoryColor(c.color, colors),
@@ -1142,6 +1169,7 @@ class _LegendRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Opacity(
       opacity: opacity,
       child: FractionalTranslation(
@@ -1185,7 +1213,7 @@ class _LegendRow extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  CurrencyUtils.format(amount),
+                  CurrencyUtils.format(amount, localeCode: l10n.localeName),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -1221,6 +1249,7 @@ class _MonthlyTrendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final maxY = data.monthlyTrend.fold<double>(
       0,
       (m, e) => max(m, max(e.moneyIn, e.moneyOut)),
@@ -1238,9 +1267,9 @@ class _MonthlyTrendCard extends StatelessWidget {
             // ── Legend ──
             Row(
               children: [
-                _LegendDot(color: colors.success, label: 'Money In'),
+                _LegendDot(color: colors.success, label: l10n.reportMoneyIn),
                 const SizedBox(width: 16),
-                _LegendDot(color: colors.error, label: 'Money Out'),
+                _LegendDot(color: colors.error, label: l10n.reportMoneyOut),
               ],
             ),
             const SizedBox(height: 16),
@@ -1264,6 +1293,7 @@ class _MonthlyTrendCard extends StatelessWidget {
     double yMax,
   ) {
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     return TweenAnimationBuilder<double>(
       tween: Tween(
         begin: MediaQuery.disableAnimationsOf(context) ? 1.0 : 0.0,
@@ -1305,7 +1335,7 @@ class _MonthlyTrendCard extends StatelessWidget {
                   children: [
                     TextSpan(
                       text:
-                          'Money In   ${CurrencyUtils.format(m.moneyIn)}\n',
+                          '${l10n.reportMoneyIn}   ${CurrencyUtils.format(m.moneyIn, localeCode: l10n.localeName)}\n',
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.success,
@@ -1314,7 +1344,7 @@ class _MonthlyTrendCard extends StatelessWidget {
                     ),
                     TextSpan(
                       text:
-                          'Money Out ${CurrencyUtils.format(m.moneyOut)}\n',
+                          '${l10n.reportMoneyOut} ${CurrencyUtils.format(m.moneyOut, localeCode: l10n.localeName)}\n',
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.error,
@@ -1322,7 +1352,8 @@ class _MonthlyTrendCard extends StatelessWidget {
                       ),
                     ),
                     TextSpan(
-                      text: 'Net  ${CurrencyUtils.format(m.net)}',
+                      text:
+                          '${l10n.labelNet}  ${CurrencyUtils.format(m.net, localeCode: l10n.localeName)}',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

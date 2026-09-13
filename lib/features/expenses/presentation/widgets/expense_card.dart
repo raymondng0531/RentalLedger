@@ -5,6 +5,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/date_utils.dart';
+import '../../../../core/utils/vocabulary_labels.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/expense_entity.dart';
 
 /// A card displaying an expense summary in lists.
@@ -34,14 +36,15 @@ class ExpenseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
     final statusColor = _statusColor(expense.status, colors: colors);
     final (String sign, Color amountColor) =
         _amountStyle(expense.status, colors: colors);
-    final member = memberName ?? 'Unknown Member';
+    final member = memberName ?? l10n.expenseUnknownMember;
     final subtitle =
         '$member • '
-        '${DateFormatUtils.formatDateShort(expense.createdAt)} • '
-        '${DateFormatUtils.formatTime(expense.createdAt)}';
+        '${DateFormatUtils.formatDateShort(expense.createdAt, l10n.localeName)} • '
+        '${DateFormatUtils.formatTime(expense.createdAt, l10n.localeName)}';
 
     return Card(
       margin: const EdgeInsets.symmetric(
@@ -104,7 +107,7 @@ class ExpenseCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   // ── Amount ──
                   Text(
-                    '$sign${CurrencyUtils.format(expense.amount)}',
+                    '$sign${CurrencyUtils.format(expense.amount, localeCode: l10n.localeName)}',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: amountColor,
@@ -114,7 +117,7 @@ class ExpenseCard extends StatelessWidget {
               ),
               // ── Chips ──
               const SizedBox(height: 10),
-              Wrap(spacing: 6, runSpacing: 6, children: _chips(colors)),
+              Wrap(spacing: 6, runSpacing: 6, children: _chips(colors, l10n)),
             ],
           ),
         ),
@@ -122,7 +125,7 @@ class ExpenseCard extends StatelessWidget {
     );
   }
 
-  List<Widget> _chips(AppColors colors) {
+  List<Widget> _chips(AppColors colors, AppLocalizations l10n) {
     final chips = <Widget>[
       // Status chip — crossfades with a subtle scale when the expense's
       // status flips live (Submitted → Approved → Paid / Rejected).
@@ -131,18 +134,27 @@ class ExpenseCard extends StatelessWidget {
         switchInCurve: AppEasing.easeOut,
         switchOutCurve: AppEasing.accelerate,
         child: _chip(
-          _statusLabel(expense.status),
+          VocabularyLabels.activityStatus(expense.status, l10n),
           _statusColor(expense.status, colors: colors),
           key: ValueKey(expense.status),
         ),
       ),
       _chip(
-        expense.isPersonal ? 'Personal' : 'Central Account',
+        expense.isPersonal
+            ? l10n.paymentSourcePersonal
+            : l10n.paymentSourceCentral,
         colors.statusApproved,
       ),
     ];
-    if (categoryName != null) {
-      chips.add(_chip(categoryName!, colors.textSecondary));
+    // A seeded default category shows its localized label; a renamed one shows
+    // the user's own text.
+    final category = VocabularyLabels.categoryOrNull(
+      l10n: l10n,
+      categoryId: expense.categoryId,
+      name: categoryName,
+    );
+    if (category != null) {
+      chips.add(_chip(category, colors.textSecondary));
     }
     return chips;
   }
@@ -163,19 +175,6 @@ class ExpenseCard extends StatelessWidget {
         return colors.error;
       default:
         return colors.statusPending;
-    }
-  }
-
-  String _statusLabel(String status) {
-    switch (status) {
-      case 'paid':
-        return 'Paid';
-      case 'approved':
-        return 'Approved';
-      case 'rejected':
-        return 'Rejected';
-      default:
-        return 'Submitted';
     }
   }
 

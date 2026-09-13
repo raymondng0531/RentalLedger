@@ -1,4 +1,5 @@
 import '../../../../core/utils/date_utils.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/history_provider.dart';
 
 /// A calendar-month section of history events, used to render e-wallet style
@@ -86,9 +87,14 @@ class DatedMonthSection<T> {
 /// date when paid, due date otherwise).
 ///
 /// Pure and free of Firebase so the ordering rules can be unit-tested.
+///
+/// [l10n] supplies the locale for the month header. It is passed in rather than
+/// read from anywhere global so the header re-renders with the rest of the
+/// screen when the user changes language.
 List<DatedMonthSection<T>> groupItemsByMonth<T>(
   List<T> items,
   DateTime Function(T) dateOf,
+  AppLocalizations l10n,
 ) {
   if (items.isEmpty) return const [];
 
@@ -108,7 +114,7 @@ List<DatedMonthSection<T>> groupItemsByMonth<T>(
 
     // New month → close the previous section and open a new one.
     current = DatedMonthSection<T>(
-      label: monthYearHeader(date),
+      label: monthYearHeader(date, l10n),
       year: year,
       month: month,
       items: [item],
@@ -124,8 +130,11 @@ List<DatedMonthSection<T>> groupItemsByMonth<T>(
 ///
 /// Behaviour is unchanged — this now delegates to [groupItemsByMonth] so the
 /// month rule has a single implementation.
-List<MonthSection> groupEventsByMonth(List<HistoryEvent> events) {
-  return groupItemsByMonth(events, (e) => e.date)
+List<MonthSection> groupEventsByMonth(
+  List<HistoryEvent> events,
+  AppLocalizations l10n,
+) {
+  return groupItemsByMonth(events, (e) => e.date, l10n)
       .map(
         (section) => MonthSection(
           label: section.label,
@@ -151,6 +160,10 @@ List<HistoryRow> buildHistoryRows(List<MonthSection> sections) {
 }
 
 /// Formats a date as an uppercase month + year header ("AUGUST 2026").
-String monthYearHeader(DateTime date) {
-  return DateFormatUtils.formatMonthYear(date).toUpperCase();
+///
+/// Uppercasing after formatting is safe for both shipped locales — `toUpperCase`
+/// is a no-op on Malay month names (`OGOS 2026`), and on any locale where it is
+/// not, the header is a section label rather than a word inside a sentence.
+String monthYearHeader(DateTime date, AppLocalizations l10n) {
+  return DateFormatUtils.formatMonthYear(date, l10n.localeName).toUpperCase();
 }

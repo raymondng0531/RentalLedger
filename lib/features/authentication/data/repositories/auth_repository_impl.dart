@@ -7,6 +7,7 @@ import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/utils/member_profile_sync_utils.dart';
+import '../../domain/auth_error_codes.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
@@ -79,13 +80,16 @@ class AuthRepositoryImpl implements AuthRepository {
       _currentUserNotifier.value = userEntity;
       return userEntity;
     } on AuthException catch (e) {
-      throw AuthenticationFailure(e.message);
+      throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
       rethrow;
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
-      throw FirebaseFailure('Login failed: ${e.toString()}');
+      throw FirebaseFailure(
+        'Login failed: ${e.toString()}',
+        code: AuthErrorCodes.unexpected,
+      );
     }
   }
 
@@ -121,13 +125,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
       return userEntity;
     } on AuthException catch (e) {
-      throw AuthenticationFailure(e.message);
+      throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
       rethrow;
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
-      throw FirebaseFailure('Google sign in failed: ${e.toString()}');
+      throw FirebaseFailure(
+        'Google sign in failed: ${e.toString()}',
+        code: AuthErrorCodes.unexpected,
+      );
     }
   }
 
@@ -159,13 +166,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
       return userEntity;
     } on AuthException catch (e) {
-      throw AuthenticationFailure(e.message);
+      throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
       rethrow;
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
-      throw FirebaseFailure('Apple sign in failed: ${e.toString()}');
+      throw FirebaseFailure(
+        'Apple sign in failed: ${e.toString()}',
+        code: AuthErrorCodes.unexpected,
+      );
     }
   }
 
@@ -193,13 +203,16 @@ class AuthRepositoryImpl implements AuthRepository {
       _currentUserNotifier.value = userEntity;
       return userEntity;
     } on AuthException catch (e) {
-      throw AuthenticationFailure(e.message);
+      throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
       rethrow;
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
-      throw FirebaseFailure('Registration failed: ${e.toString()}');
+      throw FirebaseFailure(
+        'Registration failed: ${e.toString()}',
+        code: AuthErrorCodes.unexpected,
+      );
     }
   }
 
@@ -222,13 +235,16 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await _remote.forgotPassword(email);
     } on AuthException catch (e) {
-      throw AuthenticationFailure(e.message);
+      throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
       rethrow;
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
-      throw FirebaseFailure('Failed to send reset email: ${e.toString()}');
+      throw FirebaseFailure(
+        'Failed to send reset email: ${e.toString()}',
+        code: AuthErrorCodes.unexpected,
+      );
     }
   }
 
@@ -237,14 +253,16 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       return await _remote.verifyResetCode(oobCode);
     } on AuthException catch (e) {
-      throw AuthenticationFailure(e.message);
+      throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
       rethrow;
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
       throw FirebaseFailure(
-          'Could not verify the reset link: ${e.toString()}');
+        'Could not verify the reset link: ${e.toString()}',
+        code: AuthErrorCodes.unexpected,
+      );
     }
   }
 
@@ -259,13 +277,16 @@ class AuthRepositoryImpl implements AuthRepository {
         newPassword: newPassword,
       );
     } on AuthException catch (e) {
-      throw AuthenticationFailure(e.message);
+      throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
       rethrow;
     } on FirebaseFailure {
       rethrow;
     } catch (e) {
-      throw FirebaseFailure('Failed to reset your password: ${e.toString()}');
+      throw FirebaseFailure(
+        'Failed to reset your password: ${e.toString()}',
+        code: AuthErrorCodes.unexpected,
+      );
     }
   }
 

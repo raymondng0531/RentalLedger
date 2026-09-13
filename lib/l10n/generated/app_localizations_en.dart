@@ -1043,9 +1043,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionSignOutConfirm => 'Are you sure you want to sign out?';
 
   @override
-  String get reportPdfComingSoon => 'PDF export coming soon';
-
-  @override
   String get reportLoadFailed => 'Could not load reports.';
 
   @override
@@ -1662,4 +1659,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorBillCreateFailed => 'Failed to create bill.';
+
+  @override
+  String get labelTotal => 'Total';
+
+  @override
+  String get reportPdfSubtitle => 'Financial Report';
+
+  @override
+  String get reportPdfPeriod => 'Period';
+
+  @override
+  String reportPdfGeneratedOn(String date) {
+    return 'Generated $date';
+  }
+
+  @override
+  String get reportPdfSummary => 'Summary';
+
+  @override
+  String get reportPdfTotalExpenses => 'Total Expenses';
+
+  @override
+  String get reportPdfTotalDeposits => 'Total Deposits';
+
+  @override
+  String get reportPdfNetFlow => 'Net Flow';
+
+  @override
+  String get reportPdfMonth => 'Month';
+
+  @override
+  String get reportPdfShare => 'Share';
+
+  @override
+  String get reportPdfNoData => 'No report data for this period.';
+
+  @override
+  String get reportPdfFailed => 'Could not generate the PDF. Please try again.';
 }

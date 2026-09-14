@@ -37,6 +37,8 @@ const {
   limit,
   serverTimestamp,
   deleteField,
+  runTransaction,
+  increment,
 } = require('firebase/firestore');
 
 const PROJECT_ID = 'rental-ledger-rules';
@@ -1100,6 +1102,178 @@ describe('transactions (money movement)', () => {
 
   test('another house\'s treasurer CANNOT read this house\'s transactions', async () => {
     await assertFails(getDoc(doc(as(OTHER_TREASURER), 'transactions', 'tx-1')));
+  });
+
+  // ── CREATE names its house in the INCOMING document ──
+  //
+  // On a create `resource` is always null — the document does not exist yet —
+  // so the house must come from `request.resource.data`. These pin that the
+  // incoming houseId is what is validated, and that a well-formed create by an
+  // active Treasurer-member still succeeds.
+
+  test('an active Treasurer-member CAN create a transaction for their own house', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(TREASURER), 'transactions', 'tx-active-treasurer'), {
+        transactionId: 'tx-active-treasurer',
+        houseId: H1,
+        expenseId: null,
+        type: 'Deposit',
+        amount: 250,
+        performedBy: TREASURER,
+        notes: 'Deposit',
+        receiptUrl: null,
+        paidByUserId: null,
+        paymentMethod: null,
+        periodLabel: null,
+        purpose: null,
+        categoryId: null,
+      }),
+    );
+  });
+
+  test('an active member who is NOT the treasurer still CANNOT create', async () => {
+    await assertFails(
+      setDoc(doc(as(MEMBER), 'transactions', 'tx-member-create'), {
+        houseId: H1,
+        type: 'Deposit',
+        amount: 500,
+        performedBy: MEMBER,
+      }),
+    );
+  });
+
+  test('a DEAUTHORIZED former member CANNOT create — the membership test bites', async () => {
+    // FORMER holds an index row with isActive:false. The Treasurer check alone
+    // would not have stopped a former treasurer; the membership test does.
+    await assertFails(
+      setDoc(doc(as(FORMER), 'transactions', 'tx-former-create'), {
+        houseId: H1,
+        type: 'Deposit',
+        amount: 500,
+        performedBy: FORMER,
+      }),
+    );
+  });
+
+  test('another house\'s treasurer CANNOT create a transaction in this house', async () => {
+    await assertFails(
+      setDoc(doc(as(OTHER_TREASURER), 'transactions', 'tx-other-treasurer'), {
+        houseId: H1,
+        type: 'Deposit',
+        amount: 500,
+        performedBy: OTHER_TREASURER,
+      }),
+    );
+  });
+
+  test('this house\'s treasurer CANNOT create a transaction naming ANOTHER house', async () => {
+    await assertFails(
+      setDoc(doc(as(TREASURER), 'transactions', 'tx-cross-house'), {
+        houseId: H2,
+        type: 'Deposit',
+        amount: 500,
+        performedBy: TREASURER,
+      }),
+    );
+  });
+
+  test('a transaction naming a house that does not exist is REFUSED', async () => {
+    await assertFails(
+      setDoc(doc(as(TREASURER), 'transactions', 'tx-ghost-house'), {
+        houseId: 'house-that-does-not-exist',
+        type: 'Deposit',
+        amount: 500,
+        performedBy: TREASURER,
+      }),
+    );
+  });
+
+  test('a transaction with no houseId at all is REFUSED, not silently accepted', async () => {
+    await assertFails(
+      setDoc(doc(as(TREASURER), 'transactions', 'tx-no-house'), {
+        type: 'Deposit',
+        amount: 500,
+        performedBy: TREASURER,
+      }),
+    );
+  });
+
+  // ── The ledger WRITE PATH — regression for "Failed to record transaction" ──
+  //
+  // ExpenseRemoteDataSource.recordTransaction() opens a runTransaction whose
+  // FIRST statement is an idempotency read of a transaction id that does not
+  // exist yet, then sets the row and moves the house balance. Under the
+  // previous read rule — `allow read: if isMember(resource.data.houseId)` —
+  // that read was an evaluation ERROR (`resource` is null for a document that
+  // does not exist) and Firestore denies on error, so EVERY Deposit and Direct
+  // Payment failed. These tests pin the whole sequence, not just the create.
+
+  test('the ledger write path completes: read-missing -> write row -> move balance', async () => {
+    const db = as(TREASURER);
+    await assertSucceeds(
+      runTransaction(db, async (tx) => {
+        // The idempotency guard, exactly as recordTransaction runs it.
+        const txRef = doc(db, 'transactions', 'tx-deposit-1');
+        const existing = await tx.get(txRef);
+        if (existing.exists()) return;
+
+        tx.set(txRef, {
+          transactionId: 'tx-deposit-1',
+          houseId: H1,
+          expenseId: null,
+          type: 'Deposit',
+          amount: 100,
+          performedBy: TREASURER,
+          notes: 'Deposit',
+          createdAt: serverTimestamp(),
+        });
+        tx.update(doc(db, 'houses', H1), {
+          balance: increment(100),
+          updatedAt: serverTimestamp(),
+        });
+      }),
+    );
+  });
+
+  test('reading a transaction that does NOT exist is allowed — the create path needs no `resource`', async () => {
+    const snapshot = await assertSucceeds(
+      getDoc(doc(as(TREASURER), 'transactions', 'tx-never-existed')),
+    );
+    assert.strictEqual(snapshot.exists(), false);
+  });
+
+  test('an outsider may also read a missing transaction — it discloses no data', async () => {
+    // The allowance is deliberately not membership-scoped: a read of a
+    // non-existent document returns "not found" and nothing else. What must
+    // stay closed is reading a document that DOES exist, pinned below.
+    const snapshot = await assertSucceeds(
+      getDoc(doc(as(OUTSIDER), 'transactions', 'tx-also-never-existed')),
+    );
+    assert.strictEqual(snapshot.exists(), false);
+  });
+
+  test('the missing-read allowance does NOT open reads of EXISTING transactions', async () => {
+    // The regression risk of the branch above: that `resource == null` might
+    // leak into the existing-document path. It must not.
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'transactions', 'tx-1')));
+    await assertFails(getDoc(doc(as(OUTSIDER), 'transactions', 'tx-1')));
+    await assertFails(getDoc(doc(as(OTHER_TREASURER), 'transactions', 'tx-1')));
+    await assertFails(getDoc(doc(as(FORMER), 'transactions', 'tx-1')));
+  });
+
+  test('an outsider still CANNOT read the other house\'s EXISTING transaction', async () => {
+    await assertFails(getDoc(doc(as(OUTSIDER), 'transactions', 'tx-h2')));
+    await assertFails(getDoc(doc(as(TREASURER), 'transactions', 'tx-h2')));
+  });
+
+  test('transactions stay append-only for every actor', async () => {
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'transactions', 'tx-1'), { amount: 0 }),
+    );
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'transactions', 'tx-1'), { amount: 0 }),
+    );
+    await assertFails(deleteDoc(doc(as(TREASURER), 'transactions', 'tx-1')));
   });
 });
 

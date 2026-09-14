@@ -209,8 +209,31 @@ service cloud.firestore {
     // append a transaction would let a member forge deposits/direct payments.
     // Append-only — no updates or deletes.
     match /transactions/{transactionId} {
-      allow read: if isMember(resource.data.houseId);
-      allow create: if isHouseTreasurer(request.resource.data.houseId);
+      // A read of a document that does NOT exist has `resource == null`, so
+      // `resource.data.houseId` cannot be evaluated. That is an evaluation
+      // ERROR, and Firestore treats an erroring rule as a denial.
+      //
+      // This case must be allowed, and it must be tested FIRST: `||`
+      // short-circuits, so the left branch answers before the right one is
+      // ever evaluated. It matters because the ledger write reads the
+      // not-yet-existing transaction inside its runTransaction as the
+      // idempotency guard (ExpenseRemoteDataSource.recordTransaction), and
+      // denying that read failed EVERY Deposit and Direct Payment with
+      // "Failed to record transaction."
+      //
+      // It discloses nothing: reading a non-existent document returns no
+      // data, only "not found". The moment the document exists the
+      // isMember() test applies and a non-member is refused, as before.
+      allow read: if (resource == null && request.auth != null) ||
+        isMember(resource.data.houseId);
+
+      // On CREATE `resource` is always null — the document does not exist yet
+      // — so the house is named by the INCOMING document instead. Active
+      // membership of that house is required IN ADDITION to the Treasurer
+      // check, so a Treasurer cannot append to a house they no longer belong
+      // to, and nobody can append to a house they never joined.
+      allow create: if isMember(request.resource.data.houseId) &&
+        isHouseTreasurer(request.resource.data.houseId);
       allow update: if false;
       allow delete: if false;
     }

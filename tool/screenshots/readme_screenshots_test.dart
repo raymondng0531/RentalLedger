@@ -231,6 +231,7 @@ Future<void> _shoot(
   WidgetTester tester, {
   required String name,
   required Widget page,
+  String dir = '../../docs/screenshots',
   required List<Override> overrides,
   Future<void> Function(WidgetTester)? interact,
 }) async {
@@ -241,13 +242,16 @@ Future<void> _shoot(
   await tester.pumpWidget(
     ProviderScope(
       overrides: overrides,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: _withRoboto(AppTheme.lightTheme),
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: RepaintBoundary(key: const ValueKey('shot'), child: page),
+      child: RepaintBoundary(
+        key: const ValueKey('shot'),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: _withRoboto(AppTheme.lightTheme),
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: page,
+        ),
       ),
     ),
   );
@@ -264,7 +268,7 @@ Future<void> _shoot(
 
   await expectLater(
     find.byKey(const ValueKey('shot')),
-    matchesGoldenFile('../../docs/screenshots/$name.png'),
+    matchesGoldenFile('$dir/$name.png'),
   );
 }
 
@@ -293,12 +297,25 @@ void main() {
       page: const DepositPage(memberRequest: true),
       overrides: _common(_alice),
       interact: (tester) async {
+        // "For month" now defaults to the current month on its own.
         await tester.enterText(find.byType(TextFormField).first, '300.00');
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'For month (optional)'),
-          '2026-10',
-        );
         FocusManager.instance.primaryFocus?.unfocus();
+      },
+    );
+  });
+
+  // Review-only shot (not used by the README): the month picker dialog.
+  testWidgets('month picker (review only)', (tester) async {
+    await _shoot(
+      tester,
+      name: 'month_picker',
+      dir: '../../build/review',
+      page: const DepositPage(memberRequest: true),
+      overrides: _common(_alice),
+      interact: (tester) async {
+        await tester.tap(
+          find.widgetWithText(TextFormField, 'For month (optional)'),
+        );
       },
     );
   });

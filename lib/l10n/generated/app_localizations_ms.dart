@@ -1783,4 +1783,16 @@ class AppLocalizationsMs extends AppLocalizations {
 
   @override
   String get depositRequestAwaitingReview => 'Menunggu Bendahari menyemak deposit ini.';
+
+  @override
+  String get monthPickerTitle => 'Pilih bulan';
+
+  @override
+  String get monthPickerPreviousYear => 'Tahun sebelumnya';
+
+  @override
+  String get monthPickerNextYear => 'Tahun berikutnya';
+
+  @override
+  String get monthPickerClear => 'Kosongkan bulan';
 }

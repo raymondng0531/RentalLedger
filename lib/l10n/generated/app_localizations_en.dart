@@ -1786,4 +1786,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get depositRequestAwaitingReview => 'Waiting for the Treasurer to review this deposit.';
+
+  @override
+  String get monthPickerTitle => 'Select month';
+
+  @override
+  String get monthPickerPreviousYear => 'Previous year';
+
+  @override
+  String get monthPickerNextYear => 'Next year';
+
+  @override
+  String get monthPickerClear => 'Clear month';
 }

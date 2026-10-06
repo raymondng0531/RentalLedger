@@ -8,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
+import '../../../../core/widgets/month_picker_field.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -32,7 +33,9 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-  final _periodController = TextEditingController();
+  // Defaults to the current month; pick another or clear it.
+  final _periodController =
+      TextEditingController(text: currentPeriodLabel());
 
   String? _selectedCategory;
   String? _paymentMethod;
@@ -216,15 +219,10 @@ class _DirectPaymentPageState extends ConsumerState<DirectPaymentPage> {
                   const SizedBox(height: 16),
 
                   // ── For month / period (optional) ──
-                  TextFormField(
+                  MonthPickerField(
                     controller: _periodController,
-                    keyboardType: TextInputType.datetime,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: l10n.expenseFieldForMonth,
-                      hintText: l10n.expenseFieldForMonthHint,
-                      prefixIcon: const Icon(Icons.calendar_month_outlined),
-                    ),
+                    labelText: l10n.expenseFieldForMonth,
+                    hintText: l10n.expenseFieldForMonthHint,
                   ),
                   const SizedBox(height: 20),
 

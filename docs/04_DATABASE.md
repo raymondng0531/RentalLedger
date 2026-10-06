@@ -20,6 +20,7 @@ Collections:
 -   house_members
 -   expenses
 -   transactions
+-   deposit_requests
 -   categories
 -   notifications
 -   app_settings
@@ -134,6 +135,47 @@ Fields:
 
 ------------------------------------------------------------------------
 
+# Collection: deposit_requests
+
+A deposit a member submitted for themselves, awaiting the Treasurer. A
+request is NOT a transaction and never affects the balance by itself.
+On approval ONE Deposit transaction is written in the same Firestore
+transaction, with `transactionId` = `requestId`.
+
+Fields:
+
+-   requestId
+-   houseId
+-   amount (positive)
+-   paidByUserId (= submittedBy)
+-   submittedBy
+-   paymentMethod (optional)
+-   periodLabel (optional, e.g. 2026-10)
+-   purpose (optional)
+-   notes (optional)
+-   receiptUrl (proof — required by the app)
+-   status: Pending \| Approved \| Rejected
+-   rejectReason (optional)
+-   reviewedBy (Treasurer uid)
+-   reviewedAt
+-   transactionId (set on approval; equals requestId)
+-   createdAt
+-   updatedAt (set on review)
+
+Rules: house members read; a member creates only for themselves, as
+Pending, in a house they belong to; only the house Treasurer moves
+Pending → Approved/Rejected (an approval must be committed together
+with its matching Deposit transaction); the submitter may delete only
+their own Pending request.
+
+Query: houseId == X and status == "Pending" (equality filters only, so
+no composite index is required; sorted by createdAt in the app).
+
+Proof images are stored under `receipts/{houseId}/` in Storage, like
+expense receipts.
+
+------------------------------------------------------------------------
+
 # Collection: notifications
 
 Fields:
@@ -148,7 +190,8 @@ Fields:
 -   createdAt
 
 Types: - Expense Submitted - Expense Approved - Expense Rejected -
-Payment Completed - Deposit Recorded
+Payment Completed - Deposit Recorded - Deposit Submitted - Deposit
+Approved - Deposit Rejected
 
 ------------------------------------------------------------------------
 

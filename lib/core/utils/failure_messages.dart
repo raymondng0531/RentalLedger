@@ -103,6 +103,8 @@ class FailureMessages {
         return l10n.errorExpenseAlreadyReviewed;
       case FailureCodes.notAwaitingReimbursement:
         return l10n.errorExpenseNotAwaitingReimbursement;
+      case FailureCodes.depositRequestAlreadyReviewed:
+        return l10n.errorDepositRequestAlreadyReviewed;
       case FailureCodes.billAlreadyPaid:
         return l10n.errorBillAlreadyPaid;
       case FailureCodes.recordMissing:

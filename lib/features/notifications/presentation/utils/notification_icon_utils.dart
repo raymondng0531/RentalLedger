@@ -26,6 +26,12 @@ import '../../../../app/theme/app_colors.dart';
       return (Icons.wallet_outlined, colors.statusApproved);
     case 'Deposit Recorded':
       return (Icons.arrow_downward_rounded, colors.success);
+    case 'Deposit Submitted':
+      return (Icons.savings_outlined, colors.warning);
+    case 'Deposit Approved':
+      return (Icons.check_circle_outline, colors.success);
+    case 'Deposit Rejected':
+      return (Icons.cancel_outlined, colors.error);
     case 'Reimbursement Reminder':
       return (Icons.notifications_active_outlined, colors.warning);
     default:

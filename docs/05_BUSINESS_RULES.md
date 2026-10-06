@@ -17,13 +17,15 @@ consistent behavior.
 ## Treasurer
 
 Permissions: - Create a house - Manage the Central Account - Record
-deposits - Record direct payments - Approve or reject expense claims -
-Mark reimbursements as paid - Manage members - View all reports
+deposits - Approve or reject member deposit requests - Record direct
+payments - Approve or reject expense claims - Mark reimbursements as
+paid - Manage members - View all reports
 
 ## Member
 
 Permissions: - Join a house - Submit expense claims - Upload receipts -
-View transaction history - View reports - Track reimbursement status
+Submit their own deposits for Treasurer approval - View transaction
+history - View reports - Track reimbursement status
 
 ------------------------------------------------------------------------
 
@@ -74,10 +76,43 @@ No reimbursement is required.
 
 # Deposit Workflow
 
-1.  Treasurer records a deposit.
+There are two ways a deposit reaches the Central Account.
+
+## Treasurer records a deposit (direct — unchanged)
+
+1.  Treasurer records a deposit (any member may be chosen as the payer;
+    proof required).
 2.  Central Account balance increases.
 3.  Deposit transaction is created.
 4.  Members can view the transaction history.
+
+## Member submits a deposit (request → Treasurer approval)
+
+1.  A member opens **Submit Deposit** and records a deposit they paid
+    themselves: amount, payment method, period and purpose (optional),
+    notes, and a proof image (required). The payer is always the member
+    themselves.
+2.  A **deposit request** is created with status **Pending** in
+    `deposit_requests`. It is NOT a transaction: the balance does not
+    change. The Treasurer is notified.
+3.  The request appears in the dashboard's Pending Items for the
+    Treasurer (all requests) and for the submitter (their own).
+4.  While Pending, the member may **cancel** (delete) their own request.
+5.  The Treasurer reviews it:
+    -   **Approve** — in ONE Firestore transaction the request is
+        re-read and must still be Pending, it becomes **Approved**, and
+        a Deposit transaction is written with the request id as its id
+        (idempotency key), `performedBy` = Treasurer, `paidByUserId` =
+        member, and the member's proof as `receiptUrl`; the balance
+        increases in the same commit. The member is notified.
+    -   **Reject** — the request becomes **Rejected** with an optional
+        reason; nothing is written to the ledger. The member is notified.
+6.  Reviewed requests are final: they cannot be reviewed again, edited
+    or deleted. A second concurrent approval fails cleanly ("already
+    reviewed") instead of recording the deposit twice.
+
+History and reports read only `transactions`, so a request appears there
+only after it is approved (as an ordinary Deposit).
 
 ------------------------------------------------------------------------
 
@@ -139,8 +174,9 @@ Corrections must be made with Adjustment transactions.
 # Notification Rules
 
 Notify members when: - Expense submitted - Expense approved - Expense
-rejected - Reimbursement completed - Deposit recorded - Treasurer
-changed
+rejected - Reimbursement completed - Deposit recorded - Deposit
+submitted (to the Treasurer) - Deposit approved / rejected (to the
+member who submitted it) - Treasurer changed
 
 Notifications should be marked read/unread.
 
@@ -178,8 +214,15 @@ Use transaction history as the financial source of truth.
   Reject Expense         ✔         ✘
   Mark Paid              ✔         ✘
   Record Deposit         ✔         ✘
+  Submit Deposit         ✔¹        ✔
+  Approve/Reject Deposit ✔         ✘
+  Cancel own Pending
+  Deposit Request        ✔         ✔
   View Reports           ✔         ✔
   Manage Members         ✔         ✘
+
+¹ The Treasurer normally uses Record Deposit; the Submit Deposit entry
+is offered to members.
 
 ------------------------------------------------------------------------
 

@@ -43,6 +43,11 @@ class FailureCodes {
   static const String notAwaitingReimbursement =
       'expense-not-awaiting-reimbursement';
 
+  /// A member's deposit request was already approved or rejected (or the
+  /// member tried to cancel one that is no longer pending).
+  static const String depositRequestAlreadyReviewed =
+      'deposit-request-already-reviewed';
+
   /// A bill was already paid for the period being submitted.
   static const String billAlreadyPaid = 'bill-already-paid';
 
@@ -94,6 +99,7 @@ class FailureCodes {
     insufficientBalance,
     alreadyReviewed,
     notAwaitingReimbursement,
+    depositRequestAlreadyReviewed,
     billAlreadyPaid,
     recordMissing,
     houseAlreadyMember,

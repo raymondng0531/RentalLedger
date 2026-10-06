@@ -212,6 +212,36 @@ async function seed() {
       performedBy: OTHER_TREASURER,
       createdAt: new Date('2026-01-05'),
     });
+    // A member's Pending deposit request, and one already approved.
+    await setDoc(doc(db, 'deposit_requests', 'dr-1'), {
+      requestId: 'dr-1',
+      houseId: H1,
+      amount: 300,
+      paidByUserId: MEMBER,
+      submittedBy: MEMBER,
+      paymentMethod: 'Cash',
+      periodLabel: '2026-10',
+      purpose: 'Monthly Rental',
+      notes: null,
+      receiptUrl: 'https://storage.example.com/receipts/house-1/dr-1.jpg',
+      status: 'Pending',
+      rejectReason: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      transactionId: null,
+      createdAt: new Date('2026-10-01'),
+    });
+    await setDoc(doc(db, 'deposit_requests', 'dr-approved'), {
+      requestId: 'dr-approved',
+      houseId: H1,
+      amount: 100,
+      paidByUserId: MEMBER,
+      submittedBy: MEMBER,
+      status: 'Approved',
+      reviewedBy: TREASURER,
+      transactionId: 'dr-approved',
+      createdAt: new Date('2026-09-01'),
+    });
     await setDoc(doc(db, 'categories', `${H1}_cat-1`), {
       categoryId: 'cat-1',
       houseId: H1,
@@ -1274,6 +1304,354 @@ describe('transactions (money movement)', () => {
       updateDoc(doc(as(MEMBER), 'transactions', 'tx-1'), { amount: 0 }),
     );
     await assertFails(deleteDoc(doc(as(TREASURER), 'transactions', 'tx-1')));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+describe('deposit_requests (member-submitted deposits)', () => {
+  /** A well-formed request as ExpenseRemoteDataSource.createDepositRequest writes it. */
+  const newRequest = (uid, overrides = {}) => ({
+    requestId: 'dr-new',
+    houseId: H1,
+    amount: 250,
+    paidByUserId: uid,
+    submittedBy: uid,
+    paymentMethod: 'Bank Transfer',
+    periodLabel: '2026-10',
+    purpose: 'Monthly Rental',
+    notes: null,
+    receiptUrl: 'https://storage.example.com/receipts/house-1/proof.jpg',
+    status: 'Pending',
+    rejectReason: null,
+    reviewedBy: null,
+    reviewedAt: null,
+    transactionId: null,
+    createdAt: new Date('2026-10-01'),
+    ...overrides,
+  });
+
+  // ── create ──
+
+  test('a member CAN submit a deposit for themselves', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(MEMBER), 'deposit_requests', 'dr-new'), newRequest(MEMBER)),
+    );
+  });
+
+  test('the submission path completes: read-missing -> create (idempotency read)', async () => {
+    const db = as(MEMBER);
+    await assertSucceeds(
+      runTransaction(db, async (tx) => {
+        const ref = doc(db, 'deposit_requests', 'dr-new');
+        const existing = await tx.get(ref);
+        if (existing.exists()) return;
+        tx.set(ref, newRequest(MEMBER));
+      }),
+    );
+  });
+
+  test('a member CANNOT submit a deposit on someone else\'s behalf', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(MEMBER), 'deposit_requests', 'dr-new'),
+        newRequest(MEMBER, { paidByUserId: REJOINED }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(as(MEMBER), 'deposit_requests', 'dr-new'),
+        newRequest(REJOINED),
+      ),
+    );
+  });
+
+  test('a request CANNOT arrive already Approved or carrying review fields', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(MEMBER), 'deposit_requests', 'dr-new'),
+        newRequest(MEMBER, { status: 'Approved' }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(as(MEMBER), 'deposit_requests', 'dr-new'),
+        newRequest(MEMBER, { reviewedBy: TREASURER }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(as(MEMBER), 'deposit_requests', 'dr-new'),
+        newRequest(MEMBER, { transactionId: 'dr-new' }),
+      ),
+    );
+  });
+
+  test('a request needs a positive numeric amount', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(MEMBER), 'deposit_requests', 'dr-new'),
+        newRequest(MEMBER, { amount: 0 }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(as(MEMBER), 'deposit_requests', 'dr-new'),
+        newRequest(MEMBER, { amount: '250' }),
+      ),
+    );
+  });
+
+  test('a non-member or deauthorized member CANNOT submit to the house', async () => {
+    await assertFails(
+      setDoc(doc(as(OUTSIDER), 'deposit_requests', 'dr-new'), newRequest(OUTSIDER)),
+    );
+    await assertFails(
+      setDoc(doc(as(FORMER), 'deposit_requests', 'dr-new'), newRequest(FORMER)),
+    );
+    await assertFails(
+      setDoc(
+        doc(as(OTHER_TREASURER), 'deposit_requests', 'dr-new'),
+        newRequest(OTHER_TREASURER),
+      ),
+    );
+  });
+
+  // ── read ──
+
+  test('house members CAN read a request; outsiders and other houses CANNOT', async () => {
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'deposit_requests', 'dr-1')));
+    await assertSucceeds(getDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1')));
+    await assertSucceeds(getDoc(doc(as(REJOINED), 'deposit_requests', 'dr-1')));
+    await assertFails(getDoc(doc(as(OUTSIDER), 'deposit_requests', 'dr-1')));
+    await assertFails(getDoc(doc(as(OTHER_TREASURER), 'deposit_requests', 'dr-1')));
+    await assertFails(getDoc(doc(as(FORMER), 'deposit_requests', 'dr-1')));
+  });
+
+  test('Dashboard: pending requests query (houseId + status) is allowed for members', async () => {
+    const db = as(MEMBER);
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(db, 'deposit_requests'),
+          where('houseId', '==', H1),
+          where('status', '==', 'Pending'),
+        ),
+      ),
+    );
+  });
+
+  test('an outsider CANNOT query a house\'s requests', async () => {
+    const db = as(OUTSIDER);
+    await assertFails(
+      getDocs(
+        query(
+          collection(db, 'deposit_requests'),
+          where('houseId', '==', H1),
+          where('status', '==', 'Pending'),
+        ),
+      ),
+    );
+  });
+
+  // ── approve (the money movement) ──
+
+  test('the Treasurer CAN approve: request + Deposit row + balance in ONE commit', async () => {
+    const db = as(TREASURER);
+    await assertSucceeds(
+      runTransaction(db, async (tx) => {
+        // Exactly the reads/writes approveDepositRequest performs.
+        const requestRef = doc(db, 'deposit_requests', 'dr-1');
+        const txRef = doc(db, 'transactions', 'dr-1');
+        const request = await tx.get(requestRef);
+        assert.strictEqual(request.data().status, 'Pending');
+        const existing = await tx.get(txRef);
+        assert.strictEqual(existing.exists(), false);
+
+        tx.update(requestRef, {
+          status: 'Approved',
+          reviewedBy: TREASURER,
+          reviewedAt: new Date('2026-10-02'),
+          transactionId: 'dr-1',
+          updatedAt: serverTimestamp(),
+        });
+        tx.set(txRef, {
+          transactionId: 'dr-1',
+          houseId: H1,
+          expenseId: null,
+          type: 'Deposit',
+          amount: 300,
+          performedBy: TREASURER,
+          notes: 'Deposit',
+          createdAt: new Date('2026-10-02'),
+          receiptUrl: 'https://storage.example.com/receipts/house-1/dr-1.jpg',
+          paidByUserId: MEMBER,
+          paymentMethod: 'Cash',
+          periodLabel: '2026-10',
+          purpose: 'Monthly Rental',
+          categoryId: null,
+        });
+        tx.update(doc(db, 'houses', H1), {
+          balance: increment(300),
+          updatedAt: serverTimestamp(),
+        });
+      }),
+    );
+  });
+
+  test('an approval WITHOUT its Deposit row is REFUSED', async () => {
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Approved',
+        reviewedBy: TREASURER,
+        reviewedAt: new Date('2026-10-02'),
+        transactionId: 'dr-1',
+      }),
+    );
+  });
+
+  test('an approval whose Deposit amount differs from the request is REFUSED', async () => {
+    const db = as(TREASURER);
+    await assertFails(
+      runTransaction(db, async (tx) => {
+        tx.update(doc(db, 'deposit_requests', 'dr-1'), {
+          status: 'Approved',
+          reviewedBy: TREASURER,
+          reviewedAt: new Date('2026-10-02'),
+          transactionId: 'dr-1',
+        });
+        tx.set(doc(db, 'transactions', 'dr-1'), {
+          transactionId: 'dr-1',
+          houseId: H1,
+          type: 'Deposit',
+          amount: 3000,
+          performedBy: TREASURER,
+          paidByUserId: MEMBER,
+        });
+      }),
+    );
+  });
+
+  test('a member CANNOT approve (or reject) a request — not even their own', async () => {
+    const db = as(MEMBER);
+    await assertFails(
+      runTransaction(db, async (tx) => {
+        tx.update(doc(db, 'deposit_requests', 'dr-1'), {
+          status: 'Approved',
+          reviewedBy: MEMBER,
+          transactionId: 'dr-1',
+        });
+        tx.set(doc(db, 'transactions', 'dr-1'), {
+          houseId: H1,
+          type: 'Deposit',
+          amount: 300,
+          performedBy: MEMBER,
+        });
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(db, 'deposit_requests', 'dr-1'), {
+        status: 'Rejected',
+        reviewedBy: MEMBER,
+      }),
+    );
+  });
+
+  test('another house\'s Treasurer CANNOT review this house\'s request', async () => {
+    await assertFails(
+      updateDoc(doc(as(OTHER_TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Rejected',
+        reviewedBy: OTHER_TREASURER,
+      }),
+    );
+  });
+
+  // ── reject ──
+
+  test('the Treasurer CAN reject with a reason', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Rejected',
+        reviewedBy: TREASURER,
+        reviewedAt: new Date('2026-10-02'),
+        rejectReason: 'Proof does not match the amount',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('a rejection CANNOT carry a transactionId', async () => {
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Rejected',
+        reviewedBy: TREASURER,
+        transactionId: 'dr-1',
+      }),
+    );
+  });
+
+  test('the Treasurer CANNOT record someone else as the reviewer', async () => {
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Rejected',
+        reviewedBy: MEMBER,
+      }),
+    );
+  });
+
+  test('the Treasurer CANNOT rewrite the request itself (amount / payer)', async () => {
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Rejected',
+        reviewedBy: TREASURER,
+        amount: 1,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Rejected',
+        reviewedBy: TREASURER,
+        paidByUserId: TREASURER,
+      }),
+    );
+  });
+
+  test('a reviewed request is final — no second review, no flip back to Pending', async () => {
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-approved'), {
+        status: 'Rejected',
+        reviewedBy: TREASURER,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1'), {
+        status: 'Pending',
+        reviewedBy: TREASURER,
+      }),
+    );
+  });
+
+  // ── cancel (delete) ──
+
+  test('the submitter CAN cancel their own Pending request', async () => {
+    await assertSucceeds(deleteDoc(doc(as(MEMBER), 'deposit_requests', 'dr-1')));
+  });
+
+  test('nobody else can delete it — not another member, not the Treasurer', async () => {
+    await assertFails(deleteDoc(doc(as(REJOINED), 'deposit_requests', 'dr-1')));
+    await assertFails(deleteDoc(doc(as(TREASURER), 'deposit_requests', 'dr-1')));
+    await assertFails(deleteDoc(doc(as(OUTSIDER), 'deposit_requests', 'dr-1')));
+  });
+
+  test('a reviewed request CANNOT be deleted, even by its submitter', async () => {
+    await assertFails(
+      deleteDoc(doc(as(MEMBER), 'deposit_requests', 'dr-approved')),
+    );
+  });
+
+  test('the submitter CANNOT edit their request after filing it', async () => {
+    await assertFails(
+      updateDoc(doc(as(MEMBER), 'deposit_requests', 'dr-1'), { amount: 9999 }),
+    );
   });
 });
 

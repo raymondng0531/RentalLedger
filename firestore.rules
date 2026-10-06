@@ -208,6 +208,9 @@ service cloud.firestore {
     // which is computed from this collection, so letting any signed-in user
     // append a transaction would let a member forge deposits/direct payments.
     // Append-only — no updates or deletes.
+    // Approving a member's deposit request is one of these Treasurer writes:
+    // the Deposit row is created by the Treasurer, with the member as
+    // `paidByUserId`, so no extra branch is needed here.
     match /transactions/{transactionId} {
       // A read of a document that does NOT exist has `resource == null`, so
       // `resource.data.houseId` cannot be evaluated. That is an evaluation
@@ -236,6 +239,68 @@ service cloud.firestore {
         isHouseTreasurer(request.resource.data.houseId);
       allow update: if false;
       allow delete: if false;
+    }
+
+    // Deposit requests: a member's OWN deposit, awaiting the Treasurer.
+    //
+    // A request is not money — the balance is the sum of `transactions`, and a
+    // request only becomes a Deposit transaction when the Treasurer approves
+    // it, in the same commit (ExpenseRemoteDataSource.approveDepositRequest).
+    match /deposit_requests/{requestId} {
+      // Missing-document reads are allowed for the same reason as on
+      // `transactions`: submission opens a runTransaction whose first step is
+      // an idempotency read of a request id that does not exist yet, and with
+      // `resource == null` the membership test would error (= deny). Reading
+      // a missing document discloses nothing; existing ones need membership.
+      allow read: if (resource == null && request.auth != null) ||
+        isMember(resource.data.houseId);
+
+      // A member files a request only in a house they actively belong to, only
+      // for THEMSELVES (payer == submitter == caller), only as Pending, for a
+      // positive amount, and carrying none of the review fields — so a request
+      // can neither be filed on someone else's behalf nor arrive pre-approved.
+      allow create: if isMember(request.resource.data.houseId) &&
+        request.resource.data.submittedBy == request.auth.uid &&
+        request.resource.data.paidByUserId == request.auth.uid &&
+        request.resource.data.status == 'Pending' &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0 &&
+        request.resource.data.get('reviewedBy', null) == null &&
+        request.resource.data.get('reviewedAt', null) == null &&
+        request.resource.data.get('rejectReason', null) == null &&
+        request.resource.data.get('transactionId', null) == null;
+
+      // Only the house Treasurer reviews, only Pending → Approved | Rejected,
+      // only the review fields change, and the reviewer is recorded as
+      // themselves. An APPROVAL must land together with its Deposit ledger
+      // row: `existsAfter`/`getAfter` see the rest of the same commit, so an
+      // "Approved" request with no matching Deposit (same id, house and
+      // amount) is refused outright.
+      allow update: if isMember(resource.data.houseId) &&
+        isHouseTreasurer(resource.data.houseId) &&
+        resource.data.status == 'Pending' &&
+        request.resource.data.status in ['Approved', 'Rejected'] &&
+        request.resource.data.reviewedBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'reviewedBy', 'reviewedAt', 'rejectReason',
+          'transactionId', 'updatedAt'
+        ]) &&
+        (
+          (request.resource.data.status == 'Rejected' &&
+            request.resource.data.get('transactionId', null) == null) ||
+          (request.resource.data.status == 'Approved' &&
+            request.resource.data.transactionId == requestId &&
+            existsAfter(/databases/$(database)/documents/transactions/$(requestId)) &&
+            getAfter(/databases/$(database)/documents/transactions/$(requestId)).data.type == 'Deposit' &&
+            getAfter(/databases/$(database)/documents/transactions/$(requestId)).data.houseId == resource.data.houseId &&
+            getAfter(/databases/$(database)/documents/transactions/$(requestId)).data.amount == resource.data.amount)
+        );
+
+      // The submitter may withdraw their own request while it is Pending.
+      // Reviewed requests are part of the record and are never deleted.
+      allow delete: if request.auth != null &&
+        resource.data.submittedBy == request.auth.uid &&
+        resource.data.status == 'Pending';
     }
 
     // Categories: member read; the house treasurer writes.

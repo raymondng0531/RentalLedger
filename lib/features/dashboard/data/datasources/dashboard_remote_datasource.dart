@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/utils/balance_utils.dart';
+import '../../../../core/utils/live_refetch_stream.dart';
 import '../../../../core/utils/member_name_utils.dart';
 import '../../domain/entities/activity_item.dart';
 import '../../domain/entities/dashboard_data.dart';
@@ -63,84 +64,38 @@ class DashboardRemoteDataSource {
   ///
   /// House members are watched so Recent Activity names re-resolve when a
   /// member edits their profile — no manual refresh or navigation needed.
-  /// How long change events are collected before ONE refetch runs.
-  static const Duration _refetchCoalesce = Duration(milliseconds: 150);
-
   Stream<DashboardData> fetchDashboardStream(String houseId) {
-    final controller = StreamController<DashboardData>();
-
-    // A single expense/deposit write touches several watched collections, so
-    // multiple snapshot listeners can call refetch() nearly simultaneously. The
-    // fetches run concurrently and previously resolved in completion order — a
-    // slower, STALE fetch could land last and overwrite a fresher one, leaving
-    // the dashboard showing old data until the next change. Guarding each
-    // refetch with a generation counter means only the newest fetch may emit;
-    // anything superseded is dropped even if it finishes later.
-    var refetchGeneration = 0;
-
-    // Re-fetch on any relevant change.
-    Future<void> refetch() async {
-      final generation = ++refetchGeneration;
-      try {
-        final data = await fetchDashboard(houseId);
-        if (!controller.isClosed && generation == refetchGeneration) {
-          controller.add(data);
-        }
-      } catch (e) {
-        debugPrint('[DashboardDataSource] stream refetch error: $e');
-      }
-    }
-
-    // Coalesce bursts. Opening the stream fires every listener's initial
-    // snapshot, and one money movement touches several watched collections
-    // (an approval writes the house AND a transaction), so the old
-    // one-refetch-per-event approach ran 4–5 full dashboard loads on open and
-    // 2–3 per write — duplicate network round-trips that made the web app feel
-    // sluggish. Events landing within [_refetchCoalesce] now share ONE refetch.
-    Timer? pendingRefetch;
-    void scheduleRefetch() {
-      pendingRefetch?.cancel();
-      pendingRefetch = Timer(_refetchCoalesce, refetch);
-    }
-
-    final subscriptions = <StreamSubscription>[
-      // House document changes (balance, name).
-      _firestore
-          .collection(FirestoreConstants.houses)
-          .doc(houseId)
-          .snapshots()
-          .listen((_) => scheduleRefetch()),
-      // House member changes (display names, roles).
-      _firestore
-          .collection(FirestoreConstants.houseMembers)
-          .where('houseId', isEqualTo: houseId)
-          .snapshots()
-          .listen((_) => scheduleRefetch()),
-      // Expense changes.
-      _firestore
-          .collection(FirestoreConstants.expenses)
-          .where('houseId', isEqualTo: houseId)
-          .snapshots()
-          .listen((_) => scheduleRefetch()),
-      // Transaction changes.
-      _firestore
-          .collection(FirestoreConstants.transactions)
-          .where('houseId', isEqualTo: houseId)
-          .snapshots()
-          .listen((_) => scheduleRefetch()),
-    ];
-
-    // Initial load — immediate, so the first paint is not delayed.
-    refetch();
-
-    controller.onCancel = () {
-      pendingRefetch?.cancel();
-      for (final sub in subscriptions) {
-        sub.cancel();
-      }
-    };
-
-    return controller.stream;
+    // Coalescing bursts (150 ms by default), newest-fetch-wins ordering, the
+    // per-attempt timeout and retry-with-backoff all live in
+    // [liveRefetchStream]. The retry is what stops the dashboard sitting on
+    // skeletons forever when its first reads after sign-in are rejected or
+    // stall (seen in the iPhone Home Screen app).
+    return liveRefetchStream<DashboardData>(
+      debugLabel: 'DashboardDataSource',
+      fetch: () => fetchDashboard(houseId),
+      triggers: [
+        // House document changes (balance, name).
+        () => _firestore
+            .collection(FirestoreConstants.houses)
+            .doc(houseId)
+            .snapshots(),
+        // House member changes (display names, roles).
+        () => _firestore
+            .collection(FirestoreConstants.houseMembers)
+            .where('houseId', isEqualTo: houseId)
+            .snapshots(),
+        // Expense changes.
+        () => _firestore
+            .collection(FirestoreConstants.expenses)
+            .where('houseId', isEqualTo: houseId)
+            .snapshots(),
+        // Transaction changes.
+        () => _firestore
+            .collection(FirestoreConstants.transactions)
+            .where('houseId', isEqualTo: houseId)
+            .snapshots(),
+      ],
+    );
   }
 
   /// Fetches house name and balance.

@@ -64,4 +64,8 @@ class FirestoreConstants {
 
   /// A member nudging the Treasurer to reimburse an expense they submitted.
   static const String notificationReminder = 'Reimbursement Reminder';
+
+  /// Written by the daily `sendBillReminders` Cloud Function (functions/)
+  /// for a bill due in 7, 3, 2 or 1 day(s).
+  static const String notificationBillReminder = 'Bill Reminder';
 }

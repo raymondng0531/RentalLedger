@@ -1177,6 +1177,24 @@ class AppLocalizationsMs extends AppLocalizations {
   String get settingsNotificationsSubtitle => 'Terima makluman untuk kemas kini perbelanjaan';
 
   @override
+  String get settingsPushThisDevice => 'Peranti ini';
+
+  @override
+  String get settingsPushStatusOn => 'Pemberitahuan dihidupkan untuk pelayar ini';
+
+  @override
+  String get settingsPushStatusOff => 'Ketik Hidupkan untuk menerima makluman walaupun aplikasi ditutup. Pada iPhone/iPad, tambah aplikasi ini ke Skrin Utama dahulu.';
+
+  @override
+  String get settingsPushStatusBlocked => 'Disekat. Benarkan pemberitahuan untuk laman ini dalam tetapan pelayar anda.';
+
+  @override
+  String get settingsPushEnable => 'Hidupkan';
+
+  @override
+  String get settingsPushEnabledToast => 'Pemberitahuan dihidupkan pada peranti ini';
+
+  @override
   String get settingsPreferences => 'Keutamaan';
 
   @override

@@ -40,6 +40,9 @@ class AuthRepositoryImpl implements AuthRepository {
     final existingUser = _remote.currentUser;
     if (existingUser != null) {
       _currentUserNotifier.value = _firebaseUserToEntity(existingUser);
+      // A restored session never passes through login(), so register this
+      // device's push token here too (else push never reaches it).
+      _savePushToken(existingUser.uid);
     }
   }
 
@@ -434,6 +437,9 @@ class AuthRepositoryImpl implements AuthRepository {
     } else {
       final entity = _firebaseUserToEntity(firebaseUser);
       _currentUserNotifier.value = entity;
+      // Covers a session restored after startup. Repeat saves of the same
+      // token are skipped by the service.
+      _savePushToken(firebaseUser.uid);
     }
   }
 

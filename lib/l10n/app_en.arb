@@ -1619,6 +1619,30 @@
   "@settingsNotificationsSubtitle": {
     "description": "Subtitle under the push-notification switch."
   },
+  "settingsPushThisDevice": "This device",
+  "@settingsPushThisDevice": {
+    "description": "Web only: title of the Settings row that registers this browser for push notifications."
+  },
+  "settingsPushStatusOn": "Notifications are on for this browser",
+  "@settingsPushStatusOn": {
+    "description": "Web only: this browser has granted notification permission."
+  },
+  "settingsPushStatusOff": "Tap Enable to get alerts when the app is closed. On iPhone/iPad, add this app to your Home Screen first.",
+  "@settingsPushStatusOff": {
+    "description": "Web only: notification permission not yet granted; includes the iOS Home Screen requirement."
+  },
+  "settingsPushStatusBlocked": "Blocked. Allow notifications for this site in your browser settings.",
+  "@settingsPushStatusBlocked": {
+    "description": "Web only: the browser has denied notification permission for this site."
+  },
+  "settingsPushEnable": "Enable",
+  "@settingsPushEnable": {
+    "description": "Web only: button that asks the browser for notification permission."
+  },
+  "settingsPushEnabledToast": "Notifications enabled on this device",
+  "@settingsPushEnabledToast": {
+    "description": "Web only: confirmation after notification permission was granted."
+  },
   "settingsPreferences": "Preferences",
   "@settingsPreferences": {
     "description": "Settings section heading covering language and currency."

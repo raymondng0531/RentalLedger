@@ -1179,6 +1179,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsNotificationsSubtitle => 'Receive alerts for expense updates';
 
   @override
+  String get settingsPushThisDevice => 'This device';
+
+  @override
+  String get settingsPushStatusOn => 'Notifications are on for this browser';
+
+  @override
+  String get settingsPushStatusOff => 'Tap Enable to get alerts when the app is closed. On iPhone/iPad, add this app to your Home Screen first.';
+
+  @override
+  String get settingsPushStatusBlocked => 'Blocked. Allow notifications for this site in your browser settings.';
+
+  @override
+  String get settingsPushEnable => 'Enable';
+
+  @override
+  String get settingsPushEnabledToast => 'Notifications enabled on this device';
+
+  @override
   String get settingsPreferences => 'Preferences';
 
   @override

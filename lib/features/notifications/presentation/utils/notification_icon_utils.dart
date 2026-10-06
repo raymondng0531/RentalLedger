@@ -34,6 +34,8 @@ import '../../../../app/theme/app_colors.dart';
       return (Icons.cancel_outlined, colors.error);
     case 'Reimbursement Reminder':
       return (Icons.notifications_active_outlined, colors.warning);
+    case 'Bill Reminder':
+      return (Icons.event_outlined, colors.warning);
     default:
       return (Icons.notifications_outlined, colors.textSecondary);
   }

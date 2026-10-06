@@ -4,14 +4,23 @@
  * Deploy:
  *   cd functions && npm install && firebase deploy --only functions
  *
- * Two responsibilities:
+ * Responsibilities:
  *   1. sendNotificationOnCreate — push notification fan-out (below).
  *   2. The membership authorization index (syncMembershipIndex / joinHouse) —
  *      see the block comment above `syncMembershipIndex`.
+ *   3. sendBillReminders — daily job that writes "bill due in 7/3/2/1 days"
+ *      notifications, which sendNotificationOnCreate then pushes.
  */
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { summarizeMembership } = require('./membership_index');
+const { summarizeMembership, ROLE_TREASURER } = require('./membership_index');
+const {
+  DEFAULT_TIME_ZONE,
+  NOTIFICATION_TYPE_BILL_REMINDER,
+  reminderFor,
+  reminderDocId,
+  reminderCopy,
+} = require('./bill_reminders');
 admin.initializeApp();
 
 // ─────────────────────────────────────────────────────────────
@@ -260,6 +269,15 @@ exports.sendNotificationOnCreate = functions.firestore
         relatedId: data.relatedId || '',
         clickAction: 'FLUTTER_NOTIFICATION_CLICK',
       },
+      // Web push (browser / PWA): high urgency so a dozing Android phone
+      // delivers it promptly, and the app icon on the system notification.
+      webpush: {
+        headers: { Urgency: 'high' },
+        notification: {
+          icon: '/icons/Icon-192.png',
+          badge: '/icons/Icon-192.png',
+        },
+      },
       token,
     };
 
@@ -276,5 +294,103 @@ exports.sendNotificationOnCreate = functions.firestore
       }
     }
 
+    return null;
+  });
+
+// ─────────────────────────────────────────────────────────────
+// DAILY BILL REMINDERS
+//
+// Once a day, finds every unpaid bill due in exactly 7, 3, 2 or 1 day(s) and
+// writes a `notifications` document for the house Treasurer — the same person
+// the app's "Remind Treasurer" button notifies, and the only role that can
+// Mark Paid. The write triggers sendNotificationOnCreate, so the reminder
+// arrives both as a phone/browser push and in the in-app notification list.
+//
+// Only bills with the existing "Set Reminder" toggle on are reminded
+// (REQUIRE_REMINDER_FLAG). The day math, recurring-bill handling and the
+// idempotency key live in bill_reminders.js (unit-tested).
+// ─────────────────────────────────────────────────────────────
+
+/** Set to false to remind about every unpaid bill, toggle or not. */
+const REQUIRE_REMINDER_FLAG = true;
+
+/**
+ * The Treasurer's uid for a house: the active authorization-index entry with
+ * the Treasurer role, falling back to the house document's `treasurerId`
+ * (the same fallback order the client's _findTreasurer uses).
+ */
+async function findTreasurerId(db, houseId) {
+  const index = await db
+    .collection(`houses/${houseId}/members`)
+    .where('role', '==', ROLE_TREASURER)
+    .where('isActive', '==', true)
+    .limit(1)
+    .get();
+  if (!index.empty) return index.docs[0].id;
+
+  const house = await db.collection('houses').doc(houseId).get();
+  if (!house.exists || house.data().isArchived === true) return null;
+  const uid = house.data().treasurerId;
+  return uid ? String(uid) : null;
+}
+
+exports.sendBillReminders = functions.pubsub
+  .schedule('0 9 * * *')
+  .timeZone(DEFAULT_TIME_ZONE)
+  .onRun(async () => {
+    const db = admin.firestore();
+    const now = new Date();
+
+    // Single-field equality — served by Firestore's automatic index.
+    const unpaid = await db.collection('bills').where('isPaid', '==', false).get();
+
+    const treasurerByHouse = new Map();
+    let created = 0;
+    let skipped = 0;
+
+    for (const doc of unpaid.docs) {
+      const bill = doc.data();
+      const due = reminderFor(bill, now, { requireReminderFlag: REQUIRE_REMINDER_FLAG });
+      if (!due) continue;
+
+      if (!treasurerByHouse.has(bill.houseId)) {
+        try {
+          treasurerByHouse.set(bill.houseId, await findTreasurerId(db, bill.houseId));
+        } catch (e) {
+          console.error('sendBillReminders: treasurer lookup failed', bill.houseId, e.message);
+          treasurerByHouse.set(bill.houseId, null);
+        }
+      }
+      const userId = treasurerByHouse.get(bill.houseId);
+      if (!userId) continue;
+
+      const notificationId = reminderDocId(doc.id, due.dueYmd, due.daysBefore, userId);
+      const copy = reminderCopy(bill, due.daysBefore, due.dueYmd);
+
+      try {
+        // create() fails if the doc exists → a re-run never double-sends.
+        // Same shape as NotificationModel.toMap in the app.
+        await db.collection('notifications').doc(notificationId).create({
+          userId,
+          title: copy.title,
+          body: copy.body,
+          type: NOTIFICATION_TYPE_BILL_REMINDER,
+          isRead: false,
+          relatedId: doc.id,
+          createdAt: admin.firestore.Timestamp.fromDate(now),
+        });
+        created++;
+      } catch (e) {
+        // gRPC ALREADY_EXISTS = 6.
+        if (e.code === 6 || e.code === 'already-exists') {
+          skipped++;
+        } else {
+          console.error('sendBillReminders: write failed', notificationId, e.message);
+        }
+      }
+    }
+
+    console.log(`sendBillReminders: ${created} sent, ${skipped} already sent, ` +
+      `${unpaid.size} unpaid bills scanned`);
     return null;
   });

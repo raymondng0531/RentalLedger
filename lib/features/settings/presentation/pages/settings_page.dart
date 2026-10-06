@@ -1,3 +1,5 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/responsive_page.dart';
@@ -181,13 +184,21 @@ class SettingsPage extends ConsumerWidget {
             _SectionHeader(title: l10n.navNotifications),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: SwitchListTile(
-                secondary: const Icon(Icons.notifications_outlined),
-                title: Text(l10n.settingsPushNotifications),
-                subtitle: Text(l10n.settingsNotificationsSubtitle),
-                value: settings.notificationsEnabled,
-                onChanged: (v) =>
-                    ref.read(appSettingsProvider.notifier).setNotificationsEnabled(v),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Icons.notifications_outlined),
+                    title: Text(l10n.settingsPushNotifications),
+                    subtitle: Text(l10n.settingsNotificationsSubtitle),
+                    value: settings.notificationsEnabled,
+                    onChanged: (v) => ref
+                        .read(appSettingsProvider.notifier)
+                        .setNotificationsEnabled(v),
+                  ),
+                  // Web only: browsers (Safari on iPhone in particular) grant
+                  // notification permission only from a tap.
+                  if (kIsWeb) const _PushDeviceTile(),
+                ],
               ),
             ),
 
@@ -510,6 +521,78 @@ class SettingsPage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Web only: shows whether this browser can receive push notifications and
+/// offers an Enable button that requests permission from a user tap, then
+/// registers the device token for the signed-in user.
+class _PushDeviceTile extends StatefulWidget {
+  const _PushDeviceTile();
+
+  @override
+  State<_PushDeviceTile> createState() => _PushDeviceTileState();
+}
+
+class _PushDeviceTileState extends State<_PushDeviceTile> {
+  AuthorizationStatus? _status;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    PushNotificationService.instance.permissionStatus().then((s) {
+      if (mounted) setState(() => _status = s);
+    });
+  }
+
+  bool get _granted =>
+      _status == AuthorizationStatus.authorized ||
+      _status == AuthorizationStatus.provisional;
+
+  Future<void> _enable() async {
+    setState(() => _busy = true);
+    final l10n = AppLocalizations.of(context);
+    final status = await PushNotificationService.instance.enableFromUserGesture();
+    if (!mounted) return;
+    setState(() {
+      _status = status;
+      _busy = false;
+    });
+    if (_granted) {
+      SnackbarUtils.showSuccess(context, l10n.settingsPushEnabledToast);
+    } else if (status == AuthorizationStatus.denied) {
+      SnackbarUtils.showError(context, l10n.settingsPushStatusBlocked);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final String subtitle;
+    if (_granted) {
+      subtitle = l10n.settingsPushStatusOn;
+    } else if (_status == AuthorizationStatus.denied) {
+      subtitle = l10n.settingsPushStatusBlocked;
+    } else {
+      subtitle = l10n.settingsPushStatusOff;
+    }
+
+    return ListTile(
+      leading: Icon(
+        _granted
+            ? Icons.notifications_active_outlined
+            : Icons.notifications_off_outlined,
+      ),
+      title: Text(l10n.settingsPushThisDevice),
+      subtitle: Text(subtitle),
+      trailing: _granted || _status == null
+          ? null
+          : TextButton(
+              onPressed: _busy ? null : _enable,
+              child: Text(l10n.settingsPushEnable),
+            ),
     );
   }
 }

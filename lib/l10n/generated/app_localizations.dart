@@ -2309,6 +2309,42 @@ abstract class AppLocalizations {
   /// **'Receive alerts for expense updates'**
   String get settingsNotificationsSubtitle;
 
+  /// Web only: title of the Settings row that registers this browser for push notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get settingsPushThisDevice;
+
+  /// Web only: this browser has granted notification permission.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are on for this browser'**
+  String get settingsPushStatusOn;
+
+  /// Web only: notification permission not yet granted; includes the iOS Home Screen requirement.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Enable to get alerts when the app is closed. On iPhone/iPad, add this app to your Home Screen first.'**
+  String get settingsPushStatusOff;
+
+  /// Web only: the browser has denied notification permission for this site.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked. Allow notifications for this site in your browser settings.'**
+  String get settingsPushStatusBlocked;
+
+  /// Web only: button that asks the browser for notification permission.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get settingsPushEnable;
+
+  /// Web only: confirmation after notification permission was granted.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications enabled on this device'**
+  String get settingsPushEnabledToast;
+
   /// Settings section heading covering language and currency.
   ///
   /// In en, this message translates to:

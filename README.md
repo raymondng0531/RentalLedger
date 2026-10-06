@@ -12,6 +12,25 @@ movement recorded and visible to the whole house.
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="300" alt="Treasurer dashboard: Central Account balance, monthly summary, a member's pending deposit and a pending claim, upcoming bills">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/submit_deposit.png" width="300" alt="Member Submit Deposit form with amount, payer, purpose, payment method, period and required proof">
+</p>
+
+<p align="center"><em>Treasurer dashboard &nbsp;·&nbsp; Member "Submit Deposit"</em></p>
+
+Screenshots use sample data only (no real house or people). They are rendered
+from the real app screens by `tool/screenshots/readme_screenshots_test.dart`:
+
+```bash
+flutter test --update-goldens tool/screenshots/readme_screenshots_test.dart
+```
+
+---
+
 ## Features
 
 **Expenses & reimbursements**

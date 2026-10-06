@@ -13,6 +13,7 @@ const {
   reminderFor,
   reminderDocId,
   reminderCopy,
+  reminderRecipients,
 } = require('./bill_reminders');
 
 /** A bill due at local midnight (UTC+8) on [ymd], as the app stores it. */
@@ -104,6 +105,58 @@ describe('reminderFor — which bills are skipped', () => {
     assert.strictEqual(reminderFor(bill('2026-10-20', { dueDate: null }), day), null);
     assert.strictEqual(reminderFor(bill('2026-10-20', { dueDate: 'x' }), day), null);
     assert.strictEqual(reminderFor({ ...bill('2026-10-20'), houseId: '' }, day), null);
+  });
+});
+
+describe('every unpaid bill is reminded (production setting)', () => {
+  // index.js calls reminderFor with requireReminderFlag:false.
+  const opts = { requireReminderFlag: false };
+  const day = runAt('2026-10-17'); // 3 days before 20 Oct
+
+  test('reminder toggle off still fires', () => {
+    const r = reminderFor(bill('2026-10-20', { reminderEnabled: false }), day, opts);
+    assert.strictEqual(r.daysBefore, 3);
+  });
+
+  test('reminder toggle missing still fires', () => {
+    const b = bill('2026-10-20');
+    delete b.reminderEnabled;
+    assert.strictEqual(reminderFor(b, day, opts).daysBefore, 3);
+  });
+
+  test('paid and inactive bills are still skipped', () => {
+    assert.strictEqual(reminderFor(bill('2026-10-20', { isPaid: true }), day, opts), null);
+    assert.strictEqual(reminderFor(bill('2026-10-20', { isActive: false }), day, opts), null);
+  });
+});
+
+describe('reminderRecipients — all house members', () => {
+  test('every active member, Treasurer included', () => {
+    const r = reminderRecipients({ treasurerId: 't1' }, ['t1', 'm1', 'm2']);
+    assert.deepStrictEqual(r, ['t1', 'm1', 'm2']);
+  });
+
+  test('duplicates and blanks are dropped', () => {
+    assert.deepStrictEqual(reminderRecipients({}, ['m1', 'm1', '', null]), ['m1']);
+  });
+
+  test('falls back to the Treasurer when the index has no active members', () => {
+    assert.deepStrictEqual(reminderRecipients({ treasurerId: 't1' }, []), ['t1']);
+  });
+
+  test('nobody when there are no members and no Treasurer', () => {
+    assert.deepStrictEqual(reminderRecipients({}, []), []);
+  });
+
+  test('archived or missing house gets no reminders', () => {
+    assert.deepStrictEqual(reminderRecipients({ isArchived: true, treasurerId: 't1' }, ['m1']), []);
+    assert.deepStrictEqual(reminderRecipients(undefined, ['m1']), []);
+  });
+
+  test('each member gets their own idempotency key for the same reminder', () => {
+    const ids = reminderRecipients({}, ['t1', 'm1', 'm2'])
+      .map((u) => reminderDocId('b1', '2026-10-20', 3, u));
+    assert.strictEqual(new Set(ids).size, 3);
   });
 });
 

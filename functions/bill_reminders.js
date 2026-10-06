@@ -118,6 +118,24 @@ function reminderCopy(bill, daysBefore, dueYmd) {
   };
 }
 
+/**
+ * Who receives a bill's reminders: every active member of the house
+ * (Treasurer included), de-duplicated. Falls back to the house's
+ * `treasurerId` when the membership index has no active entries; an archived
+ * house gets none.
+ *
+ * @param {object|undefined} house the house document data.
+ * @param {string[]} activeMemberIds uids from houses/{id}/members with
+ *   isActive == true.
+ * @returns {string[]}
+ */
+function reminderRecipients(house, activeMemberIds) {
+  if (!house || house.isArchived === true) return [];
+  const ids = [...new Set((activeMemberIds || []).filter(Boolean).map(String))];
+  if (ids.length > 0) return ids;
+  return house.treasurerId ? [String(house.treasurerId)] : [];
+}
+
 module.exports = {
   REMINDER_DAYS,
   DEFAULT_TIME_ZONE,
@@ -127,4 +145,5 @@ module.exports = {
   reminderFor,
   reminderDocId,
   reminderCopy,
+  reminderRecipients,
 };

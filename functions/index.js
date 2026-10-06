@@ -13,13 +13,14 @@
  */
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { summarizeMembership, ROLE_TREASURER } = require('./membership_index');
+const { summarizeMembership } = require('./membership_index');
 const {
   DEFAULT_TIME_ZONE,
   NOTIFICATION_TYPE_BILL_REMINDER,
   reminderFor,
   reminderDocId,
   reminderCopy,
+  reminderRecipients,
 } = require('./bill_reminders');
 admin.initializeApp();
 
@@ -301,37 +302,35 @@ exports.sendNotificationOnCreate = functions.firestore
 // DAILY BILL REMINDERS
 //
 // Once a day, finds every unpaid bill due in exactly 7, 3, 2 or 1 day(s) and
-// writes a `notifications` document for the house Treasurer — the same person
-// the app's "Remind Treasurer" button notifies, and the only role that can
-// Mark Paid. The write triggers sendNotificationOnCreate, so the reminder
-// arrives both as a phone/browser push and in the in-app notification list.
+// writes a `notifications` document for EVERY active member of the bill's
+// house (Treasurer included). The write triggers sendNotificationOnCreate, so
+// the reminder arrives both as a phone/browser push and in the in-app
+// notification list.
 //
-// Only bills with the existing "Set Reminder" toggle on are reminded
-// (REQUIRE_REMINDER_FLAG). The day math, recurring-bill handling and the
-// idempotency key live in bill_reminders.js (unit-tested).
+// Every unpaid bill is reminded, whether or not its "Set Reminder" toggle is
+// on (REQUIRE_REMINDER_FLAG = false, per the owner's choice). The day math,
+// recurring-bill handling and the idempotency key live in bill_reminders.js
+// (unit-tested).
 // ─────────────────────────────────────────────────────────────
 
-/** Set to false to remind about every unpaid bill, toggle or not. */
-const REQUIRE_REMINDER_FLAG = true;
+/** Set to true to remind only bills whose "Set Reminder" toggle is on. */
+const REQUIRE_REMINDER_FLAG = false;
 
 /**
- * The Treasurer's uid for a house: the active authorization-index entry with
- * the Treasurer role, falling back to the house document's `treasurerId`
- * (the same fallback order the client's _findTreasurer uses).
+ * The uids of every active member of a house, from the server-maintained
+ * authorization index. Falls back to the house document's `treasurerId` if the
+ * index has no active entries. Archived houses get no reminders.
  */
-async function findTreasurerId(db, houseId) {
+async function findActiveMemberIds(db, houseId) {
+  const house = await db.collection('houses').doc(houseId).get();
+  if (!house.exists) return [];
+
   const index = await db
     .collection(`houses/${houseId}/members`)
-    .where('role', '==', ROLE_TREASURER)
     .where('isActive', '==', true)
-    .limit(1)
     .get();
-  if (!index.empty) return index.docs[0].id;
 
-  const house = await db.collection('houses').doc(houseId).get();
-  if (!house.exists || house.data().isArchived === true) return null;
-  const uid = house.data().treasurerId;
-  return uid ? String(uid) : null;
+  return reminderRecipients(house.data(), index.docs.map((d) => d.id));
 }
 
 exports.sendBillReminders = functions.pubsub
@@ -344,7 +343,7 @@ exports.sendBillReminders = functions.pubsub
     // Single-field equality — served by Firestore's automatic index.
     const unpaid = await db.collection('bills').where('isPaid', '==', false).get();
 
-    const treasurerByHouse = new Map();
+    const membersByHouse = new Map();
     let created = 0;
     let skipped = 0;
 
@@ -353,39 +352,39 @@ exports.sendBillReminders = functions.pubsub
       const due = reminderFor(bill, now, { requireReminderFlag: REQUIRE_REMINDER_FLAG });
       if (!due) continue;
 
-      if (!treasurerByHouse.has(bill.houseId)) {
+      if (!membersByHouse.has(bill.houseId)) {
         try {
-          treasurerByHouse.set(bill.houseId, await findTreasurerId(db, bill.houseId));
+          membersByHouse.set(bill.houseId, await findActiveMemberIds(db, bill.houseId));
         } catch (e) {
-          console.error('sendBillReminders: treasurer lookup failed', bill.houseId, e.message);
-          treasurerByHouse.set(bill.houseId, null);
+          console.error('sendBillReminders: member lookup failed', bill.houseId, e.message);
+          membersByHouse.set(bill.houseId, []);
         }
       }
-      const userId = treasurerByHouse.get(bill.houseId);
-      if (!userId) continue;
 
-      const notificationId = reminderDocId(doc.id, due.dueYmd, due.daysBefore, userId);
       const copy = reminderCopy(bill, due.daysBefore, due.dueYmd);
 
-      try {
-        // create() fails if the doc exists → a re-run never double-sends.
-        // Same shape as NotificationModel.toMap in the app.
-        await db.collection('notifications').doc(notificationId).create({
-          userId,
-          title: copy.title,
-          body: copy.body,
-          type: NOTIFICATION_TYPE_BILL_REMINDER,
-          isRead: false,
-          relatedId: doc.id,
-          createdAt: admin.firestore.Timestamp.fromDate(now),
-        });
-        created++;
-      } catch (e) {
-        // gRPC ALREADY_EXISTS = 6.
-        if (e.code === 6 || e.code === 'already-exists') {
-          skipped++;
-        } else {
-          console.error('sendBillReminders: write failed', notificationId, e.message);
+      for (const userId of membersByHouse.get(bill.houseId)) {
+        const notificationId = reminderDocId(doc.id, due.dueYmd, due.daysBefore, userId);
+        try {
+          // create() fails if the doc exists → a re-run never double-sends.
+          // Same shape as NotificationModel.toMap in the app.
+          await db.collection('notifications').doc(notificationId).create({
+            userId,
+            title: copy.title,
+            body: copy.body,
+            type: NOTIFICATION_TYPE_BILL_REMINDER,
+            isRead: false,
+            relatedId: doc.id,
+            createdAt: admin.firestore.Timestamp.fromDate(now),
+          });
+          created++;
+        } catch (e) {
+          // gRPC ALREADY_EXISTS = 6.
+          if (e.code === 6 || e.code === 'already-exists') {
+            skipped++;
+          } else {
+            console.error('sendBillReminders: write failed', notificationId, e.message);
+          }
         }
       }
     }

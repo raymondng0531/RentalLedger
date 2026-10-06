@@ -3406,6 +3406,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Waiting for the Treasurer to review this deposit.'**
   String get depositRequestAwaitingReview;
+
+  /// Title of the month picker opened from a "For month" field.
+  ///
+  /// In en, this message translates to:
+  /// **'Select month'**
+  String get monthPickerTitle;
+
+  /// Tooltip of the month picker button that shows the previous year.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous year'**
+  String get monthPickerPreviousYear;
+
+  /// Tooltip of the month picker button that shows the next year.
+  ///
+  /// In en, this message translates to:
+  /// **'Next year'**
+  String get monthPickerNextYear;
+
+  /// Tooltip of the button that empties an optional "For month" field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear month'**
+  String get monthPickerClear;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

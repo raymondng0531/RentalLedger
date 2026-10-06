@@ -833,7 +833,13 @@ class _AppShellState extends ConsumerState<_AppShell>
         drawer: _buildDrawer(context),
         bottomNavigationBar: _buildBottomBar(context),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        floatingActionButton: widget.showFab ? _buildFab(context) : null,
+        // Hidden while the on-screen keyboard is open: the keyboard covers
+        // the bottom bar but the docked + stayed on screen, floating over
+        // the form field being typed into.
+        floatingActionButton:
+            widget.showFab && MediaQuery.viewInsetsOf(context).bottom == 0
+                ? _buildFab(context)
+                : null,
       ),
     );
   }

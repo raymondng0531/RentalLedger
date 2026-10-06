@@ -8,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../../../../core/widgets/breakpoints.dart';
+import '../../../../core/widgets/month_picker_field.dart';
 import '../../../../core/widgets/press_scale.dart';
 import '../../../../core/widgets/responsive_page.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -77,7 +78,10 @@ class _DepositPageState extends ConsumerState<DepositPage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
-  final _periodController = TextEditingController();
+  // Defaults to the current month (the usual case: this month's rent);
+  // the member can pick another month or clear it.
+  final _periodController =
+      TextEditingController(text: currentPeriodLabel());
 
   /// Selected member who physically paid (null → falls back to the Treasurer).
   String? _paidByUserId;
@@ -343,15 +347,10 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   const SizedBox(height: 16),
 
                   // ── For month / period (optional, e.g. monthly rental) ──
-                  TextFormField(
+                  MonthPickerField(
                     controller: _periodController,
-                    keyboardType: TextInputType.datetime,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: l10n.expenseFieldForMonth,
-                      hintText: l10n.expenseFieldForMonthHint,
-                      prefixIcon: const Icon(Icons.calendar_month_outlined),
-                    ),
+                    labelText: l10n.expenseFieldForMonth,
+                    hintText: l10n.expenseFieldForMonthHint,
                   ),
                   const SizedBox(height: 20),
 

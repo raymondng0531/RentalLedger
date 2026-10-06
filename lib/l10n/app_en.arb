@@ -2465,5 +2465,21 @@
   "depositRequestAwaitingReview": "Waiting for the Treasurer to review this deposit.",
   "@depositRequestAwaitingReview": {
     "description": "Shown on a pending deposit request to a member who cannot review it."
+  },
+  "monthPickerTitle": "Select month",
+  "@monthPickerTitle": {
+    "description": "Title of the month picker opened from a \"For month\" field."
+  },
+  "monthPickerPreviousYear": "Previous year",
+  "@monthPickerPreviousYear": {
+    "description": "Tooltip of the month picker button that shows the previous year."
+  },
+  "monthPickerNextYear": "Next year",
+  "@monthPickerNextYear": {
+    "description": "Tooltip of the month picker button that shows the next year."
+  },
+  "monthPickerClear": "Clear month",
+  "@monthPickerClear": {
+    "description": "Tooltip of the button that empties an optional \"For month\" field."
   }
 }

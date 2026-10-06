@@ -7,6 +7,7 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/failure_messages.dart';
 import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/widgets/month_picker_field.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/bill_entity.dart';
 import '../providers/expense_provider.dart';
@@ -44,10 +45,7 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
     super.initState();
     // The month being paid defaults to the current one (recurring bills roll
     // monthly and each month is settled as it comes due). Editable.
-    final now = DateTime.now();
-    _periodController = TextEditingController(
-      text: '${now.year}-${now.month.toString().padLeft(2, '0')}',
-    );
+    _periodController = TextEditingController(text: currentPeriodLabel());
   }
 
   @override
@@ -181,15 +179,10 @@ class _BillMarkPaidSheetState extends ConsumerState<BillMarkPaidSheet> {
               const SizedBox(height: 18),
 
               // ── For month ──
-              TextField(
+              MonthPickerField(
                 controller: _periodController,
-                keyboardType: TextInputType.datetime,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: l10n.billPaymentCoversMonth,
-                  hintText: l10n.billPaymentCoversMonthHint,
-                  prefixIcon: const Icon(Icons.calendar_month_outlined),
-                ),
+                labelText: l10n.billPaymentCoversMonth,
+                hintText: l10n.billPaymentCoversMonthHint,
               ),
               const SizedBox(height: 16),
 

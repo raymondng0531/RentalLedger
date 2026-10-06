@@ -551,5 +551,9 @@
   "depositRequestCancelConfirm": "Tarik balik deposit {amount} anda yang belum diluluskan? Tindakan ini tidak boleh dibatalkan.",
   "depositRequestKeep": "Simpan",
   "depositRequestCancelled": "Permohonan deposit dibatalkan",
-  "depositRequestAwaitingReview": "Menunggu Bendahari menyemak deposit ini."
+  "depositRequestAwaitingReview": "Menunggu Bendahari menyemak deposit ini.",
+  "monthPickerTitle": "Pilih bulan",
+  "monthPickerPreviousYear": "Tahun sebelumnya",
+  "monthPickerNextYear": "Tahun berikutnya",
+  "monthPickerClear": "Kosongkan bulan"
 }

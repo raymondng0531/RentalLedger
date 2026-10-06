@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/utils/web_display_mode.dart';
 import '../../domain/auth_error_codes.dart';
 
 /// Remote data source for authentication.
@@ -82,6 +83,40 @@ class AuthRemoteDataSource {
       );
 
       return await _auth.signInWithCredential(credential);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _mapAuthException(e);
+    }
+  }
+
+  /// Whether Google sign-in must use a full-page redirect instead of the popup.
+  ///
+  /// True only in the iPhone/iPad Home Screen web app, where the popup loses
+  /// its result and the user lands back on the login page. Safari tabs, other
+  /// browsers and the native apps keep [loginWithGoogle].
+  bool get usesGoogleRedirect => isIosHomeScreenWebApp();
+
+  /// Starts Google sign-in by redirecting the whole page to Google.
+  ///
+  /// The page navigates away, so this never yields a user. The sign-in is
+  /// finished by [completeGoogleRedirect] when the app loads again.
+  Future<void> startGoogleRedirect() async {
+    try {
+      final provider = firebase_auth.GoogleAuthProvider()
+        // Matches the popup: always show the account picker.
+        ..setCustomParameters({'prompt': 'select_account'});
+      await _auth.signInWithRedirect(provider);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _mapAuthException(e);
+    }
+  }
+
+  /// Finishes a Google sign-in started by [startGoogleRedirect].
+  ///
+  /// Returns `null` when this page load is not the return from a redirect.
+  Future<firebase_auth.UserCredential?> completeGoogleRedirect() async {
+    try {
+      final result = await _auth.getRedirectResult();
+      return result.user == null ? null : result;
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _mapAuthException(e);
     }

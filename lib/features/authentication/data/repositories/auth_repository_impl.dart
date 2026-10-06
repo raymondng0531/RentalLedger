@@ -44,6 +44,12 @@ class AuthRepositoryImpl implements AuthRepository {
       // device's push token here too (else push never reaches it).
       _savePushToken(existingUser.uid);
     }
+
+    // iPhone Home Screen app: this load may be the return from a Google
+    // redirect sign-in (see [loginWithGoogle]).
+    if (_remote.usesGoogleRedirect) {
+      unawaited(_completePendingGoogleRedirect());
+    }
   }
 
   final AuthRemoteDataSource _remote;
@@ -99,34 +105,21 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<UserEntity> loginWithGoogle() async {
     try {
-      final credential = await _remote.loginWithGoogle();
-      final firebaseUser = credential.user!;
-
-      // Ensure a profile document exists for the new user.
-      if (firebaseUser.displayName != null) {
-        await _remote.createUserProfile(
-          uid: firebaseUser.uid,
-          email: firebaseUser.email ?? '',
-          displayName: firebaseUser.displayName!,
-          photoUrl: firebaseUser.photoURL,
+      if (_remote.usesGoogleRedirect) {
+        // iPhone Home Screen app: the page leaves for Google and the sign-in
+        // is finished on return by [_completePendingGoogleRedirect]. The
+        // button keeps its spinner while the page navigates. If it never
+        // does, stand down as a quiet cancel so the user can try again.
+        await _remote.startGoogleRedirect();
+        await Future<void>.delayed(_redirectStandDown);
+        throw const AuthException(
+          'Sign in cancelled.',
+          code: AuthErrorCodes.cancelled,
         );
       }
 
-      final userEntity = _firebaseUserToEntity(firebaseUser);
-      _savePushToken(firebaseUser.uid);
-      _currentUserNotifier.value = userEntity;
-
-      // A returning Google user's Auth photo may have changed since they last
-      // signed in. The member row keeps whatever it held, so the Members list
-      // would show a different face from the header. PHOTO ONLY — never the
-      // name, so a member's own display name is not overwritten by their
-      // Google account name. Non-fatal: see [_syncMemberDisplayInfo].
-      await _syncMemberDisplayInfo(
-        userId: firebaseUser.uid,
-        photoUrl: userEntity.photoUrl,
-      );
-
-      return userEntity;
+      final credential = await _remote.loginWithGoogle();
+      return await _completeGoogleLogin(credential.user!);
     } on AuthException catch (e) {
       throw AuthenticationFailure(e.message, e.code);
     } on AuthenticationFailure {
@@ -139,6 +132,54 @@ class AuthRepositoryImpl implements AuthRepository {
         code: AuthErrorCodes.unexpected,
       );
     }
+  }
+
+  /// How long [loginWithGoogle] waits for a redirect to leave the page.
+  static const Duration _redirectStandDown = Duration(seconds: 30);
+
+  /// Finishes a Google redirect sign-in when the Home Screen app reloads.
+  ///
+  /// Firebase restores the signed-in user by itself. This runs the same
+  /// follow-up as the popup sign-in: profile document, push token and the
+  /// member photo sync.
+  Future<void> _completePendingGoogleRedirect() async {
+    try {
+      final credential = await _remote.completeGoogleRedirect();
+      final firebaseUser = credential?.user;
+      if (firebaseUser == null) return;
+      await _completeGoogleLogin(firebaseUser);
+    } catch (e) {
+      debugPrint('[AuthRepository] Google redirect sign-in failed: $e');
+    }
+  }
+
+  /// Post-sign-in steps shared by the Google popup and redirect flows.
+  Future<UserEntity> _completeGoogleLogin(fb_auth.User firebaseUser) async {
+    // Ensure a profile document exists for the new user.
+    if (firebaseUser.displayName != null) {
+      await _remote.createUserProfile(
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? '',
+        displayName: firebaseUser.displayName!,
+        photoUrl: firebaseUser.photoURL,
+      );
+    }
+
+    final userEntity = _firebaseUserToEntity(firebaseUser);
+    _savePushToken(firebaseUser.uid);
+    _currentUserNotifier.value = userEntity;
+
+    // A returning Google user's Auth photo may have changed since they last
+    // signed in. The member row keeps whatever it held, so the Members list
+    // would show a different face from the header. PHOTO ONLY — never the
+    // name, so a member's own display name is not overwritten by their
+    // Google account name. Non-fatal: see [_syncMemberDisplayInfo].
+    await _syncMemberDisplayInfo(
+      userId: firebaseUser.uid,
+      photoUrl: userEntity.photoUrl,
+    );
+
+    return userEntity;
   }
 
   @override

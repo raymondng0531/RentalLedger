@@ -773,6 +773,9 @@ class ExpenseRemoteDataSource
     }
   }
 
+  /// How long change events are collected before ONE notification is sent.
+  static const Duration _changeCoalesce = Duration(milliseconds: 150);
+
   /// Streams transaction + expense changes for real-time history.
   ///
   /// Emits immediately on subscribe, then again whenever transactions
@@ -780,8 +783,19 @@ class ExpenseRemoteDataSource
   Stream<void> historyChangesStream(String houseId) {
     final controller = StreamController<void>.broadcast();
 
-    void notify() {
+    void emit() {
       if (!controller.isClosed) controller.add(null);
+    }
+
+    // Coalesce bursts into ONE emission. Each consumer re-queries on every
+    // event (and asyncMap queues them), so the three listeners' initial
+    // snapshots used to trigger four back-to-back reloads on open, and one
+    // write touching two collections triggered two. Events within
+    // [_changeCoalesce] now produce a single reload.
+    Timer? pending;
+    void notify() {
+      pending?.cancel();
+      pending = Timer(_changeCoalesce, emit);
     }
 
     final subs = <StreamSubscription>[
@@ -800,9 +814,10 @@ class ExpenseRemoteDataSource
     ];
 
     // Emit immediately so the first load isn't empty.
-    scheduleMicrotask(notify);
+    scheduleMicrotask(emit);
 
     controller.onCancel = () {
+      pending?.cancel();
       for (final sub in subs) {
         sub.cancel();
       }

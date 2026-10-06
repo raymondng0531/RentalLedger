@@ -17,12 +17,17 @@ class AnimatedEntrance extends StatefulWidget {
     this.delay = Duration.zero,
     this.offset = const Offset(0, 0.08),
     this.duration,
+    this.skip = false,
   });
 
   final Widget child;
   final Duration delay;
   final Offset offset;
   final Duration? duration;
+
+  /// Start already shown, with no entrance. Read once, when the widget is
+  /// first mounted — flipping it later never interrupts a running entrance.
+  final bool skip;
 
   @override
   State<AnimatedEntrance> createState() => _AnimatedEntranceState();
@@ -51,7 +56,9 @@ class _AnimatedEntranceState extends State<AnimatedEntrance>
       end: Offset.zero,
     ).animate(curve);
 
-    if (widget.delay == Duration.zero) {
+    if (widget.skip) {
+      _controller.value = 1;
+    } else if (widget.delay == Duration.zero) {
       _controller.forward();
     } else {
       Future.delayed(widget.delay, () {

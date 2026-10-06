@@ -840,65 +840,78 @@ class _AppShellState extends ConsumerState<_AppShell>
 
   /// Builds the 5-slot bottom bar: Home | History | (+) | Expenses | Reports.
   ///
-  /// A [BottomAppBar] with a center notch hosts the circular "+" FAB, so the
-  /// primary creation action stays visually distinct and never overlaps an
-  /// item. Each item is equal-width so 5 items fit on narrow screens without
-  /// clipping or overflow; the whole bar is safe-area aware.
+  /// A FLOATING bar: a rounded, elevated pill inset from the screen edges,
+  /// sitting above the page instead of flush with the bottom. The "+" FAB is
+  /// docked on the pill's top edge at its centre, over a reserved gap, so it
+  /// never covers an item. Each item is equal-width so 5 items fit on narrow
+  /// screens without clipping or overflow; the whole bar is safe-area aware.
+  ///
+  /// The items, labels, icons, order and tap behaviour are unchanged — only the
+  /// container went from a full-width notched [BottomAppBar] to the pill.
   Widget _buildBottomBar(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return BottomAppBar(
-      // `surface`, not `glassBarFill`: the latter is translucent by design and
-      // would change the shipped light bar. The opaque surface token is the
-      // exact V1.0 white in light mode and the dark card tone in dark mode.
-      color: context.colors.surface,
-      elevation: 8,
-      shape: widget.showFab ? const CircularNotchedRectangle() : null,
-      notchMargin: 6,
-      padding: EdgeInsets.zero,
-      child: ResponsivePage(
-        // Cap the bottom-nav items to a centered column on wide viewports so
-        // they never stretch across a large monitor; below the cap this is a
-        // strict no-op, so phones/tablets keep the current full-width bar.
-        // The "+" slot stays at the bar's centre, which lines up with the
-        // docked FAB (also screen-centred).
-        maxWidth: AppContentWidth.dashboard,
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 56,
-            child: Row(
-              children: [
-                _BottomNavItem(
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_rounded,
-                  label: l10n.navHome,
-                  selected: widget.currentIndex == 0,
-                  onTap: () => _onNavTap(0),
-                ),
-                _BottomNavItem(
-                  icon: Icons.history_outlined,
-                  activeIcon: Icons.history_rounded,
-                  label: l10n.navHistory,
-                  selected: widget.currentIndex == 1,
-                  onTap: () => _onNavTap(1),
-                ),
-                // Reserved space so the docked "+" never covers an item.
-                const SizedBox(width: 56),
-                _BottomNavItem(
-                  icon: Icons.receipt_long_outlined,
-                  activeIcon: Icons.receipt_long_rounded,
-                  label: l10n.navExpenses,
-                  selected: widget.currentIndex == 3,
-                  onTap: () => _onNavTap(3),
-                ),
-                _BottomNavItem(
-                  icon: Icons.bar_chart_outlined,
-                  activeIcon: Icons.bar_chart_rounded,
-                  label: l10n.navReports,
-                  selected: widget.currentIndex == 4,
-                  onTap: () => _onNavTap(4),
-                ),
-              ],
+    final colors = context.colors;
+    const radius = BorderRadius.all(Radius.circular(28));
+    return SafeArea(
+      top: false,
+      // Keep the pill off the very bottom edge even on devices with no inset.
+      minimum: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        // Fixed height: the bottom-navigation slot hands its child the whole
+        // screen height, and [ResponsivePage] would otherwise expand into it.
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: ResponsivePage(
+          // Cap the pill to a centered column on wide viewports so it never
+          // stretches across a large monitor; below the cap this is a no-op.
+          // The reserved "+" slot stays at the centre, under the docked FAB
+          // (also screen-centred).
+          maxWidth: AppContentWidth.dashboard,
+          child: Material(
+            // `surface`, not `glassBarFill`: the latter is translucent by
+            // design. The opaque surface token is white in light mode and the
+            // dark card tone in dark mode.
+            color: colors.surface,
+            elevation: 8,
+            // Deliberately literal: a shadow is a cast, not a themed surface.
+            shadowColor: Colors.black.withAlpha(90),
+            shape: const RoundedRectangleBorder(borderRadius: radius),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox.expand(
+              child: Row(
+                children: [
+                  _BottomNavItem(
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
+                    label: l10n.navHome,
+                    selected: widget.currentIndex == 0,
+                    onTap: () => _onNavTap(0),
+                  ),
+                  _BottomNavItem(
+                    icon: Icons.history_outlined,
+                    activeIcon: Icons.history_rounded,
+                    label: l10n.navHistory,
+                    selected: widget.currentIndex == 1,
+                    onTap: () => _onNavTap(1),
+                  ),
+                  // Reserved space so the docked "+" never covers an item.
+                  const SizedBox(width: 64),
+                  _BottomNavItem(
+                    icon: Icons.receipt_long_outlined,
+                    activeIcon: Icons.receipt_long_rounded,
+                    label: l10n.navExpenses,
+                    selected: widget.currentIndex == 3,
+                    onTap: () => _onNavTap(3),
+                  ),
+                  _BottomNavItem(
+                    icon: Icons.bar_chart_outlined,
+                    activeIcon: Icons.bar_chart_rounded,
+                    label: l10n.navReports,
+                    selected: widget.currentIndex == 4,
+                    onTap: () => _onNavTap(4),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

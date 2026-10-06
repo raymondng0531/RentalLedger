@@ -37,6 +37,14 @@ import '../widgets/upcoming_bills_section.dart';
 /// Balance + Money In / Money Out / Pending summary cards), then the
 /// reorderable section block — Pending Items, Upcoming Bills, Recent
 /// Activity. Matches the Figma design.
+/// Whether the dashboard's staggered entrance has already played this session.
+///
+/// The entrance (sections fading/sliding in over ~0.8 s) used to replay every
+/// time Home was opened, so returning to the tab felt slow even though the
+/// data was already cached. It now plays on the first visit only; later visits
+/// show the content immediately.
+bool _dashboardEntrancePlayed = false;
+
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
@@ -331,6 +339,9 @@ class DashboardPage extends ConsumerWidget {
         if (m.displayName?.isNotEmpty ?? false) m.userId: m.displayName!,
     };
 
+    final skipEntrance = _dashboardEntrancePlayed;
+    _dashboardEntrancePlayed = true;
+
     return ListView(
       children: [
         const SizedBox(height: 8),
@@ -338,6 +349,7 @@ class DashboardPage extends ConsumerWidget {
         // ── Central Account Balance ──
         AnimatedEntrance(
           delay: Duration.zero,
+          skip: skipEntrance,
           child: ScrollLinkedCompress(
             child: BalanceCard(
               balance: data.balance,
@@ -352,6 +364,7 @@ class DashboardPage extends ConsumerWidget {
         // ── Monthly Summary Row ──
         AnimatedEntrance(
           delay: const Duration(milliseconds: 100),
+          skip: skipEntrance,
           child: _buildSummaryRow(
             SummaryCard(
               label: l10n.dashboardMoneyIn,
@@ -386,6 +399,7 @@ class DashboardPage extends ConsumerWidget {
         // (e.g. Recent Activity first) without rebuilding the Dashboard.
         AnimatedEntrance(
           delay: const Duration(milliseconds: 200),
+          skip: skipEntrance,
           child: PendingItemsSection(
             items: data.pendingItems,
             categoryMap: categoryMap,
@@ -393,12 +407,14 @@ class DashboardPage extends ConsumerWidget {
             memberNames: memberNames,
           ),
         ),
-        const AnimatedEntrance(
-          delay: Duration(milliseconds: 300),
-          child: UpcomingBillsSection(),
+        AnimatedEntrance(
+          delay: const Duration(milliseconds: 300),
+          skip: skipEntrance,
+          child: const UpcomingBillsSection(),
         ),
         AnimatedEntrance(
           delay: const Duration(milliseconds: 500),
+          skip: skipEntrance,
           child: RecentActivitySection(
             items: data.recentActivity,
             categoryMap: categoryMap,

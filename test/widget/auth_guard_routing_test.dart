@@ -122,6 +122,11 @@ class _FakeHouseRemote implements HouseRemoteDataSource {
   Future<HouseModel?> findHouseByUserId(String userId) =>
       _answer(userId, ++_calls);
 
+  /// The repository follows the resolved house's document; these tests only
+  /// exercise resolution and routing, so it never emits.
+  @override
+  Stream<HouseModel?> houseStream(String houseId) => const Stream.empty();
+
   // ── Not part of the resolution path ──
 
   @override

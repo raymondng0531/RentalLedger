@@ -111,9 +111,19 @@ final authStateProvider = StreamProvider<UserEntity?>((ref) {
 
 /// Quick access to the current user, or `null`.
 ///
-/// This is a synchronous snapshot. For reactive updates, use [authStateProvider].
+/// Synchronous, and LIVE: it re-evaluates whenever the repository's current
+/// user changes (sign-in, sign-out, profile name/photo update), so screens
+/// never keep showing the previous value until a reload.
 final currentUserProvider = Provider<UserEntity?>((ref) {
-  return ref.watch(authRepositoryProvider).currentUser;
+  final notifier = ref.watch(authRepositoryProvider).currentUserNotifier;
+  final user = notifier.value;
+  void onChange() {
+    if (notifier.value != user) ref.invalidateSelf();
+  }
+
+  notifier.addListener(onChange);
+  ref.onDispose(() => notifier.removeListener(onChange));
+  return user;
 });
 
 // ───── Login Provider ─────

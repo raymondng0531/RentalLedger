@@ -128,8 +128,26 @@ final loadUserHouseProvider = Provider.autoDispose<void>((ref) {
 
 // ───── Current House Provider ─────
 
+/// The signed-in user's current house — LIVE.
+///
+/// Previously this read the repository once, so everything that depends on it
+/// (Treasurer checks, members, dashboard, bills…) kept the house as it was when
+/// first read: a Treasurer transfer, a switch of house or a rename only showed
+/// after a page reload. It now re-evaluates whenever the repository's current
+/// house changes in a way the app shows ([houseDetailsDiffer]) — including
+/// changes made on another device, which the repository follows live.
 final currentHouseProvider = Provider<HouseEntity?>((ref) {
-  return ref.watch(houseRepositoryProvider).currentHouse;
+  final notifier = ref.watch(houseRepositoryProvider).currentHouseNotifier;
+  final house = notifier.value;
+  void onChange() {
+    if (houseDetailsDiffer(house, notifier.value)) ref.invalidateSelf();
+    // (HouseEntity.== compares these same details, so the rebuilt value is
+    // "not equal" and dependents are notified.)
+  }
+
+  notifier.addListener(onChange);
+  ref.onDispose(() => notifier.removeListener(onChange));
+  return house;
 });
 
 final hasHouseProvider = Provider<bool>((ref) {

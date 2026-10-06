@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/errors/exceptions.dart';
@@ -16,6 +18,10 @@ class HouseRepositoryImpl implements HouseRepository {
         _attemptTimeout = attemptTimeout {
     // Check for an existing house on init.
     // The actual check happens when the user ID is known.
+    //
+    // Whenever the current house changes (loaded, switched, cleared), follow
+    // that house's document live — see [_followHouse].
+    _currentHouseNotifier.addListener(_followCurrentHouse);
   }
 
   final HouseRemoteDataSource _remote;
@@ -23,8 +29,11 @@ class HouseRepositoryImpl implements HouseRepository {
   /// How long one lookup attempt may take — see [_defaultAttemptTimeout].
   /// A parameter so the bound itself is testable without waiting it out.
   final Duration _attemptTimeout;
-  final ValueNotifier<HouseEntity?> _currentHouseNotifier =
-      ValueNotifier<HouseEntity?>(null);
+  final _HouseNotifier _currentHouseNotifier = _HouseNotifier();
+
+  /// Live listener on the current house's document, and which house it is for.
+  StreamSubscription<HouseEntity?>? _houseSubscription;
+  String? _followedHouseId;
 
   /// Starts `false`: on a cold start the lookup has not run yet, and the router
   /// must treat "not looked up" as unknown rather than as "no house".
@@ -92,7 +101,7 @@ class HouseRepositoryImpl implements HouseRepository {
         // the previous user, not this one.
         if (generation != _resolutionGeneration) return;
         // null is definitive ("no active membership") — no further retry.
-        _currentHouseNotifier.value = house;
+        _currentHouseNotifier.replace(house);
         _houseResolvedNotifier.value = true;
         return;
       } catch (e) {
@@ -106,7 +115,7 @@ class HouseRepositoryImpl implements HouseRepository {
           // the guard still shows the onboarding screen on a real failure. The
           // resolution is finished either way — "no house we could find" is a
           // definitive answer, not an unresolved one.
-          _currentHouseNotifier.value = null;
+          _currentHouseNotifier.replace(null);
           _houseResolvedNotifier.value = true;
           return;
         }
@@ -122,7 +131,7 @@ class HouseRepositoryImpl implements HouseRepository {
   Future<void> clearCurrentHouse() async {
     // Invalidate any lookup still in flight for the session being ended.
     _resolutionGeneration++;
-    _currentHouseNotifier.value = null;
+    _currentHouseNotifier.replace(null);
     // Back to "unknown". The next session must resolve for itself before the
     // router may decide where its user belongs; keeping the previous answer
     // here would hand the new session the old one's redirect decision.
@@ -144,7 +153,7 @@ class HouseRepositoryImpl implements HouseRepository {
     try {
       await _remote.setActiveHouse(userId, houseId);
       final house = await _remote.getHouse(houseId);
-      _currentHouseNotifier.value = house;
+      _currentHouseNotifier.replace(house);
     } catch (e) {
       debugPrint('[HouseRepository] switchHouse error: $e');
       throw FirebaseFailure('Failed to switch house.');
@@ -157,7 +166,7 @@ class HouseRepositoryImpl implements HouseRepository {
       final house = await _remote.createHouse(houseName, treasurerId);
       // Remember this house as the user's active one.
       await _remote.setActiveHouse(treasurerId, house.houseId);
-      _currentHouseNotifier.value = house;
+      _currentHouseNotifier.replace(house);
       return house;
     } on Failure {
       rethrow;
@@ -172,7 +181,7 @@ class HouseRepositoryImpl implements HouseRepository {
       final house = await _remote.joinHouse(inviteCode, userId);
       // Remember this house as the user's active one.
       await _remote.setActiveHouse(userId, house.houseId);
-      _currentHouseNotifier.value = house;
+      _currentHouseNotifier.replace(house);
       return house;
     } on Failure {
       rethrow;
@@ -222,7 +231,7 @@ class HouseRepositoryImpl implements HouseRepository {
       // Reload house to get updated treasurer ID.
       final updated = await _remote.getHouse(houseId);
       if (updated != null) {
-        _currentHouseNotifier.value = updated;
+        _currentHouseNotifier.replace(updated);
       }
     } catch (e) {
       throw FirebaseFailure('Failed to transfer: ${e.toString()}');
@@ -249,7 +258,7 @@ class HouseRepositoryImpl implements HouseRepository {
 
     try {
       await _remote.leaveHouse(houseId, userId);
-      _currentHouseNotifier.value = null;
+      _currentHouseNotifier.replace(null);
     } catch (e) {
       throw FirebaseFailure('Failed to leave house: ${e.toString()}');
     }
@@ -283,9 +292,69 @@ class HouseRepositoryImpl implements HouseRepository {
     }
   }
 
+  void _followCurrentHouse() => _followHouse(_currentHouseNotifier.value);
+
+  /// Keeps [currentHouse] in step with its Firestore document.
+  ///
+  /// Previously the house was read once at sign-in, so a Treasurer transfer,
+  /// rename or regenerated invite code made on ANOTHER device only showed up
+  /// after a full page reload — the other member kept seeing the old Treasurer
+  /// and the old permissions. Now each snapshot that changes something visible
+  /// replaces the current house in place.
+  void _followHouse(HouseEntity? house) {
+    final houseId = house?.houseId;
+    if (houseId == _followedHouseId) return;
+
+    _houseSubscription?.cancel();
+    _houseSubscription = null;
+    _followedHouseId = houseId;
+    if (houseId == null) return;
+
+    _houseSubscription = _remote.houseStream(houseId).listen(
+      (updated) {
+        // A late snapshot for a house the session has moved away from.
+        if (updated == null || _currentHouseNotifier.value?.houseId != houseId) {
+          return;
+        }
+        _currentHouseNotifier.replace(updated);
+      },
+      onError: (Object e) {
+        // e.g. permission denied after being removed from the house. The
+        // existing membership flows handle that; the listener just stops.
+        debugPrint('[HouseRepository] house stream error: $e');
+      },
+    );
+  }
+
   /// Cleans up.
   void dispose() {
+    _currentHouseNotifier.removeListener(_followCurrentHouse);
+    _houseSubscription?.cancel();
     _currentHouseNotifier.dispose();
     _houseResolvedNotifier.dispose();
   }
+}
+
+/// The current-house notifier.
+///
+/// A plain [ValueNotifier] would drop a snapshot that compares equal — e.g. a
+/// balance-only update — and keep the stale object. This notifier always keeps
+/// the newest snapshot and notifies only when something visible changed
+/// ([houseDetailsDiffer]), so a balance-only snapshot is stored silently.
+class _HouseNotifier extends ValueNotifier<HouseEntity?> {
+  _HouseNotifier() : super(null);
+
+  HouseEntity? _house;
+
+  @override
+  HouseEntity? get value => _house;
+
+  @override
+  set value(HouseEntity? house) {
+    final changed = houseDetailsDiffer(_house, house);
+    _house = house;
+    if (changed) notifyListeners();
+  }
+
+  void replace(HouseEntity? house) => value = house;
 }

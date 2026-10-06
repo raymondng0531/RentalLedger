@@ -42,6 +42,19 @@ class HouseRemoteDataSource {
     }
   }
 
+  /// Streams the house document, so a Treasurer transfer, rename or new
+  /// invite code made on another device reaches this one without a reload.
+  /// Emits null when the document does not exist.
+  Stream<HouseModel?> houseStream(String houseId) {
+    return _firestore
+        .collection(FirestoreConstants.houses)
+        .doc(houseId)
+        .snapshots()
+        .map((doc) => doc.exists && doc.data() != null
+            ? HouseModel.fromFirestore(doc)
+            : null);
+  }
+
   /// Finds the house a user belongs to by looking up their membership.
   ///
   /// Prefers the user's stored `activeHouseId` so the last-used house

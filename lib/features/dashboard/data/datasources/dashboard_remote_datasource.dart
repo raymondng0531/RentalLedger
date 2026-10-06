@@ -63,6 +63,9 @@ class DashboardRemoteDataSource {
   ///
   /// House members are watched so Recent Activity names re-resolve when a
   /// member edits their profile — no manual refresh or navigation needed.
+  /// How long change events are collected before ONE refetch runs.
+  static const Duration _refetchCoalesce = Duration(milliseconds: 150);
+
   Stream<DashboardData> fetchDashboardStream(String houseId) {
     final controller = StreamController<DashboardData>();
 
@@ -88,37 +91,50 @@ class DashboardRemoteDataSource {
       }
     }
 
+    // Coalesce bursts. Opening the stream fires every listener's initial
+    // snapshot, and one money movement touches several watched collections
+    // (an approval writes the house AND a transaction), so the old
+    // one-refetch-per-event approach ran 4–5 full dashboard loads on open and
+    // 2–3 per write — duplicate network round-trips that made the web app feel
+    // sluggish. Events landing within [_refetchCoalesce] now share ONE refetch.
+    Timer? pendingRefetch;
+    void scheduleRefetch() {
+      pendingRefetch?.cancel();
+      pendingRefetch = Timer(_refetchCoalesce, refetch);
+    }
+
     final subscriptions = <StreamSubscription>[
       // House document changes (balance, name).
       _firestore
           .collection(FirestoreConstants.houses)
           .doc(houseId)
           .snapshots()
-          .listen((_) => refetch()),
+          .listen((_) => scheduleRefetch()),
       // House member changes (display names, roles).
       _firestore
           .collection(FirestoreConstants.houseMembers)
           .where('houseId', isEqualTo: houseId)
           .snapshots()
-          .listen((_) => refetch()),
+          .listen((_) => scheduleRefetch()),
       // Expense changes.
       _firestore
           .collection(FirestoreConstants.expenses)
           .where('houseId', isEqualTo: houseId)
           .snapshots()
-          .listen((_) => refetch()),
+          .listen((_) => scheduleRefetch()),
       // Transaction changes.
       _firestore
           .collection(FirestoreConstants.transactions)
           .where('houseId', isEqualTo: houseId)
           .snapshots()
-          .listen((_) => refetch()),
+          .listen((_) => scheduleRefetch()),
     ];
 
-    // Initial load.
+    // Initial load — immediate, so the first paint is not delayed.
     refetch();
 
     controller.onCancel = () {
+      pendingRefetch?.cancel();
       for (final sub in subscriptions) {
         sub.cancel();
       }

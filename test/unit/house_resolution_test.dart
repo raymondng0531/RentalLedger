@@ -73,6 +73,11 @@ class _FakeHouseRemote implements HouseRemoteDataSource {
     return _answer(userId, findCalls);
   }
 
+  /// The repository follows the current house's document once one is
+  /// resolved; these tests only exercise resolution, so it never emits.
+  @override
+  Stream<HouseModel?> houseStream(String houseId) => const Stream.empty();
+
   // ── Not part of the resolution path ──
 
   @override

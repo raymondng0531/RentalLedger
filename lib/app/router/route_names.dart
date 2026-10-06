@@ -23,6 +23,7 @@ class RouteNames {
   static const String expenseDetails = '/expenses/:expenseId';
   static const String depositDetails = '/deposit-details';
   static const String directPaymentDetails = '/direct-payment-details';
+  static const String depositRequestDetails = '/deposit-requests/:requestId';
   static const String billDetails = '/bill-details/:billId';
   static const String billHistory = '/bill-history';
   static const String members = '/members';
@@ -37,4 +38,7 @@ class RouteNames {
   // ───── Financial action routes ─────
   static const String deposit = '/deposit';
   static const String directPayment = '/direct-payment';
+
+  /// A member submits a deposit they paid, for the Treasurer to approve.
+  static const String submitDeposit = '/submit-deposit';
 }

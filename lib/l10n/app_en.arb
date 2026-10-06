@@ -2349,5 +2349,121 @@
   "reportPdfFailed": "Could not generate the PDF. Please try again.",
   "@reportPdfFailed": {
     "description": "Error shown when generating or opening the report PDF failed."
+  },
+  "errorDepositRequestAlreadyReviewed": "This deposit has already been reviewed or cancelled. Refresh to see its current state.",
+  "@errorDepositRequestAlreadyReviewed": {
+    "description": "Shown when a deposit request was approved, rejected or cancelled by someone else before this action ran."
+  },
+  "actionSubmitDeposit": "Submit Deposit",
+  "@actionSubmitDeposit": {
+    "description": "Member action (speed dial, screen title and button) to submit a deposit they paid for Treasurer approval."
+  },
+  "depositSubmitSubtitle": "Record money you paid into the Central Account. The Treasurer will review it before it is added to the balance.",
+  "@depositSubmitSubtitle": {
+    "description": "Intro text on the member Submit Deposit screen."
+  },
+  "depositSubmittedForApproval": "Deposit submitted for Treasurer approval",
+  "@depositSubmittedForApproval": {
+    "description": "Success toast after a member submits a deposit request."
+  },
+  "depositSubmitProofRequiredHint": "Attach a receipt or proof above to submit the deposit.",
+  "@depositSubmitProofRequiredHint": {
+    "description": "Hint under the disabled Submit Deposit button while no proof is attached."
+  },
+  "depositPaidByYou": "You",
+  "@depositPaidByYou": {
+    "description": "Read-only Paid by value on the member Submit Deposit screen: the member always deposits for themselves."
+  },
+  "depositRequestTitle": "Deposit Request",
+  "@depositRequestTitle": {
+    "description": "App-bar title of the deposit request details screen."
+  },
+  "depositRequestWaitingApproval": "Deposit · waiting for Treasurer approval",
+  "@depositRequestWaitingApproval": {
+    "description": "Label under a pending member deposit request on the dashboard."
+  },
+  "depositRequestSubmittedBy": "Submitted by {name}",
+  "@depositRequestSubmittedBy": {
+    "description": "Names the member who submitted a deposit request. The name is user data inserted verbatim.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+  "depositRequestApproveTitle": "Approve Deposit",
+  "@depositRequestApproveTitle": {
+    "description": "Title of the dialog confirming approval of a member deposit request."
+  },
+  "depositRequestApproveConfirm": "Add {amount} from {name} to the Central Account?",
+  "@depositRequestApproveConfirm": {
+    "description": "Body of the approve-deposit dialog. amount is a formatted currency figure; name is the member.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "RM 500.00"
+      },
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+  "depositRequestRejectTitle": "Reject Deposit",
+  "@depositRequestRejectTitle": {
+    "description": "Title of the dialog rejecting a member deposit request."
+  },
+  "depositRequestRejectConfirm": "Reject the deposit of {amount} from {name}?",
+  "@depositRequestRejectConfirm": {
+    "description": "Body of the reject-deposit dialog. amount is a formatted currency figure; name is the member.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "RM 500.00"
+      },
+      "name": {
+        "type": "String",
+        "example": "Ahmad"
+      }
+    }
+  },
+  "depositRequestApproved": "Deposit approved and added to the balance",
+  "@depositRequestApproved": {
+    "description": "Success toast after the Treasurer approves a deposit request."
+  },
+  "depositRequestRejected": "Deposit rejected",
+  "@depositRequestRejected": {
+    "description": "Success toast after the Treasurer rejects a deposit request."
+  },
+  "actionCancelRequest": "Cancel Request",
+  "@actionCancelRequest": {
+    "description": "Member action to withdraw their own pending deposit request."
+  },
+  "depositRequestCancelTitle": "Cancel Deposit Request",
+  "@depositRequestCancelTitle": {
+    "description": "Title of the dialog confirming a member withdraws their pending deposit request."
+  },
+  "depositRequestCancelConfirm": "Withdraw your pending deposit of {amount}? This cannot be undone.",
+  "@depositRequestCancelConfirm": {
+    "description": "Body of the cancel-deposit-request dialog. amount is a formatted currency figure.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "RM 500.00"
+      }
+    }
+  },
+  "depositRequestKeep": "Keep",
+  "@depositRequestKeep": {
+    "description": "Dismisses the cancel-deposit-request dialog without cancelling."
+  },
+  "depositRequestCancelled": "Deposit request cancelled",
+  "@depositRequestCancelled": {
+    "description": "Success toast after a member cancels their pending deposit request."
+  },
+  "depositRequestAwaitingReview": "Waiting for the Treasurer to review this deposit.",
+  "@depositRequestAwaitingReview": {
+    "description": "Shown on a pending deposit request to a member who cannot review it."
   }
 }

@@ -21,6 +21,7 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/expenses/presentation/pages/add_expense_page.dart';
 import '../../features/expenses/presentation/pages/bill_details_page.dart';
 import '../../features/expenses/presentation/pages/deposit_page.dart';
+import '../../features/expenses/presentation/pages/deposit_request_details_page.dart';
 import '../../features/expenses/presentation/pages/direct_payment_page.dart';
 import '../../features/expenses/presentation/pages/expense_details_page.dart';
 import '../../features/expenses/presentation/pages/expense_list_page.dart';
@@ -333,6 +334,12 @@ class AppRouter {
                   (context, state) => _fadeTransition(const DepositPage()),
             ),
             GoRoute(
+              path: RouteNames.submitDeposit,
+              name: RouteNames.submitDeposit,
+              pageBuilder: (context, state) =>
+                  _fadeTransition(const DepositPage(memberRequest: true)),
+            ),
+            GoRoute(
               path: RouteNames.directPayment,
               name: RouteNames.directPayment,
               pageBuilder:
@@ -362,6 +369,17 @@ class AppRouter {
               event is HistoryEvent
                   ? DepositDetailsPage(event: event)
                   : _missingExtraScaffold(context),
+            );
+          },
+        ),
+        GoRoute(
+          path: RouteNames.depositRequestDetails,
+          name: RouteNames.depositRequestDetails,
+          parentNavigatorKey: _rootNavigatorKey,
+          pageBuilder: (context, state) {
+            final requestId = state.pathParameters['requestId'] ?? '';
+            return _slideUpTransition(
+              DepositRequestDetailsPage(requestId: requestId),
             );
           },
         ),
@@ -891,6 +909,7 @@ class _AppShellState extends ConsumerState<_AppShell>
   /// Builds the center "+" action. Collapsed it's the circular elevated FAB;
   /// expanded it shows the speed-dial menu (Direct Payment, Deposit,
   /// Add Expense) above it — the same actions as before, just docked centre.
+  /// Members see Submit Deposit in place of the Treasurer's money actions.
   Widget _buildFab(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.colors;
@@ -935,6 +954,17 @@ class _AppShellState extends ConsumerState<_AppShell>
               label: l10n.actionDeposit,
               color: colors.success,
               onTap: () => _navigateTo(RouteNames.deposit),
+            ),
+            const SizedBox(height: 8),
+          ],
+          // Members submit a deposit they paid for the Treasurer to approve;
+          // it only reaches the Central Account once approved.
+          if (!isTreasurer && house != null) ...[
+            _SpeedDialItem(
+              icon: Icons.arrow_downward_rounded,
+              label: l10n.actionSubmitDeposit,
+              color: colors.success,
+              onTap: () => _navigateTo(RouteNames.submitDeposit),
             ),
             const SizedBox(height: 8),
           ],

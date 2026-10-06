@@ -1694,4 +1694,75 @@ class AppLocalizationsMs extends AppLocalizations {
 
   @override
   String get reportPdfFailed => 'Tidak dapat menjana PDF. Sila cuba lagi.';
+
+  @override
+  String get errorDepositRequestAlreadyReviewed => 'Deposit ini sudah disemak atau dibatalkan. Muat semula untuk melihat keadaan terkini.';
+
+  @override
+  String get actionSubmitDeposit => 'Hantar Deposit';
+
+  @override
+  String get depositSubmitSubtitle => 'Rekodkan wang yang anda bayar ke dalam Akaun Pusat. Bendahari akan menyemaknya sebelum ia ditambah ke baki.';
+
+  @override
+  String get depositSubmittedForApproval => 'Deposit dihantar untuk kelulusan Bendahari';
+
+  @override
+  String get depositSubmitProofRequiredHint => 'Lampirkan resit atau bukti di atas untuk menghantar deposit.';
+
+  @override
+  String get depositPaidByYou => 'Anda';
+
+  @override
+  String get depositRequestTitle => 'Permohonan Deposit';
+
+  @override
+  String get depositRequestWaitingApproval => 'Deposit · menunggu kelulusan Bendahari';
+
+  @override
+  String depositRequestSubmittedBy(String name) {
+    return 'Dihantar oleh $name';
+  }
+
+  @override
+  String get depositRequestApproveTitle => 'Luluskan Deposit';
+
+  @override
+  String depositRequestApproveConfirm(String amount, String name) {
+    return 'Tambah $amount daripada $name ke Akaun Pusat?';
+  }
+
+  @override
+  String get depositRequestRejectTitle => 'Tolak Deposit';
+
+  @override
+  String depositRequestRejectConfirm(String amount, String name) {
+    return 'Tolak deposit $amount daripada $name?';
+  }
+
+  @override
+  String get depositRequestApproved => 'Deposit diluluskan dan ditambah ke baki';
+
+  @override
+  String get depositRequestRejected => 'Deposit ditolak';
+
+  @override
+  String get actionCancelRequest => 'Batal Permohonan';
+
+  @override
+  String get depositRequestCancelTitle => 'Batal Permohonan Deposit';
+
+  @override
+  String depositRequestCancelConfirm(String amount) {
+    return 'Tarik balik deposit $amount anda yang belum diluluskan? Tindakan ini tidak boleh dibatalkan.';
+  }
+
+  @override
+  String get depositRequestKeep => 'Simpan';
+
+  @override
+  String get depositRequestCancelled => 'Permohonan deposit dibatalkan';
+
+  @override
+  String get depositRequestAwaitingReview => 'Menunggu Bendahari menyemak deposit ini.';
 }

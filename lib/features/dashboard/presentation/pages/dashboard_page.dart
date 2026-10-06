@@ -21,6 +21,8 @@ import '../../../../features/notifications/presentation/providers/notification_p
 import '../../../../features/notifications/presentation/widgets/notification_toast.dart';
 import '../../../../features/settings/presentation/providers/settings_provider.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../../authentication/presentation/providers/auth_provider.dart';
+import '../../../members/domain/entities/house_member_entity.dart';
 import '../../../members/presentation/providers/house_provider.dart';
 import '../../domain/entities/dashboard_data.dart';
 import '../providers/dashboard_provider.dart';
@@ -312,6 +314,23 @@ class DashboardPage extends ConsumerWidget {
         ref.watch(categoriesProvider).value ?? const <CategoryEntity>[];
     final categoryMap = {for (final c in categories) c.categoryId: c.name};
 
+    // Member-submitted deposits awaiting the Treasurer: the Treasurer sees
+    // every one, a member only their own.
+    final house = ref.watch(currentHouseProvider);
+    final user = ref.watch(currentUserProvider);
+    final depositRequests = visibleDepositRequests(
+      ref.watch(pendingDepositRequestsProvider).value ?? const [],
+      userId: user?.uid,
+      isTreasurer:
+          house != null && user != null && house.treasurerId == user.uid,
+    );
+    final members =
+        ref.watch(membersStreamProvider).value ?? const <HouseMemberEntity>[];
+    final memberNames = {
+      for (final m in members)
+        if (m.displayName?.isNotEmpty ?? false) m.userId: m.displayName!,
+    };
+
     return ListView(
       children: [
         const SizedBox(height: 8),
@@ -370,6 +389,8 @@ class DashboardPage extends ConsumerWidget {
           child: PendingItemsSection(
             items: data.pendingItems,
             categoryMap: categoryMap,
+            depositRequests: depositRequests,
+            memberNames: memberNames,
           ),
         ),
         const AnimatedEntrance(

@@ -1697,4 +1697,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportPdfFailed => 'Could not generate the PDF. Please try again.';
+
+  @override
+  String get errorDepositRequestAlreadyReviewed => 'This deposit has already been reviewed or cancelled. Refresh to see its current state.';
+
+  @override
+  String get actionSubmitDeposit => 'Submit Deposit';
+
+  @override
+  String get depositSubmitSubtitle => 'Record money you paid into the Central Account. The Treasurer will review it before it is added to the balance.';
+
+  @override
+  String get depositSubmittedForApproval => 'Deposit submitted for Treasurer approval';
+
+  @override
+  String get depositSubmitProofRequiredHint => 'Attach a receipt or proof above to submit the deposit.';
+
+  @override
+  String get depositPaidByYou => 'You';
+
+  @override
+  String get depositRequestTitle => 'Deposit Request';
+
+  @override
+  String get depositRequestWaitingApproval => 'Deposit · waiting for Treasurer approval';
+
+  @override
+  String depositRequestSubmittedBy(String name) {
+    return 'Submitted by $name';
+  }
+
+  @override
+  String get depositRequestApproveTitle => 'Approve Deposit';
+
+  @override
+  String depositRequestApproveConfirm(String amount, String name) {
+    return 'Add $amount from $name to the Central Account?';
+  }
+
+  @override
+  String get depositRequestRejectTitle => 'Reject Deposit';
+
+  @override
+  String depositRequestRejectConfirm(String amount, String name) {
+    return 'Reject the deposit of $amount from $name?';
+  }
+
+  @override
+  String get depositRequestApproved => 'Deposit approved and added to the balance';
+
+  @override
+  String get depositRequestRejected => 'Deposit rejected';
+
+  @override
+  String get actionCancelRequest => 'Cancel Request';
+
+  @override
+  String get depositRequestCancelTitle => 'Cancel Deposit Request';
+
+  @override
+  String depositRequestCancelConfirm(String amount) {
+    return 'Withdraw your pending deposit of $amount? This cannot be undone.';
+  }
+
+  @override
+  String get depositRequestKeep => 'Keep';
+
+  @override
+  String get depositRequestCancelled => 'Deposit request cancelled';
+
+  @override
+  String get depositRequestAwaitingReview => 'Waiting for the Treasurer to review this deposit.';
 }

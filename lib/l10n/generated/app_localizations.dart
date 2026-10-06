@@ -3280,6 +3280,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not generate the PDF. Please try again.'**
   String get reportPdfFailed;
+
+  /// Shown when a deposit request was approved, rejected or cancelled by someone else before this action ran.
+  ///
+  /// In en, this message translates to:
+  /// **'This deposit has already been reviewed or cancelled. Refresh to see its current state.'**
+  String get errorDepositRequestAlreadyReviewed;
+
+  /// Member action (speed dial, screen title and button) to submit a deposit they paid for Treasurer approval.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Deposit'**
+  String get actionSubmitDeposit;
+
+  /// Intro text on the member Submit Deposit screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Record money you paid into the Central Account. The Treasurer will review it before it is added to the balance.'**
+  String get depositSubmitSubtitle;
+
+  /// Success toast after a member submits a deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit submitted for Treasurer approval'**
+  String get depositSubmittedForApproval;
+
+  /// Hint under the disabled Submit Deposit button while no proof is attached.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a receipt or proof above to submit the deposit.'**
+  String get depositSubmitProofRequiredHint;
+
+  /// Read-only Paid by value on the member Submit Deposit screen: the member always deposits for themselves.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get depositPaidByYou;
+
+  /// App-bar title of the deposit request details screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit Request'**
+  String get depositRequestTitle;
+
+  /// Label under a pending member deposit request on the dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit · waiting for Treasurer approval'**
+  String get depositRequestWaitingApproval;
+
+  /// Names the member who submitted a deposit request. The name is user data inserted verbatim.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted by {name}'**
+  String depositRequestSubmittedBy(String name);
+
+  /// Title of the dialog confirming approval of a member deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve Deposit'**
+  String get depositRequestApproveTitle;
+
+  /// Body of the approve-deposit dialog. amount is a formatted currency figure; name is the member.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {amount} from {name} to the Central Account?'**
+  String depositRequestApproveConfirm(String amount, String name);
+
+  /// Title of the dialog rejecting a member deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject Deposit'**
+  String get depositRequestRejectTitle;
+
+  /// Body of the reject-deposit dialog. amount is a formatted currency figure; name is the member.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject the deposit of {amount} from {name}?'**
+  String depositRequestRejectConfirm(String amount, String name);
+
+  /// Success toast after the Treasurer approves a deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit approved and added to the balance'**
+  String get depositRequestApproved;
+
+  /// Success toast after the Treasurer rejects a deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit rejected'**
+  String get depositRequestRejected;
+
+  /// Member action to withdraw their own pending deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Request'**
+  String get actionCancelRequest;
+
+  /// Title of the dialog confirming a member withdraws their pending deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Deposit Request'**
+  String get depositRequestCancelTitle;
+
+  /// Body of the cancel-deposit-request dialog. amount is a formatted currency figure.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw your pending deposit of {amount}? This cannot be undone.'**
+  String depositRequestCancelConfirm(String amount);
+
+  /// Dismisses the cancel-deposit-request dialog without cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep'**
+  String get depositRequestKeep;
+
+  /// Success toast after a member cancels their pending deposit request.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit request cancelled'**
+  String get depositRequestCancelled;
+
+  /// Shown on a pending deposit request to a member who cannot review it.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the Treasurer to review this deposit.'**
+  String get depositRequestAwaitingReview;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

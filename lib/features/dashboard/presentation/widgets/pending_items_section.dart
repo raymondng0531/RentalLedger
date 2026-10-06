@@ -8,6 +8,7 @@ import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../../expenses/domain/entities/deposit_request_entity.dart';
 import '../../domain/entities/activity_item.dart';
 import 'activity_visuals.dart';
 
@@ -17,11 +18,18 @@ import 'activity_visuals.dart';
 /// stays compact by showing the 5 most recent, and a claim moves through it
 /// in real time (submitted → appears, approved → label flips, paid/rejected →
 /// disappears).
+///
+/// Member-submitted deposits awaiting the Treasurer ([depositRequests]) are
+/// listed alongside the claims, above them. They are NOT part of the Pending
+/// summary card — that card is open reimbursements, and a deposit request is
+/// money coming in, not a claim against the account.
 class PendingItemsSection extends StatelessWidget {
   const PendingItemsSection({
     super.key,
     required this.items,
     required this.categoryMap,
+    this.depositRequests = const [],
+    this.memberNames = const {},
   });
 
   /// All open claims (submitted + approved) — the full list, not pre-capped.
@@ -29,6 +37,13 @@ class PendingItemsSection extends StatelessWidget {
 
   /// Category id → name, for the category chips.
   final Map<String, String> categoryMap;
+
+  /// Pending deposit requests this viewer should see (all of them for the
+  /// Treasurer, their own for a member).
+  final List<DepositRequestEntity> depositRequests;
+
+  /// User id → display name, to name who submitted each deposit request.
+  final Map<String, String> memberNames;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +85,9 @@ class PendingItemsSection extends StatelessWidget {
           ),
         ),
 
-        if (items.isEmpty)
+        ..._buildDepositRequestCards(context),
+
+        if (items.isEmpty && depositRequests.isEmpty)
           // Compact empty state — the section stays small when nothing is
           // waiting on the Treasurer.
           Card(
@@ -83,7 +100,7 @@ class PendingItemsSection extends StatelessWidget {
               subtitle: Text(l10n.dashboardPendingItemsEmptyDescription),
             ),
           )
-        else
+        else if (items.isNotEmpty)
           // Rebuilt straight from the stream (not ImplicitAnimatedList) so an
           // in-place status change re-renders the tile immediately, no reload.
           ..._buildItemCards(context, items),
@@ -182,6 +199,98 @@ class PendingItemsSection extends StatelessWidget {
                             categoryMap,
                             colors: context.colors,
                             l10n: l10n,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.chevron_right, size: 18, color: colors.textHint),
+                ],
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  /// One card per pending deposit request, opening its details page where
+  /// the Treasurer approves/rejects (or the submitter cancels) it.
+  List<Widget> _buildDepositRequestCards(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = context.colors;
+    final l10n = AppLocalizations.of(context);
+
+    return [
+      for (final request in depositRequests.take(5))
+        Card(
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppConstants.pagePadding,
+            vertical: 3,
+          ),
+          child: InkWell(
+            onTap: () => context.push(
+              RouteNames.depositRequestDetails
+                  .replaceFirst(':requestId', request.requestId),
+            ),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.success.withAlpha(25),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.savings_outlined,
+                      size: 20,
+                      color: colors.success,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l10n.depositRequestSubmittedBy(
+                                  memberNames[request.submittedBy] ??
+                                      l10n.commonUnknownMember,
+                                ),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '+${CurrencyUtils.format(request.amount, localeCode: l10n.localeName)}',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colors.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.depositRequestWaitingApproval,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.statusPending,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],

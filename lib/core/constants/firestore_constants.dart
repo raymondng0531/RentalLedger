@@ -16,12 +16,23 @@ class FirestoreConstants {
   static const String notifications = 'notifications';
   static const String appSettings = 'app_settings';
 
+  /// Member-submitted deposits awaiting the Treasurer's review. A request is
+  /// NOT a transaction: it never touches the balance until it is approved, at
+  /// which point ONE Deposit transaction is written in the same commit.
+  static const String depositRequests = 'deposit_requests';
+
   // ───────── Expense status values ─────────
 
   static const String statusPending = 'pending';
   static const String statusApproved = 'approved';
   static const String statusRejected = 'rejected';
   static const String statusPaid = 'paid';
+
+  // ───────── Deposit request status values ─────────
+
+  static const String depositRequestPending = 'Pending';
+  static const String depositRequestApproved = 'Approved';
+  static const String depositRequestRejected = 'Rejected';
 
   // ───────── Transaction types ─────────
 
@@ -47,6 +58,9 @@ class FirestoreConstants {
   static const String notificationExpenseRejected = 'Expense Rejected';
   static const String notificationPaymentCompleted = 'Payment Completed';
   static const String notificationDepositRecorded = 'Deposit Recorded';
+  static const String notificationDepositSubmitted = 'Deposit Submitted';
+  static const String notificationDepositApproved = 'Deposit Approved';
+  static const String notificationDepositRejected = 'Deposit Rejected';
 
   /// A member nudging the Treasurer to reimburse an expense they submitted.
   static const String notificationReminder = 'Reimbursement Reminder';

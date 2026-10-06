@@ -13,6 +13,9 @@ sealed class AppException implements Exception {
   /// developer-facing English text; a repository copies this map onto the
   /// `Failure` it builds so the presentation layer can compose the sentence.
   final Map<String, Object?>? arguments;
+
+  @override
+  String toString() => message;
 }
 
 /// Exception thrown when a Firebase operation fails.

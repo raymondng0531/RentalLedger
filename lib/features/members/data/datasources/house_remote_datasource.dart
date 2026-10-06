@@ -197,11 +197,15 @@ class HouseRemoteDataSource {
   Future<HouseModel> joinHouse(String inviteCode, String userId) async {
     try {
       final callable = FirebaseFunctions.instance.httpsCallable('joinHouse');
-      final result = await callable.call<Map<String, dynamic>>({
+      // Deliberately untyped: on Android the plugin returns an Object-keyed
+      // map, so `call<Map<String, dynamic>>` throws a TypeError AFTER the
+      // server has already joined the user. Read the payload loosely instead.
+      final result = await callable.call({
         'inviteCode': inviteCode,
       });
 
-      final houseId = result.data['houseId'] as String?;
+      final data = result.data;
+      final houseId = data is Map ? data['houseId'] as String? : null;
       if (houseId == null || houseId.isEmpty) {
         throw const AppFirebaseException('Failed to join house.');
       }
@@ -242,6 +246,10 @@ class HouseRemoteDataSource {
             code: FailureCodes.houseInvalidCode,
           );
         default:
+          debugPrint(
+            '[HouseDataSource] joinHouse function error: '
+            '${e.code} ${e.message}',
+          );
           throw const AppFirebaseException('Failed to join house.');
       }
     } catch (e) {

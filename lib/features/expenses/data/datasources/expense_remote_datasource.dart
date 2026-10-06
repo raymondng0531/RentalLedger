@@ -10,22 +10,28 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failure_codes.dart';
+import '../../../../core/utils/currency_utils.dart';
 import '../../../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../domain/entities/bill_entity.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/expense_entity.dart';
+import '../../domain/logic/deposit_request_guards.dart';
 import '../../domain/logic/financial_guards.dart';
 import '../models/bill_model.dart';
+import '../models/deposit_request_model.dart';
 import '../models/expense_model.dart';
 import '../models/transaction_model.dart';
+import 'deposit_request_datasource.dart';
 import 'expense_ledger_datasource.dart';
 
 /// Remote data source for expense CRUD, receipt upload, and categories.
 ///
 /// Implements the [ExpenseLedgerDataSource] money-movement contract (deposits,
-/// direct payments, bill payments) so the financial notifiers can be tested
-/// against that narrow interface rather than this concrete Firebase class.
-class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
+/// direct payments, bill payments) and the [DepositRequestDataSource]
+/// member-deposit contract, so the financial notifiers can be tested against
+/// those narrow interfaces rather than this concrete Firebase class.
+class ExpenseRemoteDataSource
+    implements ExpenseLedgerDataSource, DepositRequestDataSource {
   ExpenseRemoteDataSource({
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
@@ -1015,6 +1021,291 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
     }
   }
 
+  // ───── Deposit Requests ─────
+
+  /// Creates a member's Pending deposit request and notifies the Treasurer.
+  ///
+  /// Nothing here touches the ledger or the balance: a request only becomes
+  /// money when the Treasurer approves it ([approveDepositRequest]).
+  ///
+  /// The write runs in a transaction that first reads [requestId], so a repeat
+  /// of the same submission (a double tap, a retry after a timeout) finds the
+  /// request already written and creates nothing more — the same idempotency
+  /// pattern as [recordTransaction].
+  @override
+  Future<DepositRequestModel> createDepositRequest({
+    required String requestId,
+    required String houseId,
+    required double amount,
+    required String submittedBy,
+    String? paymentMethod,
+    String? periodLabel,
+    String? purpose,
+    String? notes,
+    required String receiptUrl,
+  }) async {
+    final ref =
+        _firestore.collection(FirestoreConstants.depositRequests).doc(requestId);
+    final model = DepositRequestModel(
+      requestId: requestId,
+      houseId: houseId,
+      amount: amount.abs(),
+      // A member submits a deposit for THEMSELVES — the payer is the submitter.
+      paidByUserId: submittedBy,
+      submittedBy: submittedBy,
+      paymentMethod: paymentMethod,
+      periodLabel: periodLabel,
+      purpose: purpose,
+      notes: notes,
+      receiptUrl: receiptUrl,
+      // status defaults to Pending — the only status a new request may have.
+      createdAt: DateTime.now(),
+    );
+
+    try {
+      final replayed = await _firestore.runTransaction<DepositRequestModel?>(
+        (tx) async {
+          final existing = await tx.get(ref);
+          if (existing.exists) {
+            return DepositRequestModel.fromFirestore(existing);
+          }
+          tx.set(ref, model.toMap());
+          return null;
+        },
+      );
+      if (replayed != null) return replayed;
+
+      // Awaited so the Treasurer's realtime notification stream has it by the
+      // time the submission resolves (same as expense submission).
+      await _notifyDepositSubmitted(model);
+      return model;
+    } catch (e) {
+      debugPrint('[ExpenseDataSource] createDepositRequest error: $e');
+      throw const AppFirebaseException('Failed to submit deposit.');
+    }
+  }
+
+  /// Approves a Pending deposit request — the request, the Deposit ledger row
+  /// and the balance all move in ONE commit.
+  ///
+  /// Inside the transaction:
+  /// 1. The request is re-read and must still be Pending
+  ///    ([depositRequestReviewRefusal]); a second Approve racing the first
+  ///    re-runs, reads Approved, and fails with a [ConflictException].
+  /// 2. The Deposit row is written under the request's own id — the approval's
+  ///    idempotency key — so the same request can never produce two rows. If a
+  ///    row with that id somehow already exists, the request is only marked
+  ///    Approved and the money is NOT moved again.
+  /// 3. `performedBy` is the approving Treasurer, `paidByUserId` the member who
+  ///    paid, and the member's proof is carried onto the transaction.
+  @override
+  Future<void> approveDepositRequest(
+    String requestId, {
+    required String treasurerId,
+  }) async {
+    final requestRef =
+        _firestore.collection(FirestoreConstants.depositRequests).doc(requestId);
+    final txRef =
+        _firestore.collection(FirestoreConstants.transactions).doc(requestId);
+
+    try {
+      final now = DateTime.now();
+      final request = await _firestore.runTransaction<DepositRequestModel>(
+        (tx) async {
+          // Every read must precede every write in a Firestore transaction.
+          final snapshot = await tx.get(requestRef);
+          if (!snapshot.exists) {
+            throw const ConflictException(
+              'This deposit request no longer exists.',
+              code: FailureCodes.recordMissing,
+            );
+          }
+          final model = DepositRequestModel.fromFirestore(snapshot);
+          final refusal =
+              depositRequestReviewRefusal(currentStatus: model.status);
+          if (refusal != null) {
+            throw ConflictException(
+              refusal,
+              code: FailureCodes.depositRequestAlreadyReviewed,
+            );
+          }
+          final existingRow = await tx.get(txRef);
+
+          tx.update(requestRef, {
+            'status': FirestoreConstants.depositRequestApproved,
+            'reviewedBy': treasurerId,
+            'reviewedAt': Timestamp.fromDate(now),
+            'transactionId': requestId,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+          if (!existingRow.exists) {
+            _writeLedgerRow(
+              tx,
+              transactionId: requestId,
+              houseId: model.houseId,
+              type: FirestoreConstants.transactionDeposit,
+              amount: model.amount.abs(), // positive = inflow
+              performedBy: treasurerId,
+              notes:
+                  (model.notes?.isNotEmpty ?? false) ? model.notes : 'Deposit',
+              receiptUrl: model.receiptUrl,
+              paidByUserId: model.paidByUserId,
+              paymentMethod: model.paymentMethod,
+              periodLabel: model.periodLabel,
+              purpose: model.purpose,
+              createdAt: now,
+            );
+          }
+          return model;
+        },
+      );
+
+      await _notifyDepositReviewed(
+        request,
+        approved: true,
+        treasurerId: treasurerId,
+      );
+    } on ConflictException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[ExpenseDataSource] approveDepositRequest error: $e');
+      throw const AppFirebaseException('Failed to approve deposit.');
+    }
+  }
+
+  /// Rejects a Pending deposit request. Nothing is written to the ledger.
+  @override
+  Future<void> rejectDepositRequest(
+    String requestId, {
+    required String treasurerId,
+    String? reason,
+  }) async {
+    final requestRef =
+        _firestore.collection(FirestoreConstants.depositRequests).doc(requestId);
+
+    try {
+      final now = DateTime.now();
+      final request = await _firestore.runTransaction<DepositRequestModel>(
+        (tx) async {
+          final snapshot = await tx.get(requestRef);
+          if (!snapshot.exists) {
+            throw const ConflictException(
+              'This deposit request no longer exists.',
+              code: FailureCodes.recordMissing,
+            );
+          }
+          final model = DepositRequestModel.fromFirestore(snapshot);
+          final refusal =
+              depositRequestReviewRefusal(currentStatus: model.status);
+          if (refusal != null) {
+            throw ConflictException(
+              refusal,
+              code: FailureCodes.depositRequestAlreadyReviewed,
+            );
+          }
+
+          tx.update(requestRef, {
+            'status': FirestoreConstants.depositRequestRejected,
+            'reviewedBy': treasurerId,
+            'reviewedAt': Timestamp.fromDate(now),
+            'rejectReason': reason,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+          return model;
+        },
+      );
+
+      await _notifyDepositReviewed(
+        request,
+        approved: false,
+        reason: reason,
+        treasurerId: treasurerId,
+      );
+    } on ConflictException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[ExpenseDataSource] rejectDepositRequest error: $e');
+      throw const AppFirebaseException('Failed to reject deposit.');
+    }
+  }
+
+  /// Deletes the caller's OWN Pending request (re-checked inside the
+  /// transaction, and again by the Firestore rule).
+  @override
+  Future<void> cancelDepositRequest(
+    String requestId, {
+    required String userId,
+  }) async {
+    final requestRef =
+        _firestore.collection(FirestoreConstants.depositRequests).doc(requestId);
+
+    try {
+      await _firestore.runTransaction<void>((tx) async {
+        final snapshot = await tx.get(requestRef);
+        if (!snapshot.exists) {
+          throw const ConflictException(
+            'This deposit request no longer exists.',
+            code: FailureCodes.recordMissing,
+          );
+        }
+        final model = DepositRequestModel.fromFirestore(snapshot);
+        final refusal = depositRequestCancelRefusal(
+          userId: userId,
+          submittedBy: model.submittedBy,
+          currentStatus: model.status,
+        );
+        if (refusal != null) {
+          throw ConflictException(
+            refusal,
+            code: model.submittedBy == userId
+                ? FailureCodes.depositRequestAlreadyReviewed
+                : FailureCodes.permission,
+          );
+        }
+        tx.delete(requestRef);
+      });
+    } on ConflictException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[ExpenseDataSource] cancelDepositRequest error: $e');
+      throw const AppFirebaseException('Failed to cancel deposit request.');
+    }
+  }
+
+  /// Streams the house's Pending requests, newest first.
+  ///
+  /// Equality filters only (houseId + status) and the ordering is done here,
+  /// so the query needs no composite index.
+  @override
+  Stream<List<DepositRequestModel>> pendingDepositRequestsStream(
+    String houseId,
+  ) {
+    return _firestore
+        .collection(FirestoreConstants.depositRequests)
+        .where('houseId', isEqualTo: houseId)
+        .where('status', isEqualTo: FirestoreConstants.depositRequestPending)
+        .snapshots()
+        .map((snapshot) {
+      final requests = snapshot.docs
+          .map((doc) => DepositRequestModel.fromFirestore(doc))
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return requests;
+    });
+  }
+
+  /// Streams one request; emits null once it no longer exists (cancelled).
+  @override
+  Stream<DepositRequestModel?> depositRequestStream(String requestId) {
+    return _firestore
+        .collection(FirestoreConstants.depositRequests)
+        .doc(requestId)
+        .snapshots()
+        .map((doc) =>
+            doc.exists ? DepositRequestModel.fromFirestore(doc) : null);
+  }
+
   // ───── Categories ─────
 
   Future<List<CategoryEntity>> getCategories(String houseId) async {
@@ -1120,6 +1411,51 @@ class ExpenseRemoteDataSource implements ExpenseLedgerDataSource {
       body: '"$title" has been reimbursed.',
       type: FirestoreConstants.notificationPaymentCompleted,
       relatedId: expenseId,
+    );
+  }
+
+  /// Notifies the Treasurer that a member submitted a deposit for approval.
+  /// The submitter is skipped, so a Treasurer never notifies themselves.
+  Future<void> _notifyDepositSubmitted(DepositRequestModel request) async {
+    final treasurerId = await _findTreasurer(request.houseId);
+    if (treasurerId == null || treasurerId.isEmpty) return;
+    if (treasurerId == request.submittedBy) return;
+
+    await NotificationRemoteDataSource().createNotification(
+      userId: treasurerId,
+      title: 'Deposit Submitted',
+      body: 'A deposit of ${CurrencyUtils.format(request.amount)} '
+          'needs your approval.',
+      type: FirestoreConstants.notificationDepositSubmitted,
+      relatedId: request.requestId,
+    );
+  }
+
+  /// Notifies the submitting member that their deposit was approved or
+  /// rejected. No notification when the reviewer is the submitter.
+  Future<void> _notifyDepositReviewed(
+    DepositRequestModel request, {
+    required bool approved,
+    String? reason,
+    String? treasurerId,
+  }) async {
+    if (request.submittedBy.isEmpty) return;
+    if (request.submittedBy == treasurerId) return;
+
+    final amount = CurrencyUtils.format(request.amount);
+    final body = approved
+        ? 'Your deposit of $amount has been approved.'
+        : 'Your deposit of $amount was rejected'
+            '${reason != null && reason.isNotEmpty ? ' · Reason: $reason' : ''}';
+
+    await NotificationRemoteDataSource().createNotification(
+      userId: request.submittedBy,
+      title: approved ? 'Deposit Approved' : 'Deposit Rejected',
+      body: body,
+      type: approved
+          ? FirestoreConstants.notificationDepositApproved
+          : FirestoreConstants.notificationDepositRejected,
+      relatedId: request.requestId,
     );
   }
 

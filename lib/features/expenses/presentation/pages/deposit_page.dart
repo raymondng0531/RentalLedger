@@ -24,8 +24,16 @@ import '../widgets/proof_picker.dart';
 /// deposit is attributed to the member who physically paid it ([paidByUserId]),
 /// with optional payment method, month/period (e.g. monthly rental) and purpose.
 /// The Treasurer records it — [performedBy] stays the Treasurer.
+///
+/// With [memberRequest] the same form is a member's **Submit Deposit**: the
+/// payer is fixed to the member themselves and submitting creates a Pending
+/// deposit request for the Treasurer to approve — nothing reaches the ledger
+/// until then. The Treasurer's direct Record Deposit is unchanged.
 class DepositPage extends ConsumerStatefulWidget {
-  const DepositPage({super.key});
+  const DepositPage({super.key, this.memberRequest = false});
+
+  /// True for the member's Submit Deposit flow (see the class docs).
+  final bool memberRequest;
 
   @override
   ConsumerState<DepositPage> createState() => _DepositPageState();
@@ -89,12 +97,21 @@ class _DepositPageState extends ConsumerState<DepositPage> {
 
   void _onProofChanged(String? path) {
     setState(() => _hasProof = path != null);
-    ref.read(depositProvider.notifier).setProofPath(path);
+    if (widget.memberRequest) {
+      ref.read(submitDepositRequestProvider.notifier).setProofPath(path);
+    } else {
+      ref.read(depositProvider.notifier).setProofPath(path);
+    }
   }
+
+  String? get _periodLabel => _periodController.text.trim().isEmpty
+      ? null
+      : _periodController.text.trim();
 
   Future<void> _handleDeposit() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_hasProof) return; // Button is disabled; belt-and-braces.
+    if (widget.memberRequest) return _handleSubmitRequest();
 
     final amount = double.parse(_amountController.text);
     final user = ref.read(currentUserProvider);
@@ -104,9 +121,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
           notes: _notesController.text.trim(),
           paidByUserId: _paidByUserId ?? user?.uid,
           paymentMethod: _paymentMethod,
-          periodLabel: _periodController.text.trim().isEmpty
-              ? null
-              : _periodController.text.trim(),
+          periodLabel: _periodLabel,
           purpose: _purpose,
         );
 
@@ -125,12 +140,40 @@ class _DepositPageState extends ConsumerState<DepositPage> {
     }
   }
 
+  /// Member flow: submit a Pending deposit request for the Treasurer.
+  Future<void> _handleSubmitRequest() async {
+    final amount = double.parse(_amountController.text);
+    final errorMessage =
+        await ref.read(submitDepositRequestProvider.notifier).submit(
+              amount: amount,
+              notes: _notesController.text.trim(),
+              paymentMethod: _paymentMethod,
+              periodLabel: _periodLabel,
+              purpose: _purpose,
+            );
+
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    if (errorMessage == null) {
+      SnackbarUtils.showSuccess(context, l10n.depositSubmittedForApproval);
+      context.go(RouteNames.dashboard);
+    } else {
+      SnackbarUtils.showError(
+        context,
+        FailureMessages.forError(errorMessage, l10n),
+      );
+    }
+  }
+
   String _memberLabel(HouseMemberEntity m, AppLocalizations l10n) =>
       (m.displayName?.isNotEmpty ?? false) ? m.displayName! : l10n.labelMember;
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(depositProvider);
+    final memberRequest = widget.memberRequest;
+    final state = memberRequest
+        ? ref.watch(submitDepositRequestProvider)
+        : ref.watch(depositProvider);
     final isLoading = state.isLoading;
     final membersAsync = ref.watch(membersStreamProvider);
     final currentUser = ref.watch(currentUserProvider);
@@ -160,7 +203,9 @@ class _DepositPageState extends ConsumerState<DepositPage> {
           onPressed: () => context.pop(),
           tooltip: l10n.actionBack,
         ),
-        title: Text(l10n.depositRecordTitle),
+        title: Text(
+          memberRequest ? l10n.actionSubmitDeposit : l10n.depositRecordTitle,
+        ),
         backgroundColor: colors.surface,
       ),
       body: ResponsivePage(
@@ -192,7 +237,9 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   const SizedBox(height: 24),
 
                   Text(
-                    l10n.depositSubtitle,
+                    memberRequest
+                        ? l10n.depositSubmitSubtitle
+                        : l10n.depositSubtitle,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: colors.textSecondary,
                         ),
@@ -224,25 +271,41 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   const SizedBox(height: 16),
 
                   // ── Paid by (who physically paid the money in) ──
-                  DropdownButtonFormField<String>(
-                    value: dropdownValue,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: l10n.labelPaidBy,
-                      prefixIcon: const Icon(Icons.person_outline),
-                    ),
-                    items: [
-                      for (final m in members)
-                        DropdownMenuItem(
-                          value: m.userId,
-                          child: Text(
-                            _memberLabel(m, l10n),
-                            overflow: TextOverflow.ellipsis,
+                  // A member always deposits for themselves, so the payer is
+                  // shown, not chosen.
+                  if (memberRequest)
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: l10n.labelPaidBy,
+                        prefixIcon: const Icon(Icons.person_outline),
+                      ),
+                      child: Text(
+                        (currentUser?.displayName.isNotEmpty ?? false)
+                            ? currentUser!.displayName
+                            : l10n.depositPaidByYou,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      value: dropdownValue,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: l10n.labelPaidBy,
+                        prefixIcon: const Icon(Icons.person_outline),
+                      ),
+                      items: [
+                        for (final m in members)
+                          DropdownMenuItem(
+                            value: m.userId,
+                            child: Text(
+                              _memberLabel(m, l10n),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => _paidByUserId = v),
-                  ),
+                      ],
+                      onChanged: (v) => setState(() => _paidByUserId = v),
+                    ),
                   const SizedBox(height: 16),
 
                   // ── Purpose (optional) ──
@@ -327,13 +390,19 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                                 color: colors.onPrimary,
                               ),
                             )
-                          : Text(l10n.depositRecordTitle),
+                          : Text(
+                              memberRequest
+                                  ? l10n.actionSubmitDeposit
+                                  : l10n.depositRecordTitle,
+                            ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   if (!_hasProof)
                     Text(
-                      l10n.depositProofRequiredHint,
+                      memberRequest
+                          ? l10n.depositSubmitProofRequiredHint
+                          : l10n.depositProofRequiredHint,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colors.textSecondary,
                           ),

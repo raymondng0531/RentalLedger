@@ -45,7 +45,11 @@ class DefaultFirebaseOptions {
     appId: '1:1036946500500:web:60bcf2414e01e86f5abd81',
     messagingSenderId: '1036946500500',
     projectId: 'rental-ledger-app',
-    authDomain: 'rental-ledger-app.firebaseapp.com',
+    // The hosting domain, not firebaseapp.com: Google redirect sign-in (used
+    // by the iPhone Home Screen app) must return to the app's own site, or
+    // Safari's storage blocking loses the result. Keep this if FlutterFire
+    // regenerates the file.
+    authDomain: 'rental-ledger-app.web.app',
     storageBucket: 'rental-ledger-app.firebasestorage.app',
   );
 

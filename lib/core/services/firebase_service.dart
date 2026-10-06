@@ -45,9 +45,15 @@ class FirebaseService {
       // Configure Firestore settings for better offline support.
       // Best-effort: web and some platforms don't support these knobs, so a
       // settings failure must not be reported as an init failure.
+      //
+      // Web uses Firestore's in-memory cache instead of its IndexedDB one.
+      // In the iPhone Home Screen (PWA) app the IndexedDB cache could leave
+      // reads hanging after Google sign-in, so the dashboard sat on its
+      // loading skeletons while the same account worked in a Safari tab. The
+      // web app needs a connection anyway, and native keeps its offline cache.
       try {
         firestore.settings = const Settings(
-          persistenceEnabled: true,
+          persistenceEnabled: !kIsWeb,
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
       } catch (e) {

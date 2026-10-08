@@ -18,9 +18,17 @@ movement recorded and visible to the whole house.
   <img src="docs/screenshots/dashboard.png" width="300" alt="Treasurer dashboard: Central Account balance, monthly summary, a member's pending deposit and a pending claim, upcoming bills">
   &nbsp;&nbsp;
   <img src="docs/screenshots/submit_deposit.png" width="300" alt="Member Submit Deposit form with amount, payer, purpose, payment method, period and required proof">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/expense_list.png" width="300" alt="Expense list filtered by status, showing a pending, approved and paid claim with category and payer">
 </p>
 
-<p align="center"><em>Treasurer dashboard &nbsp;·&nbsp; Member "Submit Deposit"</em></p>
+<p align="center">
+  <img src="docs/screenshots/history.png" width="300" alt="Transaction history grouped by month, mixing expenses, deposits and direct payments">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/members.png" width="300" alt="Member list with Treasurer and members, invite code, and the Treasurer's transfer-ownership card">
+</p>
+
+<p align="center"><em>Treasurer dashboard &nbsp;·&nbsp; Member "Submit Deposit" &nbsp;·&nbsp; Expense list &nbsp;·&nbsp; History &nbsp;·&nbsp; Members</em></p>
 
 Screenshots use sample data only (no real house or people). They are rendered
 from the real app screens by `tool/screenshots/readme_screenshots_test.dart`:

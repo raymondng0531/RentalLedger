@@ -25,10 +25,15 @@ import 'package:rental_ledger/features/dashboard/presentation/providers/dashboar
 import 'package:rental_ledger/features/expenses/domain/entities/bill_entity.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/category_entity.dart';
 import 'package:rental_ledger/features/expenses/domain/entities/deposit_request_entity.dart';
+import 'package:rental_ledger/features/expenses/domain/entities/expense_entity.dart';
 import 'package:rental_ledger/features/expenses/presentation/pages/deposit_page.dart';
+import 'package:rental_ledger/features/expenses/presentation/pages/expense_list_page.dart';
 import 'package:rental_ledger/features/expenses/presentation/providers/expense_provider.dart';
+import 'package:rental_ledger/features/history/presentation/pages/history_page.dart';
+import 'package:rental_ledger/features/history/presentation/providers/history_provider.dart';
 import 'package:rental_ledger/features/members/domain/entities/house_entity.dart';
 import 'package:rental_ledger/features/members/domain/entities/house_member_entity.dart';
+import 'package:rental_ledger/features/members/presentation/pages/member_list_page.dart';
 import 'package:rental_ledger/features/members/presentation/providers/house_provider.dart';
 import 'package:rental_ledger/features/notifications/presentation/providers/notification_provider.dart';
 import 'package:rental_ledger/l10n/generated/app_localizations.dart';
@@ -154,6 +159,92 @@ final _bills = [
     dueDate: _now.add(const Duration(days: 5)),
     isRecurring: true,
     createdAt: _now,
+  ),
+];
+
+final _expenses = [
+  ExpenseEntity(
+    expenseId: 'e1',
+    houseId: 'demo',
+    purchasedBy: 'alice',
+    title: 'Cleaning supplies',
+    categoryId: 'household',
+    amount: 42.5,
+    paymentSource: 'personal',
+    createdAt: _now.subtract(const Duration(days: 1)),
+  ),
+  ExpenseEntity(
+    expenseId: 'e2',
+    houseId: 'demo',
+    purchasedBy: 'chen',
+    title: 'Groceries',
+    categoryId: 'food',
+    amount: 86.4,
+    paymentSource: 'personal',
+    status: 'approved',
+    createdAt: _now.subtract(const Duration(days: 4)),
+    approvedBy: 'bob',
+    approvedAt: _now.subtract(const Duration(days: 3)),
+  ),
+  ExpenseEntity(
+    expenseId: 'e3',
+    houseId: 'demo',
+    purchasedBy: 'bob',
+    title: 'Internet bill',
+    categoryId: 'internet',
+    amount: 129,
+    paymentSource: 'central',
+    status: 'paid',
+    createdAt: _now.subtract(const Duration(days: 6)),
+    approvedBy: 'bob',
+    approvedAt: _now.subtract(const Duration(days: 6)),
+    paidAt: _now.subtract(const Duration(days: 5)),
+  ),
+];
+
+final _historyEvents = [
+  HistoryEvent(
+    id: 'h1',
+    refId: 'e1',
+    type: HistoryEventType.expenseSubmitted,
+    title: 'Cleaning supplies',
+    amount: 42.5,
+    date: _now.subtract(const Duration(days: 1)),
+    categoryId: 'household',
+    status: 'pending',
+    userId: 'alice',
+    paymentSource: 'personal',
+  ),
+  HistoryEvent(
+    id: 'h2',
+    type: HistoryEventType.deposit,
+    title: 'Monthly Rental',
+    amount: 600,
+    date: _now.subtract(const Duration(days: 2)),
+    paidByUserId: 'alice',
+    paymentMethod: 'Bank Transfer',
+    periodLabel: '2026-10',
+  ),
+  HistoryEvent(
+    id: 'h3',
+    type: HistoryEventType.directPayment,
+    title: 'Bill: Internet',
+    amount: -129,
+    date: _now.subtract(const Duration(days: 3)),
+    categoryId: 'internet',
+    userId: 'bob',
+  ),
+  HistoryEvent(
+    id: 'h4',
+    refId: 'e2',
+    type: HistoryEventType.expensePaid,
+    title: 'Groceries',
+    amount: -86.4,
+    date: _now.subtract(const Duration(days: 5)),
+    categoryId: 'food',
+    status: 'paid',
+    userId: 'chen',
+    paymentSource: 'personal',
   ),
 ];
 
@@ -301,6 +392,39 @@ void main() {
         await tester.enterText(find.byType(TextFormField).first, '300.00');
         FocusManager.instance.primaryFocus?.unfocus();
       },
+    );
+  });
+
+  testWidgets('expense list (member)', (tester) async {
+    await _shoot(
+      tester,
+      name: 'expense_list',
+      page: const ExpenseListPage(),
+      overrides: [
+        ..._common(_alice),
+        expenseListProvider(null).overrideWith((ref) => Stream.value(_expenses)),
+      ],
+    );
+  });
+
+  testWidgets('history', (tester) async {
+    await _shoot(
+      tester,
+      name: 'history',
+      page: const HistoryPage(),
+      overrides: [
+        ..._common(_bob),
+        historyProvider('').overrideWith((ref) => Stream.value(_historyEvents)),
+      ],
+    );
+  });
+
+  testWidgets('members (Treasurer)', (tester) async {
+    await _shoot(
+      tester,
+      name: 'members',
+      page: const MemberListPage(),
+      overrides: _common(_bob),
     );
   });
 
